@@ -3,6 +3,7 @@ import SubscriptionForm from "../components/form";
 import FeaturesDropdown from "../components/FeaturesDropdown";
 import ScrollButton from "../components/ScrollButton";
 import Link from "next/link";
+import Footer from "@/components/Footer";
 
 export default function Home() {
   return (
@@ -38,20 +39,7 @@ export default function Home() {
         <FeaturesDropdown />
       </main>
 
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center text-sm text-gray-600 dark:text-gray-400">
-        <Link className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="/about">
-          About
-        </Link>
-        <a className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="#">
-          Blog
-        </a>
-        <a className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="#">
-          Privacy
-        </a>
-        <a className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="#">
-          Terms
-        </a>
-      </footer>
+      <Footer />
     </div>
   );
 }
