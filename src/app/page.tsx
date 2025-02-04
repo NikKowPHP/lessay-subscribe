@@ -1,4 +1,5 @@
 import Image from "next/image";
+import SubscriptionForm from "../components/form";
 
 export default function Home() {
   return (
@@ -22,6 +23,16 @@ export default function Home() {
           </li>
           <li>Save and see your changes instantly.</li>
         </ol>
+
+        <div className="w-full max-w-md mt-8">
+          <h2 className="text-xl font-semibold mb-2 text-center sm:text-left">
+            Stay updated
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center sm:text-left">
+            Subscribe to our newsletter for the latest updates and news.
+          </p>
+          <SubscriptionForm />
+        </div>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
           <a
