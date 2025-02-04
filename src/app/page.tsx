@@ -1,5 +1,6 @@
 import Image from "next/image";
 import SubscriptionForm from "../components/form";
+import ScrollButton from "../components/ScrollButton";
 
 export default function Home() {
   return (
@@ -16,7 +17,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 w-full mt-4">
+        <div id="features" className="grid grid-cols-1 gap-3 w-full mt-4">
           <div className="group p-6 rounded-xl border border-black/[.08] dark:border-white/[.145] hover:border-black/20 dark:hover:border-white/30 transition-all">
             <div className="flex items-start space-x-4">
               <div className="bg-gradient-to-b from-black/[.08] to-black/[.04] dark:from-white/[.08] dark:to-white/[.04] rounded-lg p-2">
@@ -73,15 +74,7 @@ export default function Home() {
         </div>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <button
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black text-sm sm:text-base h-10 sm:h-12 px-6 sm:px-8 group"
-            onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            How it works
-            <svg className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
+          <ScrollButton />
         </div>
       </main>
       <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center text-sm text-gray-600 dark:text-gray-400">
