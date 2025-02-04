@@ -19,3 +19,7 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.text-transparent {
+  -webkit-text-fill-color: transparent;
+}

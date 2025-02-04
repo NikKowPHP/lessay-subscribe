@@ -10,9 +10,15 @@ export default function Home() {
       <main className="flex flex-col gap-8 row-start-2 items-center max-w-full sm:max-w-[1000px]">
         <div className="text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-            <span className="bg-gradient-to-r from-black to-black/70 dark:from-white dark:to-white/70 inline-block text-transparent bg-clip-text">
-              lessay
-            </span>
+          <span
+  style={{ 
+    WebkitTextFillColor: "transparent",
+    WebkitBackgroundClip: "text"
+  }}
+  className="bg-gradient-to-r from-black to-black/70 dark:from-white dark:to-white/70 inline-block !text-transparent bg-clip-text"
+>
+  lessay
+</span>
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300">
             Learn a language, not the fluff
