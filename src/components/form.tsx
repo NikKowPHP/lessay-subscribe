@@ -1,16 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { FormService } from "../services/formService";
 
 export default function SubscriptionForm() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
-    // Simulate submission
-    setTimeout(() => setStatus("success"), 1000);
+    setErrorMessage("");
+
+    try {
+      await FormService.submitEmail(email);
+      setStatus("success");
+      setEmail("");
+    } catch (error) {
+      setStatus("error");
+      setErrorMessage(error instanceof Error ? error.message : "Subscription failed");
+    }
   };
 
   return (
@@ -22,7 +32,7 @@ export default function SubscriptionForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Enter your email"
           className="w-full px-4 py-3 sm:px-6 sm:py-4 rounded-full border border-black/[.08] dark:border-white/[.145] 
-                   bg-transparent outline-none focus:border-black/20 dark:focus:border-white/30
+                   bg-transparent  outline-none focus:border-black/20 dark:focus:border-white/30
                    transition-colors font-[family-name:var(--font-geist-sans)]"
           disabled={status === "loading" || status === "success"}
         />
@@ -36,6 +46,12 @@ export default function SubscriptionForm() {
         >
           {status === "loading" ? "..." : status === "success" ? "✓" : "Subscribe"}
         </button>
+        
+        {status === "error" && (
+          <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+            {errorMessage}
+          </p>
+        )}
       </form>
       
       {status === "success" && (
