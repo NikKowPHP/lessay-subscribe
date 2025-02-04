@@ -10,7 +10,7 @@ export default function Footer() {
     <Link className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="/about">
       About
     </Link>
-    <Link className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="/blog">
+    <Link className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="/terms">
       Terms
     </Link>
     <Link className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="/privacy">
