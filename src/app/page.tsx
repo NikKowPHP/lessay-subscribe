@@ -1,8 +1,5 @@
-import Image from "next/image";
 import SubscriptionForm from "../components/form";
 import FeaturesDropdown from "../components/FeaturesDropdown";
-import ScrollButton from "../components/ScrollButton";
-import Link from "next/link";
 import Footer from "@/components/Footer";
 
 export default function Home() {

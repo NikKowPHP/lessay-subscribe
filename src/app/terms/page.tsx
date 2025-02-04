@@ -1,5 +1,4 @@
 import Footer from "@/components/Footer";
-import Link from "next/link";
 
 export default function Terms() {
   return (
@@ -26,7 +25,7 @@ export default function Terms() {
           <h2 className="text-xl font-semibold mb-4 text-center">Terms of Service</h2>
           <div className="space-y-6">
             <p className="text-base text-gray-600 dark:text-gray-400">
-              By using lessay's adaptive language learning platform, you agree to these Terms. Our AI-driven approach focuses on teaching only what you need, avoiding unnecessary repetition.
+              By using lessay&lsquo;s adaptive language learning platform, you agree to these Terms. Our AI-driven approach focuses on teaching only what you need, avoiding unnecessary repetition.
             </p>
 
             <div className="space-y-4">
