@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 export default function FeaturesDropdown() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="w-full">
