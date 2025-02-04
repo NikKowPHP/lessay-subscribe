@@ -2,11 +2,12 @@ import Image from "next/image";
 import SubscriptionForm from "../components/form";
 import FeaturesDropdown from "../components/FeaturesDropdown";
 import ScrollButton from "../components/ScrollButton";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center max-w-2xl">
+    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-2 sm:p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+      <main className="flex flex-col gap-8 row-start-2 items-center max-w-full sm:max-w-[1000px]">
         <div className="text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-4">
             <span className="bg-gradient-to-r from-black to-black/70 dark:from-white dark:to-white/70 inline-block text-transparent bg-clip-text">
@@ -32,9 +33,9 @@ export default function Home() {
       </main>
 
       <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center text-sm text-gray-600 dark:text-gray-400">
-        <a className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="#">
+        <Link className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="/about">
           About
-        </a>
+        </Link>
         <a className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="#">
           Blog
         </a>
