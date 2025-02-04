@@ -11,7 +11,7 @@ export default function Footer() {
       About
     </Link>
     <Link className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="/blog">
-      Blog
+      Terms
     </Link>
     <Link className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors" href="/privacy">
       Privacy
