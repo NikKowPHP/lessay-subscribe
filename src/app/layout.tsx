@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next"
@@ -18,14 +17,8 @@ const geistMono = Geist_Mono({
   preload: true,
 });
 
-// Move baseUrl calculation to a separate utility file
-// Create: src/utils/constants.ts
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.startsWith("http")
-  ? process.env.NEXT_PUBLIC_BASE_URL
-  : "https://lessay-app.vercel.app";
 
-// Optimize metadata by moving it to a separate file
-// Create: src/utils/metadata.ts
+
 import { siteMetadata } from '@/utils/metadata';
 export const metadata = siteMetadata;
 

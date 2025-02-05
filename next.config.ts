@@ -17,8 +17,8 @@ const nextConfig: NextConfig = {
     },
     // Enable optimizations
     optimizePackageImports: ['@/components'],
-    serverComponentsExternalPackages: [],
   },
+  serverExternalPackages: ['@vercel/speed-insights/next'],
   // Core optimizations
   swcMinify: true,      // Use SWC for minification
   reactStrictMode: true,
