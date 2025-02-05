@@ -71,9 +71,9 @@ export const metadata: Metadata = {
     }
   },
   icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon-16x16.png",
-    apple: "/apple-touch-icon.png",
+    icon: "/favicons/favicon.ico",
+    shortcut: "/favicons/favicon-16x16.png",
+    apple: "/favicons/apple-touch-icon.png",
   },
   metadataBase: new URL(baseUrl),
   themeColor: [
