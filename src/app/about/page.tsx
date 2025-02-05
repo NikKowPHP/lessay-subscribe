@@ -1,4 +1,14 @@
 import Footer from "@/components/Footer";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "About Us - Our Mission and Vision | lessay",
+  description: "Discover how lessay is revolutionizing language learning with AI technology. Learn about our mission to make language acquisition efficient and enjoyable.",
+  openGraph: {
+    title: "About lessay - Revolutionizing Language Learning",
+    description: "Learn about lessay's innovative approach to language learning using AI technology and personalized lessons.",
+  },
+};
 
 export default function About() {
   return (

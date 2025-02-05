@@ -20,20 +20,32 @@ const baseUrl =
     : "https://lessay-app.vercel.app";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
   title: {
-    default: "lessay - AI-Powered Adaptive Language Learning",
-    template: "%s | lessay"
+    default: "lessay - AI-Powered Language Learning Platform",
+    template: "%s | lessay - Smart Language Learning"
   },
-  description: "Learn languages efficiently with AI-driven lessons tailored to your needs. Cut through the fluff and focus on what matters for fluency.",
+  description: "Transform your language learning journey with lessay's AI-powered platform. Personalized lessons, adaptive learning, and efficient progress tracking for faster fluency.",
   keywords: [
-    "language learning",
-    "AI-powered education",
-    "adaptive learning",
-    "fluency accelerator",
-    "personalized lessons",
-    "machine learning language",
-    "efficient language acquisition"
+    "language learning app",
+    "AI language tutor",
+    "adaptive learning platform",
+    "personalized language lessons",
+    "efficient language learning",
+    "smart language app",
+    "language fluency tool",
+    "AI education platform",
+    "language learning software",
+    "custom language courses"
   ],
+  authors: [{ name: "lessay" }],
+  creator: "lessay",
+  publisher: "lessay",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   verification: {
     google: "4dBatA2Gt_G8fuxhTD9jhkv6T6FBmD1jDdu1c6IztxQ"
   },
@@ -75,7 +87,6 @@ export const metadata: Metadata = {
     shortcut: "/favicons/favicon-16x16.png",
     apple: "/favicons/apple-touch-icon.png",
   },
-  metadataBase: new URL(baseUrl),
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" }

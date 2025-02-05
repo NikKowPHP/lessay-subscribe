@@ -1,8 +1,36 @@
 import SubscriptionForm from '../components/form';
 import FeaturesDropdown from '../components/FeaturesDropdown';
 import Footer from '@/components/Footer';
+import type { Metadata } from 'next';
+import Script from 'next/script';
+
+export const metadata: Metadata = {
+  title: "AI-Powered Language Learning Platform | lessay",
+  description: "Join lessay's waitlist for revolutionary AI-driven language learning. Skip the fluff and learn efficiently with personalized, adaptive lessons.",
+  openGraph: {
+    title: "Join lessay - Revolutionary Language Learning Platform",
+    description: "Transform your language learning journey with AI-powered personalized lessons. Join our waitlist today.",
+  },
+};
+
+export const generateJsonLd = () => {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'lessay',
+    description: 'AI-Powered Language Learning Platform',
+    url: 'https://lessay-app.vercel.app',
+    potentialAction: {
+      '@type': 'SignUp',
+      name: 'Join Waitlist',
+      target: 'https://lessay-app.vercel.app/#waitlist'
+    }
+  };
+};
 
 export default function Home() {
+  const jsonLd = generateJsonLd();
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-2 sm:p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-8 row-start-2 items-center max-w-full sm:max-w-[1000px]">
@@ -37,6 +65,12 @@ export default function Home() {
       </main>
 
       <Footer />
+
+      <Script
+        id="json-ld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     </div>
   );
 }

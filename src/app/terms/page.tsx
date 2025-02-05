@@ -1,4 +1,14 @@
 import Footer from "@/components/Footer";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "Terms of Service | lessay",
+  description: "Read lessay's terms of service. Learn about our AI-powered language learning platform's policies, user responsibilities, and subscription details.",
+  openGraph: {
+    title: "Terms of Service - lessay Language Learning Platform",
+    description: "Important information about using lessay's AI-powered language learning platform.",
+  },
+};
 
 export default function Terms() {
   return (

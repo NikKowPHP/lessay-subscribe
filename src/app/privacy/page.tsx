@@ -1,5 +1,14 @@
-
 import Footer from "@/components/Footer";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "Privacy Policy | lessay",
+  description: "Learn how lessay protects your data and privacy while delivering personalized language learning experiences through our AI-powered platform.",
+  openGraph: {
+    title: "Privacy Policy - lessay Language Learning Platform",
+    description: "Understanding how lessay handles your data and protects your privacy while learning languages.",
+  },
+};
 
 export default function Privacy() {
   return (
