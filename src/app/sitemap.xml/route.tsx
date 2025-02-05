@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  // Base URL for your site. Make sure to set NEXT_PUBLIC_BASE_URL in your environment.
-  const baseUrl = "https://lessay-app.vercel.app";
+  // Read the environment variable. If it's defined and starts with "http", use it; otherwise use fallback.
+  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const baseUrl =
+    rawBaseUrl && rawBaseUrl.startsWith("http")
+      ? rawBaseUrl
+      : "https://lessay-app.vercel.app";
 
   // List all your important pages here.
   const pages = [
