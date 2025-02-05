@@ -1,0 +1,11 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /api/*
+
+# Host
+Host: https://lessay-app.vercel.app
+
+# Sitemaps
+Sitemap: https://lessay-app.vercel.app/sitemap.xml
+Sitemap: https://lessay-app.vercel.app/server-sitemap.xml
