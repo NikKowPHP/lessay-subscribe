@@ -28,14 +28,17 @@ export const metadata: Metadata = {
     "machine learning language",
     "efficient language acquisition"
   ],
+  verification: {
+    google: "4dBatA2Gt_G8fuxhTD9jhkv6T6FBmD1jDdu1c6IztxQ"
+  },
   openGraph: {
     title: "lessay - Smart Language Learning",
     description: "Revolutionary AI-driven platform for efficient language mastery",
-    url: "https://lessay.app",
+    url: process.env.NEXT_PUBLIC_BASE_URL || "https://lessay-app.vercel.app",
     siteName: "lessay",
     images: [
       {
-        url: "https://lessay.app/og-image.jpg",
+        url: "https://lessay-app.vercel.app/og-image.jpg",
         width: 1200,
         height: 630,
       }
@@ -47,7 +50,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "lessay - Learn Languages Smarter",
     description: "AI-powered adaptive language learning platform",
-    images: ["https://lessay.app/og-image.jpg"],
+    images: ["https://lessay-app.vercel.app/og-image.jpg"],
     creator: "@lessay_app"
   },
   robots: {
@@ -66,7 +69,7 @@ export const metadata: Metadata = {
     shortcut: "/favicon-16x16.png",
     apple: "/apple-touch-icon.png",
   },
-  metadataBase: new URL("https://lessay.app"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://lessay-app.vercel.app"),
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" }
