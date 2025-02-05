@@ -7,11 +7,11 @@ import Script from 'next/script';
 // Dynamically import non-critical components
 const FeaturesDropdown = dynamic(() => import('../components/FeaturesDropdown'), {
   loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
-  ssr: false // Only if this component doesn't need SSR
+  ssr: true
 });
 
 const Footer = dynamic(() => import('@/components/Footer'), {
-  ssr: true // Keep SSR for SEO if footer has important links
+  ssr: true 
 });
 
 export const metadata: Metadata = {
@@ -23,22 +23,24 @@ export const metadata: Metadata = {
   },
 };
 
-export const generateJsonLd = () => {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'lessay',
-    description: 'AI-Powered Language Learning Platform',
-    url: 'https://lessay-app.vercel.app',
-    potentialAction: {
-      '@type': 'SignUp',
-      name: 'Join Waitlist',
-      target: 'https://lessay-app.vercel.app/#waitlist'
-    }
-  };
-};
 
 export default function Home() {
+
+   const generateJsonLd = () => {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'lessay',
+      description: 'AI-Powered Language Learning Platform',
+      url: 'https://lessay-app.vercel.app',
+      potentialAction: {
+        '@type': 'SignUp',
+        name: 'Join Waitlist',
+        target: 'https://lessay-app.vercel.app/#waitlist'
+      }
+    };
+  };
+  
   const jsonLd = generateJsonLd();
 
   return (
