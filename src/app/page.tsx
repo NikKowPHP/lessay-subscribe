@@ -1,8 +1,18 @@
+import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
 import SubscriptionForm from '../components/form';
-import FeaturesDropdown from '../components/FeaturesDropdown';
-import Footer from '@/components/Footer';
 import type { Metadata } from 'next';
 import Script from 'next/script';
+
+// Dynamically import non-critical components
+const FeaturesDropdown = dynamic(() => import('../components/FeaturesDropdown'), {
+  loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
+  ssr: false // Only if this component doesn't need SSR
+});
+
+const Footer = dynamic(() => import('@/components/Footer'), {
+  ssr: true // Keep SSR for SEO if footer has important links
+});
 
 export const metadata: Metadata = {
   title: "AI-Powered Language Learning Platform | lessay",
@@ -58,17 +68,24 @@ export default function Home() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
             Be the first to experience smarter language learning.
           </p>
-          <SubscriptionForm />
+          <Suspense fallback={<div className="animate-pulse h-10 bg-gray-200 rounded" />}>
+            <SubscriptionForm />
+          </Suspense>
         </div>
 
-        <FeaturesDropdown />
+        <Suspense fallback={<div className="animate-pulse h-40 bg-gray-200 rounded-xl" />}>
+          <FeaturesDropdown />
+        </Suspense>
       </main>
 
-      <Footer />
+      <Suspense fallback={<div className="h-20" />}>
+        <Footer />
+      </Suspense>
 
       <Script
         id="json-ld"
         type="application/ld+json"
+        strategy="afterInteractive"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
     </div>
