@@ -13,6 +13,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+const baseUrl =
+  rawBaseUrl && rawBaseUrl.startsWith("http")
+    ? rawBaseUrl
+    : "https://lessay-app.vercel.app";
+
 export const metadata: Metadata = {
   title: {
     default: "lessay - AI-Powered Adaptive Language Learning",
@@ -34,11 +40,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "lessay - Smart Language Learning",
     description: "Revolutionary AI-driven platform for efficient language mastery",
-    url: process.env.NEXT_PUBLIC_BASE_URL || "https://lessay-app.vercel.app",
+    url: baseUrl,
     siteName: "lessay",
     images: [
       {
-        url: "https://lessay-app.vercel.app/og-image.jpg",
+        url: `${baseUrl}/og-image.jpg`,
         width: 1200,
         height: 630,
       }
@@ -50,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "lessay - Learn Languages Smarter",
     description: "AI-powered adaptive language learning platform",
-    images: ["https://lessay-app.vercel.app/og-image.jpg"],
+    images: [`${baseUrl}/og-image.jpg`],
     creator: "@lessay_app"
   },
   robots: {
@@ -69,7 +75,7 @@ export const metadata: Metadata = {
     shortcut: "/favicon-16x16.png",
     apple: "/apple-touch-icon.png",
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://lessay-app.vercel.app"),
+  metadataBase: new URL(baseUrl),
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" }
