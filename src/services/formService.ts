@@ -26,7 +26,9 @@ export class FormService {
 
       return true;
     } catch (error) {
-      console.log(error);
+      if(process.env.NODE_ENV === 'development') {
+        console.log(error);
+      }
       throw new Error('Network error. Please try again.');
     }
   }
