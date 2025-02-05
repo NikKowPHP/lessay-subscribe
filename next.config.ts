@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: {
+    // Properly configure base URL for all environments
+    NEXT_PUBLIC_BASE_URL: process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_BASE_URL || 'https://lessay-app.vercel.app',
+  },
   experimental: {
     // Performance optimizations
     turbo: {
@@ -17,8 +23,35 @@ const nextConfig: NextConfig = {
     },
     // Enable optimizations
     optimizePackageImports: ['@/components'],
+    // Enable next-sitemap integration
+    nextScriptWorkers: true,
   },
-  serverExternalPackages: ['@vercel/speed-insights/next'],
+  // Add sitemap and robots.txt configuration
+  sitemap: {
+    hostname: process.env.NEXT_PUBLIC_BASE_URL,
+    exclude: ['/api/*'],
+    routes: async () => {
+      const pages = [
+        { url: '/', lastModified: new Date() },
+        { url: '/about', lastModified: new Date() },
+        { url: '/privacy', lastModified: new Date() },
+        { url: '/terms', lastModified: new Date() },
+      ];
+      return pages;
+    },
+  },
+  robotsTxt: {
+    policies: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+    ],
+    additionalSitemaps: [
+      `${process.env.NEXT_PUBLIC_BASE_URL}/sitemap.xml`,
+    ],
+  },
   // Core optimizations
   swcMinify: true,      // Use SWC for minification
   reactStrictMode: true,
@@ -36,7 +69,9 @@ const nextConfig: NextConfig = {
   
   // Asset optimization
   images: {
-    domains: [],
+    domains: [
+      new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://lessay-app.vercel.app').hostname
+    ],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60,
@@ -47,5 +82,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-// todo: seo, sitemap, robots.txt, etc.
