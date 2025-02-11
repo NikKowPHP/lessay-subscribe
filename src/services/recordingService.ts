@@ -15,7 +15,7 @@ class RecordingService {
     this.metricsService = new MetricsService();
   }
 
-  async submitRecording(userId: string, recording: any, recordingTime: number): Promise<any> {
+  async submitRecording(userIP: string, recording: any, recordingTime: number, recordingSize: number): Promise<any> {
     try {
       const userMessage = this.messageGenerator.generateUserMessage(recording);
       const systemMessage = this.messageGenerator.generateSystemMessage();
@@ -30,7 +30,7 @@ class RecordingService {
       const responseTime = endTime - startTime;
 
       // Collect interaction data
-      await this.metricsService.collectInteractionData(userId, recording, aiResponse, recordingTime, responseTime);
+      await this.metricsService.collectInteractionData(userIP, recording, aiResponse, recordingTime, responseTime, recordingSize);
 
       return aiResponse;
     } catch (error) {
@@ -51,5 +51,6 @@ class RecordingService {
     });
   }
 }
+
 
 export default RecordingService;

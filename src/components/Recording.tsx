@@ -11,6 +11,7 @@ export default function Recording() {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const startTimeRef = useRef<number>(0);
+  const [recordingSize, setRecordingSize] = useState<number>(0);
 
   const startRecording = async () => {
     try {
@@ -31,6 +32,7 @@ export default function Recording() {
         const endTime = Date.now();
         const timeDiff = endTime - startTimeRef.current;
         setRecordingTime(timeDiff);
+        setRecordingSize(audioBlob.size);
 
         // Process the recording and get AI response (placeholder)
         // Replace this with your actual AI service integration
@@ -69,6 +71,7 @@ export default function Recording() {
         body: JSON.stringify({
           audioURL: audioURL,
           recordingTime: recordingTime,
+          recordingSize: recordingSize,
         }),
       });
 
