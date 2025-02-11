@@ -70,7 +70,7 @@ export default function Home() {
 
         <div
           id="waitlist"
-          className="sticky top-8 w-full max-w-md bg-white/80 dark:bg-black/80 backdrop-blur-sm p-6 rounded-xl border border-black/[.08] dark:border-white/[.145]"
+          className="sticky top-8 w-full max-w-4xl bg-white/80 dark:bg-black/80 backdrop-blur-sm p-6 rounded-xl border border-black/[.08] dark:border-white/[.145]"
         >
           <h2 className="text-xl font-semibold mb-2 text-center">
             Join the waitlist

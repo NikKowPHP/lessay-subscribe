@@ -145,16 +145,23 @@ export default function Recording() {
       </div>
 
       <div className="flex flex-col items-center space-y-6">
-        {/* Recording Controls */}
+        {/* Recording Controls - Updated Button Styles */}
         <div className="flex space-x-4">
           <button
             onClick={startRecording}
             disabled={isRecording}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-2 px-6 rounded-lg disabled:opacity-50 transition-all duration-200 shadow-sm"
+            className={`
+              px-6 py-2 rounded-full font-medium transition-all duration-200
+              ${isRecording 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'}
+              border border-black dark:border-white
+              text-black dark:text-white
+            `}
           >
             {isRecording ? (
               <span className="flex items-center">
-                <span className="animate-pulse mr-2">●</span> Recording...
+                <span className="animate-pulse mr-2 text-red-500">●</span> Recording...
               </span>
             ) : (
               "Start Recording"
@@ -163,7 +170,12 @@ export default function Recording() {
           <button
             onClick={stopRecording}
             disabled={!isRecording}
-            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-medium py-2 px-6 rounded-lg disabled:opacity-50 transition-all duration-200 shadow-sm"
+            className={`
+              px-6 py-2 rounded-full font-medium transition-all duration-200
+              ${!isRecording 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'bg-black text-white dark:bg-white dark:text-black hover:opacity-90'}
+            `}
           >
             Stop Recording
           </button>
@@ -257,12 +269,16 @@ export default function Recording() {
               </ul>
             </div>
 
-            {/* Call to Action */}
-            <div className="p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg text-center">
+            {/* Call to Action - Updated Button Style */}
+            <div className="p-6 bg-black/5 dark:bg-white/5 rounded-lg text-center">
               <p className="text-gray-700 dark:text-gray-300 mb-4">{aiResponse.call_to_action}</p>
               <button
                 onClick={scrollToWaitlist}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200 shadow-sm"
+                className="
+                  px-6 py-2 rounded-lg font-medium transition-all duration-200
+                  bg-black text-white dark:bg-white dark:text-black
+                  hover:opacity-90
+                "
               >
                 Join Waitlist
               </button>
