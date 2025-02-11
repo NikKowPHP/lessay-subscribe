@@ -68,7 +68,10 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="sticky top-8 w-full max-w-md bg-white/80 dark:bg-black/80 backdrop-blur-sm p-6 rounded-xl border border-black/[.08] dark:border-white/[.145]">
+        <div
+          id="waitlist"
+          className="sticky top-8 w-full max-w-md bg-white/80 dark:bg-black/80 backdrop-blur-sm p-6 rounded-xl border border-black/[.08] dark:border-white/[.145]"
+        >
           <h2 className="text-xl font-semibold mb-2 text-center">
             Join the waitlist
           </h2>

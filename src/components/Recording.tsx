@@ -73,7 +73,7 @@ export default function Recording() {
           recordingSize: recordingSize,
         }),
       });
-     
+
       if (!response.ok) {
         console.error("Error sending recording:", response.status);
         return;
@@ -82,13 +82,19 @@ export default function Recording() {
       const data = await response.json();
       console.log("Response:", data);
 
-      // Assume data.aiResponse contains an array. 
       // Transform the received JSON into our model using fromJson:
       const transformedResponse = AIResponseModel.fromJson(data.aiResponse[0]);
       setAiResponse(transformedResponse);
-      
     } catch (error) {
       console.error("Error sending recording:", error);
+    }
+  };
+
+  // Smooth scroll to subscription/waitlist section
+  const scrollToWaitlist = () => {
+    const waitlistElement = document.getElementById("waitlist");
+    if (waitlistElement) {
+      waitlistElement.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -173,7 +179,7 @@ export default function Recording() {
                     <div className="flex justify-between mb-2">
                       <span className="font-medium">{assessment.phoneme}</span>
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        in "{assessment.example}"
+                        in &quot;{assessment.example}&quot;
                       </span>
                     </div>
                     <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{assessment.analysis}</p>
@@ -208,7 +214,10 @@ export default function Recording() {
             {/* Call to Action */}
             <div className="p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg text-center">
               <p className="text-gray-700 dark:text-gray-300 mb-4">{aiResponse.call_to_action}</p>
-              <button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200 shadow-sm">
+              <button
+                onClick={scrollToWaitlist}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200 shadow-sm"
+              >
                 Join Waitlist
               </button>
             </div>
