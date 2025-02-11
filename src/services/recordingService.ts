@@ -1,3 +1,4 @@
+import { AIResponse, AIResponseModel, mockResponse } from '@/models/aiResponse.model';
 import AIService from './aiService';
 import MessageGenerator from './generators/messageGenerator';
 import MetricsService from './metricsService';
@@ -20,12 +21,13 @@ class RecordingService {
       const userMessage = this.messageGenerator.generateUserMessage(recording);
       const systemMessage = this.messageGenerator.generateSystemMessage();
 
-
       // Generate content using AI service
       const startTime = Date.now();
-      const aiResponse = await this.aiService.generateContent(recording, userMessage, systemMessage);
+      // const aiResponse = await this.aiService.generateContent(recording, userMessage, systemMessage);
+      const aiResponse = mockResponse; // Use mock response
       const endTime = Date.now();
       const responseTime = endTime - startTime;
+
 
       // Collect interaction data
       await this.metricsService.collectInteractionData(userIP, recording, aiResponse, recordingTime, responseTime, recordingSize);
@@ -48,7 +50,12 @@ class RecordingService {
       }, 1000);
     });
   }
+
+
+
 }
+
+
 
 
 export default RecordingService;

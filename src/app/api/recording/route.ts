@@ -28,9 +28,10 @@ export async function POST(req: NextRequest) {
     }
     const recordingService = new RecordingService(API_KEY); 
     const aiResponse = await recordingService.submitRecording(userIP, audioURL, recordingTime, recordingSize);
+    console.log("AI Response:", aiResponse);
 
     return NextResponse.json(
-      { message: "Recording data received successfully", userIP, aiResponse },
+      { message: "Recording data received successfully", aiResponse },
       { status: 200 }
     );
   } catch (error: any) {

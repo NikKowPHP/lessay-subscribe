@@ -15,7 +15,7 @@ const Footer = dynamic(() => import('@/components/Footer'), {
 });
 
 const Recording = dynamic(() => import('../components/Recording'), {
-  ssr: false,
+  ssr: true,
   loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
 });
 
@@ -58,7 +58,7 @@ export default function Home() {
                 WebkitTextFillColor: 'transparent',
                 WebkitBackgroundClip: 'text',
               }}
-              className="bg-gradient-to-r from-black to-black/70 dark:from-white dark:to-white/70 inline-block !text-transparent bg-clip-text"
+              className="bg-gradient-toaiResponse-r from-black to-black/70 dark:from-white dark:to-white/70 inline-block !text-transparent bg-clip-text"
             >
               lessay
             </span>

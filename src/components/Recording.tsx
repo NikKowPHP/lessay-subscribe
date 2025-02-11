@@ -1,5 +1,6 @@
 "use client";
 
+import { AIResponse, AIResponseModel } from '@/models/aiResponse.model';
 import { useState, useRef } from 'react';
 
 export default function Recording() {
@@ -8,7 +9,7 @@ export default function Recording() {
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
   const [isProcessed, setIsProcessed] = useState(false);
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const startTimeRef = useRef<number>(0);
   const [recordingSize, setRecordingSize] = useState<number>(0);
@@ -34,10 +35,8 @@ export default function Recording() {
         setRecordingTime(timeDiff);
         setRecordingSize(audioBlob.size);
 
-        // Process the recording and get AI response (placeholder)
-        // Replace this with your actual AI service integration
+        await handleSend();
         setIsProcessed(true);
-        setAiResponse("This is a sample AI response.");
       };
 
       mediaRecorder.current.start();
@@ -74,14 +73,20 @@ export default function Recording() {
           recordingSize: recordingSize,
         }),
       });
-
+     
       if (!response.ok) {
         console.error("Error sending recording:", response.status);
         return;
       }
 
       const data = await response.json();
-      setAiResponse(data.aiResponse);
+      console.log("Response:", data);
+
+      // Assume data.aiResponse contains an array. 
+      // Transform the received JSON into our model using fromJson:
+      const transformedResponse = AIResponseModel.fromJson(data.aiResponse[0]);
+      setAiResponse(transformedResponse);
+      
     } catch (error) {
       console.error("Error sending recording:", error);
     }
@@ -122,7 +127,7 @@ export default function Recording() {
       {aiResponse && (
         <div className="mt-4 p-4 border rounded-lg">
           <h3 className="text-lg font-semibold mb-2">AI Response:</h3>
-          <p>{aiResponse}</p>
+          <p>{aiResponse.language_identification}</p>
         </div>
       )}
     </div>

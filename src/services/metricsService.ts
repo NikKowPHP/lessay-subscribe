@@ -19,7 +19,7 @@ class MetricsService {
       };
 
       // Store the data (e.g., in a database or log file)
-      await this.storeInteractionData(interactionData);
+      // await this.storeInteractionData(interactionData);
 
       console.log("Interaction data collected:", interactionData);
     } catch (error) {
@@ -29,13 +29,18 @@ class MetricsService {
 
   private async storeInteractionData(data: any): Promise<void> {
     try {
-      // Convert the data to a JSON string
-      const dataString = JSON.stringify(data);
+      // Check if localStorage is available
+      if (typeof localStorage !== 'undefined') {
+        // Convert the data to a JSON string
+        const dataString = JSON.stringify(data);
 
-      // Store the data in local storage
-      localStorage.setItem('interactionData', dataString);
+        // Store the data in local storage
+        localStorage.setItem('interactionData', dataString);
 
-      console.log("Interaction data stored in localStorage:", data);
+        console.log("Interaction data stored in localStorage:", data);
+      } else {
+        console.log("localStorage is not available in this environment.");
+      }
     } catch (error) {
       console.error("Error storing interaction data in localStorage:", error);
     }
