@@ -9,12 +9,15 @@ export default function Recording() {
   const audioChunks = useRef<Blob[]>([]);
   const [isProcessed, setIsProcessed] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [recordingTime, setRecordingTime] = useState<number>(0);
+  const startTimeRef = useRef<number>(0);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder.current = new MediaRecorder(stream);
       audioChunks.current = [];
+      startTimeRef.current = Date.now();
 
       mediaRecorder.current.ondataavailable = (event) => {
         audioChunks.current.push(event.data);
@@ -24,6 +27,10 @@ export default function Recording() {
         const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(audioBlob);
         setAudioURL(url);
+
+        const endTime = Date.now();
+        const timeDiff = endTime - startTimeRef.current;
+        setRecordingTime(timeDiff);
 
         // Process the recording and get AI response (placeholder)
         // Replace this with your actual AI service integration
@@ -48,9 +55,33 @@ export default function Recording() {
   };
 
   const handleSend = async () => {
-    // Send the audio to the server for processing
-    // Implement your logic here
-    console.log("Sending audio for processing...");
+    if (!audioURL) {
+      console.error("No audio to send.");
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/recording', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audioURL: audioURL,
+          recordingTime: recordingTime,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Error sending recording:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      setAiResponse(data.aiResponse);
+    } catch (error) {
+      console.error("Error sending recording:", error);
+    }
   };
 
   return (
