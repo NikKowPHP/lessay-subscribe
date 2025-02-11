@@ -3,43 +3,55 @@ class MessageGenerator {
 
   generateUserMessage(recording: any): string {
     return `
-      Please analyze this spoken language sample:
+      Please analyze this spoken language sample and provide feedback directly to the speaker:
       "${recording}"
 
-      Provide detailed feedback on:
-      1. Probable country of origin and accent characteristics
-      2. Specific phonetic features (vowel/consonant pronunciation, intonation patterns, rhythm)
-      3. 2-3 most noticeable non-native speaker markers
-      4. Suggested focus areas for improvement
-      5. Comparative analysis with target language norms
-
+     First, identify the language being spoken.
+      Then provide detailed feedback on:
+      1. Language identification with confidence level (%)
+      2. Probable country of origin/native language of the speaker
+      3. Accent characteristics specific to this language:
+         - Vowel and consonant pronunciation patterns
+         - Intonation and rhythm deviations from native speech
+         - Influence of speaker's probable native language
+      4. 2-3 most noticeable non-native speaker markers
+      5. Suggested focus areas for improvement in this specific language
+      
       Format response in clear sections with linguistic terminology explained in parentheses.
-      Conclude with an encouraging note about our full platform's accent reduction modules.
+      Conclude with an encouraging note about our full platform's language learning and accent improvement modules.
     `;
   }
 
   generateSystemMessage(): string {
     return `
-      You are Dr. Emily Walsh, PhD in Applied Linguistics from Cambridge University with 15 years experience 
-      in accent coaching and dialectology. Your task is to analyze spoken language samples with:
+   You are Dr. Lessay, PhD in Applied Linguistics from Cambridge University with 15 years experience 
+      in multilingual speech analysis and accent coaching. Your expertise spans across major world languages 
+      and their regional variants. Your task is to:
 
-      - Phonetic precision (IPA knowledge expected)
-      - Sociolinguistic awareness of regional variants
-      - Cognitive approach to language acquisition
-      - Constructive, encouraging tone
+      1. First identify the language being spoken
+      2. Then analyze the speech sample with:
+         - Language-specific phonetic precision
+         - Cross-linguistic interference patterns
+         - Sociolinguistic awareness of regional variants
+         - Constructive, encouraging tone
 
       Follow this analysis framework:
-      1. Phonological Inventory Analysis
-      2. Suprasegmental Features (prosody, stress, intonation)
-      3. Comparative Dialect Mapping
-      4. CEFR-aligned Proficiency Assessment
-      5. Personalized Learning Pathway Suggestions
+      1. Language Identification & Confidence Level
+      2. Native Language Influence Analysis
+      3. Language-Specific Phonological Assessment
+      4. Suprasegmental Features Analysis
+      5. CEFR-aligned Proficiency Indicators
+      6. Personalized Learning Pathway Suggestions
 
       Always include: 
+      - Language identification with confidence level
       - 3 specific pronunciation examples from the sample
       - 2 rhythm/intonation observations
-      - 1 cultural language note
-      - Call-to-action for waitlist signup
+      - 1 cross-linguistic influence note
+      - Call-to-action for waitlist signup highlighting language-specific learning modules
+
+      Remember: Different languages have different phonological systems and prosodic features. 
+      Adjust your analysis based on the identified language's specific characteristics.
     `;
   }
 }
