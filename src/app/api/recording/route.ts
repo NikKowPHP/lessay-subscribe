@@ -12,11 +12,11 @@ export async function POST(req: NextRequest) {
   console.log('User IP:', userIP);
 
   try {
-    const { audioURL, recordingTime, recordingSize } = data;
+    const { audioData, recordingTime, recordingSize } = data;
 
-    if (!audioURL || !recordingTime || !recordingSize) {
+    if (!audioData || !recordingTime || !recordingSize) {
       return NextResponse.json(
-        { message: "Missing audioURL or recordingTime" },
+        { message: "Missing audioData or recordingTime" },
         { status: 400 }
       );
     }
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       ); 
     }
     const recordingService = new RecordingService(API_KEY); 
-    const aiResponse = await recordingService.submitRecording(userIP, audioURL, recordingTime, recordingSize);
+    const aiResponse = await recordingService.submitRecording(userIP, audioData, recordingTime, recordingSize);
     console.log("AI Response:", aiResponse);
 
     return NextResponse.json(

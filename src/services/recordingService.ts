@@ -16,21 +16,36 @@ class RecordingService {
     this.metricsService = new MetricsService();
   }
 
-  async submitRecording(userIP: string, recording: any, recordingTime: number, recordingSize: number): Promise<any> {
+  async submitRecording(
+    userIP: string, 
+    audioData: string,  // Changed from 'recording' to 'audioData'
+    recordingTime: number, 
+    recordingSize: number
+  ): Promise<any> {
     try {
-      const userMessage = this.messageGenerator.generateUserMessage(recording);
+      const userMessage = this.messageGenerator.generateUserMessage(audioData);
       const systemMessage = this.messageGenerator.generateSystemMessage();
 
       // Generate content using AI service
       const startTime = Date.now();
-      // const aiResponse = await this.aiService.generateContent(recording, userMessage, systemMessage);
-      const aiResponse = mockResponse; // Use mock response
+      const aiResponse = await this.aiService.generateContent(
+        audioData,  // Pass the base64 string directly
+        userMessage, 
+        systemMessage
+      );
+      // const aiResponse = mockResponse; // Use mock response
       const endTime = Date.now();
       const responseTime = endTime - startTime;
 
-
       // Collect interaction data
-      await this.metricsService.collectInteractionData(userIP, recording, aiResponse, recordingTime, responseTime, recordingSize);
+      await this.metricsService.collectInteractionData(
+        userIP, 
+        audioData, 
+        aiResponse, 
+        recordingTime, 
+        responseTime, 
+        recordingSize
+      );
 
       return aiResponse;
     } catch (error) {

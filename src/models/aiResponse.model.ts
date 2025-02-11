@@ -14,10 +14,11 @@ export interface SuprasegmentalFeatureAnalysis {
 export interface AIResponse {
   language_identification: string;
   confidence_level: string;
+  user_native_language_guess: string;
   native_language_influence_analysis: string;
-  language_specific_phonological_assessment: PhonemeAnalysis[];
+  'language-specific_phonological_assessment': PhonemeAnalysis[];
   suprasegmental_features_analysis: SuprasegmentalFeatureAnalysis[];
-  cross_linguistic_influence_note: string;
+  'cross-linguistic_influence_note': string;
   CEFR_aligned_proficiency_indicators: string;
   personalized_learning_pathway_suggestions: string[];
   call_to_action: string;
@@ -26,21 +27,48 @@ export interface AIResponse {
 export class AIResponseModel {
   static fromJson(json: any): AIResponse {
     try {
+      console.log('Parsing JSON:', JSON.stringify(json, null, 2));
+
       const response: AIResponse = {
-        language_identification: json.language_identification,
-        confidence_level: json.confidence_level,
-        native_language_influence_analysis: json.native_language_influence_analysis,
-        language_specific_phonological_assessment: json["language-specific_phonological_assessment"],
-        suprasegmental_features_analysis: json.suprasegmental_features_analysis,
-        cross_linguistic_influence_note: json["cross-linguistic_influence_note"],
-        CEFR_aligned_proficiency_indicators: json.CEFR_aligned_proficiency_indicators,
-        personalized_learning_pathway_suggestions: json.personalized_learning_pathway_suggestions,
-        call_to_action: json.call_to_action,
+        language_identification: json.language_identification || 'Unknown',
+        confidence_level: json.confidence_level || '0%',
+        user_native_language_guess: json.user_native_language_guess || 'Unknown',
+        native_language_influence_analysis: json.native_language_influence_analysis || 'N/A',
+        'language-specific_phonological_assessment': 
+          Array.isArray(json['language-specific_phonological_assessment']) 
+            ? json['language-specific_phonological_assessment'] 
+            : [],
+        suprasegmental_features_analysis: 
+          Array.isArray(json.suprasegmental_features_analysis)
+            ? json.suprasegmental_features_analysis
+            : [],
+        'cross-linguistic_influence_note': json['cross-linguistic_influence_note'] || 'N/A',
+        CEFR_aligned_proficiency_indicators: json.CEFR_aligned_proficiency_indicators || 'N/A',
+        personalized_learning_pathway_suggestions: 
+          Array.isArray(json.personalized_learning_pathway_suggestions)
+            ? json.personalized_learning_pathway_suggestions
+            : [],
+        call_to_action: json.call_to_action || 'Please provide a clear speech sample for analysis.'
       };
+
       return response;
     } catch (error) {
       console.error("Error parsing AI response:", error);
-      throw error;
+      console.error("Received JSON:", json);
+      return {
+        language_identification: "Error processing response",
+        confidence_level: "0%",
+        user_native_language_guess: "Unknown",
+        native_language_influence_analysis: "An error occurred while processing the analysis",
+        'language-specific_phonological_assessment': [],
+        suprasegmental_features_analysis: [],
+        'cross-linguistic_influence_note': "N/A",
+        CEFR_aligned_proficiency_indicators: "N/A",
+        personalized_learning_pathway_suggestions: [
+          "Please try again with a clear speech sample"
+        ],
+        call_to_action: "An error occurred. Please try again with a clear speech sample."
+      };
     }
   }
 }
@@ -49,6 +77,7 @@ export const mockResponse = [
   {
     "language_identification": "German",
     "confidence_level": "99.9%",
+    "user_native_language_guess": "Russian",
     "native_language_influence_analysis": "The speaker's native language appears to be from the Slavic language family, most likely Russian or a closely related language. This is evident in several aspects of their German pronunciation and prosody, which will be detailed below.",
     "language-specific_phonological_assessment": [
       {

@@ -34,6 +34,7 @@ class MessageGenerator {
         {
           "language_identification": "Identified Language",
           "confidence_level": "Confidence Level (%)",
+          "user_native_language_guess": "User's Native Language Guess",
           "native_language_influence_analysis": "Analysis of the speaker's native language influence",
           "language-specific_phonological_assessment": [
             {
