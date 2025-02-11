@@ -20,12 +20,10 @@ class RecordingService {
       const userMessage = this.messageGenerator.generateUserMessage(recording);
       const systemMessage = this.messageGenerator.generateSystemMessage();
 
-      // Combine messages or format as needed for your AI service
-      const prompt = `${systemMessage}\n${userMessage}`;
-      
+
       // Generate content using AI service
       const startTime = Date.now();
-      const aiResponse = await this.aiService.generateContent(prompt);
+      const aiResponse = await this.aiService.generateContent(recording, userMessage, systemMessage);
       const endTime = Date.now();
       const responseTime = endTime - startTime;
 
