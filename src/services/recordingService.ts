@@ -22,7 +22,7 @@ class RecordingService {
 
       // Combine messages or format as needed for your AI service
       const prompt = `${systemMessage}\n${userMessage}`;
-
+      
       // Generate content using AI service
       const startTime = Date.now();
       const aiResponse = await this.aiService.generateContent(prompt);

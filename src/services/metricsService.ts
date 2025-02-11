@@ -28,9 +28,17 @@ class MetricsService {
   }
 
   private async storeInteractionData(data: any): Promise<void> {
-    // Implement logic to store the interaction data
-    // This could involve writing to a database, a log file, or sending to a metrics service
-    console.log("Storing interaction data:", data); // Placeholder
+    try {
+      // Convert the data to a JSON string
+      const dataString = JSON.stringify(data);
+
+      // Store the data in local storage
+      localStorage.setItem('interactionData', dataString);
+
+      console.log("Interaction data stored in localStorage:", data);
+    } catch (error) {
+      console.error("Error storing interaction data in localStorage:", error);
+    }
   }
 }
 
