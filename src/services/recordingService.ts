@@ -1,18 +1,21 @@
 import AIService from './aiService';
 import MessageGenerator from './generators/messageGenerator';
+import MetricsService from './metricsService';
 
 class RecordingService {
   private aiService: AIService;
   private apiKey: string;
   private messageGenerator: MessageGenerator;
+  private metricsService: MetricsService;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
     this.aiService = new AIService(this.apiKey);
     this.messageGenerator = new MessageGenerator();
+    this.metricsService = new MetricsService();
   }
 
-  async submitRecording(recording: any): Promise<any> {
+  async submitRecording(userId: string, recording: any, recordingTime: number): Promise<any> {
     try {
       const userMessage = this.messageGenerator.generateUserMessage(recording);
       const systemMessage = this.messageGenerator.generateSystemMessage();
@@ -21,7 +24,13 @@ class RecordingService {
       const prompt = `${systemMessage}\n${userMessage}`;
 
       // Generate content using AI service
+      const startTime = Date.now();
       const aiResponse = await this.aiService.generateContent(prompt);
+      const endTime = Date.now();
+      const responseTime = endTime - startTime;
+
+      // Collect interaction data
+      await this.metricsService.collectInteractionData(userId, recording, aiResponse, recordingTime, responseTime);
 
       return aiResponse;
     } catch (error) {

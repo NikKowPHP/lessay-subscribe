@@ -1,12 +1,11 @@
 class MetricsService {
   constructor() {}
 
-  async collectInteractionData(userId: string, recording: any, aiResponse: any): Promise<void> {
+  async collectInteractionData(userId: string, recording: any, aiResponse: any, recordingTime: number, responseTime: number): Promise<void> {
     try {
       // Collect relevant data
       const timestamp = new Date();
       const recordingSize = this.getRecordingSize(recording); // Implement this method
-      const responseTime = this.getResponseTime(); // Implement this method
       const aiResponseLength = JSON.stringify(aiResponse).length;
 
       // Structure the data
@@ -16,6 +15,7 @@ class MetricsService {
         recordingSize,
         responseTime,
         aiResponseLength,
+        recordingTime,
         // Add any other relevant data here
       };
 
