@@ -35,7 +35,7 @@ export default function Recording() {
         setRecordingTime(timeDiff);
         setRecordingSize(audioBlob.size);
 
-        await handleSend();
+        await handleSend(url);
         setIsProcessed(true);
       };
 
@@ -55,12 +55,12 @@ export default function Recording() {
     }
   };
 
-  const handleSend = async () => {
-    if (!audioURL) {
+  const handleSend = async (recordedUrl?: string) => {
+    const url = recordedUrl || audioURL;
+    if (!url) {
       console.error("No audio to send.");
       return;
     }
-
     try {
       const response = await fetch('/api/recording', {
         method: 'POST',
@@ -68,7 +68,7 @@ export default function Recording() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          audioURL: audioURL,
+          audioURL: url,
           recordingTime: recordingTime,
           recordingSize: recordingSize,
         }),
@@ -82,7 +82,6 @@ export default function Recording() {
       const data = await response.json();
       console.log("Response:", data);
 
-      // Transform the received JSON into our model using fromJson:
       const transformedResponse = AIResponseModel.fromJson(data.aiResponse[0]);
       setAiResponse(transformedResponse);
     } catch (error) {
@@ -92,10 +91,7 @@ export default function Recording() {
 
   // Smooth scroll to subscription/waitlist section
   const scrollToWaitlist = () => {
-    const waitlistElement = document.getElementById("waitlist");
-    if (waitlistElement) {
-      waitlistElement.scrollIntoView({ behavior: "smooth" });
-    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -136,14 +132,7 @@ export default function Recording() {
         {audioURL && (
           <div className="w-full max-w-md">
             <audio src={audioURL} controls className="w-full" />
-            <div className="flex justify-center mt-4">
-              <button
-                onClick={handleSend}
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200 shadow-sm"
-              >
-                Analyze Recording
-              </button>
-            </div>
+           
           </div>
         )}
 
