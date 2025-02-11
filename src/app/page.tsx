@@ -14,6 +14,11 @@ const Footer = dynamic(() => import('@/components/Footer'), {
   ssr: true 
 });
 
+const Recording = dynamic(() => import('../components/Recording'), {
+  ssr: false,
+  loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
+});
+
 export const metadata: Metadata = {
   title: "AI-Powered Language Learning Platform | lessay",
   description: "Join lessay's waitlist for revolutionary AI-driven language learning. Skip the fluff and learn efficiently with personalized, adaptive lessons.",
@@ -74,6 +79,10 @@ export default function Home() {
             <SubscriptionForm />
           </Suspense>
         </div>
+
+         <Suspense fallback={<div className="animate-pulse h-40 bg-gray-200 rounded-xl" />}>
+          <Recording />
+        </Suspense>
 
         <Suspense fallback={<div className="animate-pulse h-40 bg-gray-200 rounded-xl" />}>
           <FeaturesDropdown />
