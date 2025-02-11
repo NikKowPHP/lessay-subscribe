@@ -10,11 +10,16 @@ class AIService {
     gemini_2_flash_exp: "gemini-2.0-flash-exp",
   }
 
-  async generateContent(prompt: string): Promise<any> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AIService.models.gemini_2_flash_exp}:generateContent?key=${this.apiKey}`;
+  async generateContent(audioData: any): Promise<any> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`;
     const data = {
       contents: [{
-        parts: [{ text: prompt }]
+        parts: [{
+          inline_data: {
+            mime_type: 'audio/webm', // Adjust MIME type as needed
+            data: audioData // Base64 encoded audio data
+          }
+        }]
       }]
     };
 
