@@ -1,3 +1,6 @@
+import logger from "@/utils/logger";
+import { supabase } from "@/repositories/supabase/supabase";
+
 class MetricsService {
   constructor() {}
 
@@ -9,40 +12,40 @@ class MetricsService {
 
       // Structure the data
       const interactionData = {
-        userIP,
+        user_ip: userIP,
         timestamp,
-        recordingSize,
-        responseTime,
-        aiResponseLength,
-        recordingTime,
+        recording_size: recordingSize,
+        response_time: responseTime,
+        ai_response_length: aiResponseLength,
+        recording_time: recordingTime,
+        ai_response: aiResponse,
+        recording: recording,
         // Add any other relevant data here
       };
 
-      // Store the data (e.g., in a database or log file)
-      // await this.storeInteractionData(interactionData);
+      // Store the data in Supabase
+      await this.storeInteractionData(interactionData);
 
-      console.log("Interaction data collected:", interactionData);
+      logger.log("Interaction data collected and stored:", interactionData);
     } catch (error) {
-      console.error("Error collecting interaction data:", error);
+      logger.error("Error collecting interaction data:", error);
     }
   }
 
   private async storeInteractionData(data: any): Promise<void> {
     try {
-      // Check if localStorage is available
-      if (typeof localStorage !== 'undefined') {
-        // Convert the data to a JSON string
-        const dataString = JSON.stringify(data);
+      const { error } = await supabase
+        .from('interactions')
+        .insert([data]);
 
-        // Store the data in local storage
-        localStorage.setItem('interactionData', dataString);
-
-        console.log("Interaction data stored in localStorage:", data);
+      if (error) {
+        logger.error("Error storing interaction data in Supabase:", error);
+        throw error;
       } else {
-        console.log("localStorage is not available in this environment.");
+        logger.log("Interaction data stored in Supabase:", data);
       }
     } catch (error) {
-      console.error("Error storing interaction data in localStorage:", error);
+      logger.error("Error storing interaction data:", error);
     }
   }
 }

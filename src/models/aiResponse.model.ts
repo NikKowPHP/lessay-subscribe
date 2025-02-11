@@ -1,3 +1,5 @@
+import logger from "@/utils/logger";
+
 export interface PhonemeAnalysis {
   phoneme: string;
   example: string;
@@ -27,7 +29,7 @@ export interface AIResponse {
 export class AIResponseModel {
   static fromJson(json: any): AIResponse {
     try {
-      console.log('Parsing JSON:', JSON.stringify(json, null, 2));
+      logger.log('Parsing JSON:', JSON.stringify(json, null, 2));
 
       const response: AIResponse = {
         language_identification: json.language_identification || 'Unknown',
@@ -53,8 +55,8 @@ export class AIResponseModel {
 
       return response;
     } catch (error) {
-      console.error("Error parsing AI response:", error);
-      console.error("Received JSON:", json);
+      logger.error("Error parsing AI response:", error);
+      logger.error("Received JSON:", json);
       return {
         language_identification: "Error processing response",
         confidence_level: "0%",

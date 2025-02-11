@@ -1,3 +1,4 @@
+import logger from '@/utils/logger';
 import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
@@ -61,10 +62,10 @@ class AIService {
                      
     if (proxyUrl) {
       try {
-        console.log(`Using proxy: ${proxyUrl}`);
+        logger.log(`Using proxy: ${proxyUrl}`);
         return new HttpsProxyAgent(proxyUrl);
       } catch (err) {
-        console.error("Error creating proxy agent:", err);
+        logger.error("Error creating proxy agent:", err);
         return undefined;
       }
     }

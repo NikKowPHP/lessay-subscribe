@@ -9,8 +9,6 @@ class Logger {
     if (!this.isProduction) {
       console.error(message, ...args);
     } else {
-      // You might want to log errors to a remote service in production
-      // Example: sentry.captureException(new Error(message));
       console.log(`Error: ${message}`); // Basic logging in production
     }
   }

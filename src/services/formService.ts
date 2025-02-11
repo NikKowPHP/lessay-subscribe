@@ -1,3 +1,5 @@
+import logger from "@/utils/logger";
+
 export class FormService {
   static async submitEmail(email: string, source= 'website'): Promise<boolean> {
     // Validate email format
@@ -26,9 +28,7 @@ export class FormService {
 
       return true;
     } catch (error) {
-      if(process.env.NODE_ENV === 'development') {
-        console.log(error);
-      }
+      logger.error(error as string);
       throw new Error('Network error. Please try again.');
     }
   }

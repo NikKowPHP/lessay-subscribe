@@ -1,6 +1,7 @@
 "use client";
 
 import { AIResponse, AIResponseModel } from '@/models/aiResponse.model';
+import logger from '@/utils/logger';
 import { useState, useRef } from 'react';
 
 export default function Recording() {
@@ -76,10 +77,10 @@ export default function Recording() {
   // Update handleSend to handle the nested aiResponse
   const handleSend = async (audioData: string) => {
     if (!audioData || !recordingTime || !recordingSize) {
-      console.error("No audio to send or missing required data.");
-      console.log("audioData:", audioData.length);
-      console.log("recordingTime:", recordingTime);
-      console.log("recordingSize:", recordingSize);
+      logger.error("No audio to send or missing required data.");
+      logger.error("audioData:", audioData.length);
+      logger.error("recordingTime:", recordingTime);
+      logger.error("recordingSize:", recordingSize);
       return;
     }
     try {
@@ -96,18 +97,18 @@ export default function Recording() {
       });
 
       if (!response.ok) {
-        console.error("Error sending recording:", response.status);
+        logger.error("Error sending recording:", response.status);
         return;
       }
 
       const data = await response.json();
-      console.log("Response:", data);
+      logger.log("Response:", data);
 
       // Access the nested aiResponse object
       const transformedResponse = AIResponseModel.fromJson(data.aiResponse);
       setAiResponse(transformedResponse);
     } catch (error) {
-      console.error("Error sending recording:", error);
+      logger.error("Error sending recording:", error);
     }
   };
 
