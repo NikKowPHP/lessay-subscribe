@@ -1,50 +1,42 @@
 'use server'
-import { NextResponse } from 'next/server';
-import { supabase } from '@/repositories/supabase/supabase';
+import { NextRequest, NextResponse } from 'next/server';
+import RecordingService from '@/services/recordingService';
 
-export async function POST(req: Request) {
+const API_KEY = process.env.AI_API_KEY;
+
+export async function POST(req: NextRequest) {
+  const userIP = req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || req.ip;
+  const data = await req.json();
+
+  console.log('Received data:', data);
+  console.log('User IP:', userIP);
+
   try {
-    const payload = await req.json();
-    const { email } = payload;
+    const { audioURL, recordingTime } = data;
 
-    // Validate email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
+    if (!audioURL || !recordingTime) {
       return NextResponse.json(
-        { message: "Invalid email address" },
+        { message: "Missing audioURL or recordingTime" },
         { status: 400 }
       );
     }
-
-    // Allow payload to specify a source, otherwise default to 'web'
-    const source = payload.source || 'web';
-
-    // Retrieve additional metadata (IP address)
-    const ip_address =
-      req.headers.get("x-forwarded-for") ||
-      req.headers.get("x-real-ip") ||
-      "";
-
-    // Insert the email along with additional metadata into the "waitlist" table
-    const { error } = await supabase
-      .from('waitlist')
-      .insert([{ email, ip_address, source, status: "pending" }]);
-
-    if (error) {
+    if (!API_KEY) {
       return NextResponse.json(
-        { message: error.message },
+        { message: "API KEY IS NOT PROVIDED" },
         { status: 500 }
-      );
+      ); 
     }
+    const recordingService = new RecordingService(API_KEY); 
+    const aiResponse = await recordingService.submitRecording(userIP, audioURL, recordingTime);
 
     return NextResponse.json(
-      { message: "Subscription successful" },
+      { message: "Recording data received successfully", userIP, aiResponse },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Subscription error:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { message: "Internal server error", error: error.message },
       { status: 500 }
     );
   }
