@@ -96,25 +96,26 @@ export default function Recording() {
       return;
     }
     try {
-      const response = await fetch('/api/recording', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          audioData: audioData,
-          recordingTime: recordingTime,
-          recordingSize: recordingSize,
-        }),
-      });
+      // const response = await fetch('/api/recording', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({
+      //     audioData: audioData,
+      //     recordingTime: recordingTime,
+      //     recordingSize: recordingSize,
+      //   }),
+      // });
+      const response = {ok: false, status: 400, json: () => Promise.resolve({})}
 
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
 
-      const data = await response.json();
-      const transformedResponse = AIResponseModel.fromJson(data.aiResponse);
-      setAiResponse(transformedResponse);
+      // const data = await response.json();
+      // const transformedResponse = AIResponseModel.fromJson(data.aiResponse);
+      // setAiResponse(transformedResponse);
     } catch (error: any) {
       logger.error("Error sending recording:", error);
       showError(
