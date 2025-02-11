@@ -2,7 +2,14 @@
 
 import { AIResponse, AIResponseModel } from '@/models/aiResponse.model';
 import logger from '@/utils/logger';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useError } from '@/hooks/useError';
+
+// Add these new interfaces
+interface ErrorMessage {
+  message: string;
+  type: 'error' | 'warning' | 'info';
+}
 
 export default function Recording() {
   const [isRecording, setIsRecording] = useState(false);
@@ -14,6 +21,8 @@ export default function Recording() {
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const startTimeRef = useRef<number>(0);
   const [recordingSize, setRecordingSize] = useState<number>(0);
+
+  const { showError } = useError();
 
   const startRecording = async () => {
     try {
@@ -46,8 +55,14 @@ export default function Recording() {
       setIsRecording(true);
       setIsProcessed(false);
       setAiResponse(null);
-    } catch (error) {
-      console.error("Error starting recording:", error);
+    } catch (error: any) {
+      logger.error("Error starting recording:", error);
+      showError(
+        error.name === 'NotAllowedError' 
+          ? 'Please allow microphone access to record audio.'
+          : 'Could not start recording. Please check your microphone.',
+        'error'
+      );
     }
   };
 
@@ -77,10 +92,7 @@ export default function Recording() {
   // Update handleSend to handle the nested aiResponse
   const handleSend = async (audioData: string) => {
     if (!audioData || !recordingTime || !recordingSize) {
-      logger.error("No audio to send or missing required data.");
-      logger.error("audioData:", audioData.length);
-      logger.error("recordingTime:", recordingTime);
-      logger.error("recordingSize:", recordingSize);
+      showError('No audio recorded. Please try again.', 'warning');
       return;
     }
     try {
@@ -97,18 +109,18 @@ export default function Recording() {
       });
 
       if (!response.ok) {
-        logger.error("Error sending recording:", response.status);
-        return;
+        throw new Error(`Server responded with status: ${response.status}`);
       }
 
       const data = await response.json();
-      logger.log("Response:", data);
-
-      // Access the nested aiResponse object
       const transformedResponse = AIResponseModel.fromJson(data.aiResponse);
       setAiResponse(transformedResponse);
-    } catch (error) {
+    } catch (error: any) {
       logger.error("Error sending recording:", error);
+      showError(
+        'Failed to process your recording. Please try again in a moment.',
+        'error'
+      );
     }
   };
 
