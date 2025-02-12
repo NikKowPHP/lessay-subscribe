@@ -1,3 +1,5 @@
+import { supabase } from "@/repositories/supabase/supabase";
+
 class Logger {
   private isProduction: boolean;
 
@@ -9,7 +11,33 @@ class Logger {
     if (!this.isProduction) {
       console.error(message, ...args);
     } else {
-      console.log(`Error: ${message}`); // Basic logging in production
+      // Prepare comprehensive error details
+      const errorDetails = args.map(arg => {
+        if (arg instanceof Error) {
+          return {
+            name: arg.name,
+            message: arg.message,
+            stack: arg.stack,
+          };
+        }
+        return arg;
+      });
+      const errorData = {
+        message,
+        details: errorDetails,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Log error to Supabase without blocking the execution flow
+      (async () => {
+        const { error: supabaseError } = await supabase
+          .from('error_logs')
+          .insert([errorData]);
+        if (supabaseError) {
+          // If logging to Supabase fails in production, fallback to a basic console output.
+          console.log("Failed to log error to Supabase:", supabaseError);
+        }
+      })();
     }
   }
 
@@ -17,7 +45,8 @@ class Logger {
     if (!this.isProduction) {
       console.warn(message, ...args);
     } else {
-      console.log(`Warning: ${message}`);
+      // Optionally, warnings can also be logged to Supabase in a similar fashion if needed.
+      console.log(`Warning: ${message}`, ...args);
     }
   }
 
@@ -25,7 +54,7 @@ class Logger {
     if (!this.isProduction) {
       console.log(message, ...args);
     } else {
-      // Suppress logs in production
+      // In production, standard logs can be suppressed, or adjust as needed.
     }
   }
 }
