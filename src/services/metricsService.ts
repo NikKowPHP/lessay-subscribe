@@ -19,8 +19,7 @@ class MetricsService {
         ai_response_length: aiResponseLength,
         recording_time: recordingTime,
         ai_response: aiResponse,
-        recording: recording,
-        // Add any other relevant data here
+        recording: recording.length,
       };
 
       // Store the data in Supabase
