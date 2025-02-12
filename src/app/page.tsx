@@ -97,7 +97,7 @@ export default function Home() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
             Be the first to experience smarter language learning.
           </p>
-          <Suspense fallback={<div className="animate-pulse h-10 bg-gray-200 rounded" />}>
+          <Suspense fallback={<div className="animate-pulse h-10 bg-gray-200 rounded w-full" />}>
             <SubscriptionForm />
           </Suspense>
         </div>

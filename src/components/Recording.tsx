@@ -308,14 +308,14 @@ export default function Recording() {
             itemProp="name" 
             className="text-2xl font-semibold mb-3"
           >
-            AI Accent Analysis Tool
+            Speak & Uncover Your Accent
           </h1>
           <div itemProp="description" className="space-y-2">
             <p className="text-lg text-gray-700 dark:text-gray-300">
-              Record your voice in any language for instant accent analysis
+              Record your voice in any language and reveal the subtle impact of your native tongue.
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Advanced AI provides detailed feedback on pronunciation, fluency, and accent characteristics
+              We'll provide detailed insights into how your background shapes your pronunciation, rhythm, and overall speaking style.
             </p>
           </div>
         </header>

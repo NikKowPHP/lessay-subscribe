@@ -24,7 +24,7 @@ export default function SubscriptionForm() {
   };
 
   return (
-    <div className="w-full max-w-md sm:max-w-lg">
+    <div className="w-full ">
       <form onSubmit={handleSubmit} className="relative">
         <input
           type="email"
