@@ -32,13 +32,13 @@ interface GeminiResponse {
 // Type augmentation to include 'agent' in RequestInit
 declare global {
   interface RequestInit {
-    agent?: any; // Allow any type for agent
+    agent?: unknown; // Allow any type for agent
   }
 }
 
 class AIService {
   private apiKey: string;
-  private proxyAgent: any | undefined;
+  private proxyAgent: unknown | undefined;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -53,7 +53,7 @@ class AIService {
   /**
    * Create and return a proxy agent if proxy environment variables are defined.
    */
-  private createProxyAgent(): any | undefined {
+  private createProxyAgent(): unknown | undefined {
     // Use HTTPS proxy preferentially; fallback to HTTP proxy.
     const proxyUrl = process.env.HTTPS_PROXY ||
                      process.env.HTTP_PROXY ||
@@ -72,7 +72,7 @@ class AIService {
     return undefined;
   }
 
-  async generateContent(audioDataBase64: string, userMessage: string, systemMessage: string): Promise<any> {
+  async generateContent(audioDataBase64: string, userMessage: string, systemMessage: string): Promise<Record<string, unknown>> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${AIService.models.gemini_2_flash_exp}:generateContent?key=${this.apiKey}`;
     
     const data = {
@@ -102,7 +102,7 @@ class AIService {
     };
 
     // Axios configuration object
-    const config: any = {
+    const config: Record<string, unknown> = {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -128,7 +128,7 @@ class AIService {
         logger.error("Error parsing Gemini response:", parseError);
         throw new Error("Failed to parse AI response");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Comprehensive error handling
       if (axios.isAxiosError(error)) {
         logger.error("Axios error calling Gemini API:");

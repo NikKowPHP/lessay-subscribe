@@ -1,7 +1,7 @@
 class MessageGenerator {
   constructor() {}
 
-  generateUserMessage(recording: any): string {
+  generateUserMessage(recording: string): string {
     return `
       Please analyze this spoken language sample and provide feedback directly to the speaker:
       "${recording}"

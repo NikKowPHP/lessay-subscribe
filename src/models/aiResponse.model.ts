@@ -27,30 +27,56 @@ export interface AIResponse {
 }
 
 export class AIResponseModel {
-  static fromJson(json: any): AIResponse {
+  static fromJson(json: unknown): AIResponse {
     try {
-      logger.log('Parsing JSON:', JSON.stringify(json, null, 2));
+      logger.log("Parsing JSON:", JSON.stringify(json, null, 2));
+
+      if (typeof json !== "object" || json === null) {
+        throw new Error("Invalid JSON for AIResponse");
+      }
+      const data = json as Record<string, unknown>;
 
       const response: AIResponse = {
-        language_identification: json.language_identification || 'Unknown',
-        confidence_level: json.confidence_level || '0%',
-        user_native_language_guess: json.user_native_language_guess || 'Unknown',
-        native_language_influence_analysis: json.native_language_influence_analysis || 'N/A',
-        'language-specific_phonological_assessment': 
-          Array.isArray(json['language-specific_phonological_assessment']) 
-            ? json['language-specific_phonological_assessment'] 
+        language_identification:
+          typeof data.language_identification === "string"
+            ? data.language_identification
+            : "Unknown",
+        confidence_level:
+          typeof data.confidence_level === "string"
+            ? data.confidence_level
+            : "0%",
+        user_native_language_guess:
+          typeof data.user_native_language_guess === "string"
+            ? data.user_native_language_guess
+            : "Unknown",
+        native_language_influence_analysis:
+          typeof data.native_language_influence_analysis === "string"
+            ? data.native_language_influence_analysis
+            : "N/A",
+        "language-specific_phonological_assessment":
+          Array.isArray(data["language-specific_phonological_assessment"])
+            ? (data["language-specific_phonological_assessment"] as PhonemeAnalysis[])
             : [],
-        suprasegmental_features_analysis: 
-          Array.isArray(json.suprasegmental_features_analysis)
-            ? json.suprasegmental_features_analysis
+        suprasegmental_features_analysis:
+          Array.isArray(data.suprasegmental_features_analysis)
+            ? (data.suprasegmental_features_analysis as SuprasegmentalFeatureAnalysis[])
             : [],
-        'cross-linguistic_influence_note': json['cross-linguistic_influence_note'] || 'N/A',
-        CEFR_aligned_proficiency_indicators: json.CEFR_aligned_proficiency_indicators || 'N/A',
-        personalized_learning_pathway_suggestions: 
-          Array.isArray(json.personalized_learning_pathway_suggestions)
-            ? json.personalized_learning_pathway_suggestions
+        "cross-linguistic_influence_note":
+          typeof data["cross-linguistic_influence_note"] === "string"
+            ? (data["cross-linguistic_influence_note"] as string)
+            : "N/A",
+        CEFR_aligned_proficiency_indicators:
+          typeof data.CEFR_aligned_proficiency_indicators === "string"
+            ? (data.CEFR_aligned_proficiency_indicators as string)
+            : "N/A",
+        personalized_learning_pathway_suggestions:
+          Array.isArray(data.personalized_learning_pathway_suggestions)
+            ? (data.personalized_learning_pathway_suggestions as string[])
             : [],
-        call_to_action: json.call_to_action || 'Please provide a clear speech sample for analysis.'
+        call_to_action:
+          typeof data.call_to_action === "string"
+            ? data.call_to_action
+            : "Please provide a clear speech sample for analysis.",
       };
 
       return response;
@@ -61,15 +87,17 @@ export class AIResponseModel {
         language_identification: "Error processing response",
         confidence_level: "0%",
         user_native_language_guess: "Unknown",
-        native_language_influence_analysis: "An error occurred while processing the analysis",
-        'language-specific_phonological_assessment': [],
+        native_language_influence_analysis:
+          "An error occurred while processing the analysis",
+        "language-specific_phonological_assessment": [],
         suprasegmental_features_analysis: [],
-        'cross-linguistic_influence_note': "N/A",
+        "cross-linguistic_influence_note": "N/A",
         CEFR_aligned_proficiency_indicators: "N/A",
         personalized_learning_pathway_suggestions: [
-          "Please try again with a clear speech sample"
+          "Please try again with a clear speech sample",
         ],
-        call_to_action: "An error occurred. Please try again with a clear speech sample."
+        call_to_action:
+          "An error occurred. Please try again with a clear speech sample.",
       };
     }
   }

@@ -5,12 +5,6 @@ import logger from '@/utils/logger';
 import { useState, useRef } from 'react';
 import { useError } from '@/hooks/useError';
 
-// Add these new interfaces
-interface ErrorMessage {
-  message: string;
-  type: 'error' | 'warning' | 'info';
-}
-
 export default function Recording() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState<string | null>(null);
@@ -56,16 +50,20 @@ export default function Recording() {
       setIsRecording(true);
       setIsProcessed(false);
       setAiResponse(null);
-    } catch (error: any) {
-      logger.error("Error starting recording:", error);
-      showError(
-        error.name === 'NotAllowedError' 
-          ? 'Please allow microphone access to record audio.'
-          : 'Could not start recording. Please check your microphone.',
-        'error'
-      );
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        logger.error("Error starting recording:", error);
+        showError(
+          error.name === 'NotAllowedError'
+            ? 'Please allow microphone access to record audio.'
+            : 'Could not start recording. Please check your microphone.',
+          'error'
+        );
+      }
+    } finally {
+      setIsRecording(false);
     }
-  };
+  }
 
   const stopRecording = () => {
     if (mediaRecorder.current) {
@@ -118,7 +116,7 @@ export default function Recording() {
       const data = await response.json();
       const transformedResponse = AIResponseModel.fromJson(data.aiResponse);
       setAiResponse(transformedResponse);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Error sending recording:", error);
       showError(
         'Failed to process your recording. Please try again in a moment.',

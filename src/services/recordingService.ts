@@ -21,7 +21,7 @@ class RecordingService {
     audioData: string,  // Changed from 'recording' to 'audioData'
     recordingTime: number, 
     recordingSize: number
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     try {
       const userMessage = this.messageGenerator.generateUserMessage(audioData);
       const systemMessage = this.messageGenerator.generateSystemMessage();

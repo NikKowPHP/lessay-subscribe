@@ -5,7 +5,7 @@ class Logger {
     this.isProduction = process.env.NODE_ENV === 'production';
   }
 
-  error(message: string, ...args: any[]): void {
+  error(message: string, ...args: unknown[]): void {
     if (!this.isProduction) {
       console.error(message, ...args);
     } else {
@@ -13,7 +13,7 @@ class Logger {
     }
   }
 
-  warn(message: string, ...args: any[]): void {
+  warn(message: string, ...args: unknown[]): void {
     if (!this.isProduction) {
       console.warn(message, ...args);
     } else {
@@ -21,7 +21,7 @@ class Logger {
     }
   }
 
-  log(message: string, ...args: any[]): void {
+  log(message: string, ...args: unknown[]): void {
     if (!this.isProduction) {
       console.log(message, ...args);
     } else {

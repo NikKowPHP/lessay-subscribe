@@ -4,7 +4,7 @@ import { supabase } from "@/repositories/supabase/supabase";
 class MetricsService {
   constructor() {}
 
-  async collectInteractionData(userIP: string, recording: any, aiResponse: any, recordingTime: number, responseTime: number, recordingSize: number): Promise<void> {
+  async collectInteractionData(userIP: string, recording: string, aiResponse: Record<string, unknown>, recordingTime: number, responseTime: number, recordingSize: number): Promise<void> {
     try {
       // Collect relevant data
       const timestamp = new Date();
@@ -32,7 +32,7 @@ class MetricsService {
     }
   }
 
-  private async storeInteractionData(data: any): Promise<void> {
+  private async storeInteractionData(data: Record<string, unknown>): Promise<void> {
     try {
       const { error } = await supabase
         .from('interactions')
