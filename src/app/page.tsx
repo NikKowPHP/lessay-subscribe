@@ -77,11 +77,7 @@ export default function Home() {
         <div className="text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-4">
             <span
-              style={{
-                WebkitTextFillColor: 'transparent',
-                WebkitBackgroundClip: 'text',
-              }}
-              className="bg-gradient-toaiResponse-r from-black to-black/70 dark:from-white dark:to-white/70 inline-block !text-transparent bg-clip-text"
+              className="bg-gradient-to-r from-black to-black/70 dark:from-white dark:to-white/70 inline-block bg-clip-text text-transparent"
             >
               lessay
             </span>
