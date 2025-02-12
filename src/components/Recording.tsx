@@ -14,9 +14,7 @@ export default function Recording() {
   const audioChunks = useRef<Blob[]>([]);
   const [isProcessed, setIsProcessed] = useState(false);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
-  const [recordingTime, setRecordingTime] = useState<number>(0);
   const startTimeRef = useRef<number>(0);
-  const [recordingSize, setRecordingSize] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { showError } = useError();
@@ -74,12 +72,11 @@ export default function Recording() {
 
         const endTime = Date.now();
         const timeDiff = endTime - startTimeRef.current;
-        setRecordingTime(timeDiff);
-        setRecordingSize(audioBlob.size);
+        const blobSize = audioBlob.size;
 
         // Convert Blob to base64 before sending
         const base64Data = await blobToBase64(audioBlob);
-        await handleSend(base64Data);
+        await handleSend(base64Data, timeDiff, blobSize);
         setIsProcessed(true);
         
         // Clean up the stream tracks when done
@@ -159,9 +156,13 @@ export default function Recording() {
     });
   };
 
-  // Update handleSend to include loading state
-  const handleSend = async (audioData: string) => {
-    if (!audioData || !recordingTime || !recordingSize) {
+  // Update handleSend to accept computed values
+  const handleSend = async (
+    audioData: string,
+    recTime: number,
+    recSize: number
+  ) => {
+    if (!audioData || !recTime || !recSize) {
       showError('No audio recorded. Please try again.', 'warning');
       return;
     }
@@ -175,8 +176,8 @@ export default function Recording() {
         },
         body: JSON.stringify({
           audioData: audioData,
-          recordingTime: recordingTime,
-          recordingSize: recordingSize,
+          recordingTime: recTime,
+          recordingSize: recSize,
         }),
       });
 
@@ -208,8 +209,6 @@ export default function Recording() {
     setAudioURL(null);
     setAiResponse(null);
     setIsProcessed(false);
-    setRecordingTime(0);
-    setRecordingSize(0);
   };
 
   // Helper function to get button text and action
