@@ -1,4 +1,4 @@
-import { AIResponse, AIResponseModel, mockResponse } from '@/models/aiResponse.model';
+import logger from '@/utils/logger';
 import AIService from './aiService';
 import MessageGenerator from './generators/messageGenerator';
 import MetricsService from './metricsService';
@@ -28,6 +28,7 @@ class RecordingService {
 
       // Generate content using AI service
       const startTime = Date.now();
+
       const aiResponse = await this.aiService.generateContent(
         audioData,  // Pass the base64 string directly
         userMessage, 
@@ -49,22 +50,12 @@ class RecordingService {
 
       return aiResponse;
     } catch (error) {
-      console.error("Error submitting recording:", error);
+      logger.error("Error submitting recording:", error);
       throw error;
     }
   }
   
 
-  private async processRecording(recording: any): Promise<string> {
-    // Placeholder for recording processing logic
-    // In a real application, this would involve converting the recording to text
-    // using a service like Google Cloud Speech-to-Text or similar.
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve("This is a sample transcription from the recording.");
-      }, 1000);
-    });
-  }
 
 
 

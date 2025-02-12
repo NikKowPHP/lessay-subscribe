@@ -125,20 +125,20 @@ class AIService {
         // Return the first item in the array as that's our analysis
         return analysisData[0];
       } catch (parseError) {
-        console.error("Error parsing Gemini response:", parseError);
+        logger.error("Error parsing Gemini response:", parseError);
         throw new Error("Failed to parse AI response");
       }
     } catch (error: any) {
       // Comprehensive error handling
       if (axios.isAxiosError(error)) {
-        console.error("Axios error calling Gemini API:");
-        console.error("Status:", error.response?.status);
-        console.error("Data:", error.response?.data);
-        console.error("Config:", error.config);
+        logger.error("Axios error calling Gemini API:");
+        logger.error("Status:", error.response?.status);
+        logger.error("Data:", error.response?.data);
+        logger.error("Config:", error.config);
       } else {
-        console.error("Unexpected error:", error);
+        logger.error("Unexpected error:", error);
       }
-      throw error;
+      throw new Error(`Failed to generate content from AI: ${error}`);
     }
   }
 }

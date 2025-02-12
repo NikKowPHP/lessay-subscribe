@@ -1,6 +1,7 @@
 'use server'
 import { NextResponse } from 'next/server';
 import { supabase } from '@/repositories/supabase/supabase';
+import logger from '@/utils/logger';
 
 export async function POST(req: Request) {
   try {
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Subscription error:", error);
+    logger.error("Subscription error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

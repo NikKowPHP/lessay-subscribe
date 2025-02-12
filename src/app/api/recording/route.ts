@@ -35,10 +35,11 @@ export async function POST(req: NextRequest) {
       { message: "Recording data received successfully", aiResponse },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("Subscription error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    logger.error("Subscription error:", errorMessage);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: errorMessage },
       { status: 500 }
     );
   }
