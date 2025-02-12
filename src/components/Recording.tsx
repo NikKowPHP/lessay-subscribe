@@ -2,7 +2,7 @@
 
 import { AIResponse, AIResponseModel } from '@/models/aiResponse.model';
 import logger from '@/utils/logger';
-import { useState, useRef} from 'react';
+import { useState, useRef } from 'react';
 import { useError } from '@/hooks/useError';
 
 // Add these new interfaces
@@ -74,7 +74,7 @@ export default function Recording() {
     }
   };
 
-  // Add this helper function to convert Blob to base64
+  // Helper function to convert Blob to base64
   const blobToBase64 = (blob: Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -132,6 +132,15 @@ export default function Recording() {
   // Smooth scroll to subscription/waitlist section
   const scrollToWaitlist = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Reset the recording state to allow a new recording.
+  const resetRecording = () => {
+    setAudioURL(null);
+    setAiResponse(null);
+    setIsProcessed(false);
+    setRecordingTime(0);
+    setRecordingSize(0);
   };
 
   return (
@@ -205,7 +214,7 @@ export default function Recording() {
         </header>
 
         <div className="flex flex-col items-center space-y-6">
-          {/* Recording Controls - Updated Button Styles */}
+          {/* Recording Controls */}
           <div className="flex space-x-4">
             <button
               onClick={startRecording}
@@ -345,20 +354,28 @@ export default function Recording() {
                 </ul>
               </div>
 
-              {/* Call to Action - Updated Button Style */}
+              {/* Call to Action */}
               <div className="p-6 bg-black/5 dark:bg-white/5 rounded-lg text-center">
                 <p className="text-gray-700 dark:text-gray-300 mb-4">{aiResponse.call_to_action}</p>
                 <button
                   onClick={scrollToWaitlist}
-                  className="
-                    px-6 py-2 rounded-lg font-medium transition-all duration-200
-                    bg-black text-white dark:bg-white dark:text-black
-                    hover:opacity-90
-                  "
+                  className="px-6 py-2 rounded-lg font-medium transition-all duration-200 bg-black text-white dark:bg-white dark:text-black hover:opacity-90"
                 >
                   Join Waitlist
                 </button>
               </div>
+            </div>
+          )}
+          
+          {/* Display "Record Again" if the recording has been processed */}
+          {isProcessed && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={resetRecording}
+                className="px-6 py-2 rounded-full font-medium transition-all duration-200 border border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+              >
+                Record Again
+              </button>
             </div>
           )}
         </div>
