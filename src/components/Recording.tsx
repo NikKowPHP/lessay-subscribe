@@ -141,6 +141,44 @@ export default function Recording() {
     setRecordingSize(0);
   };
 
+  // Helper function to get button text and action
+  const getButtonConfig = () => {
+    if (isProcessing) {
+      return {
+        text: "Processing...",
+        action: () => {},
+        disabled: true,
+        className: "opacity-50 cursor-not-allowed"
+      };
+    }
+    if (isRecording) {
+      return {
+        text: (
+          <span className="flex items-center">
+            <span className="animate-pulse mr-2 text-red-500">●</span> Stop Recording
+          </span>
+        ),
+        action: stopRecording,
+        disabled: false,
+        className: "bg-black text-white dark:bg-white dark:text-black hover:opacity-90"
+      };
+    }
+    if (isProcessed) {
+      return {
+        text: "Record Again",
+        action: resetRecording,
+        disabled: false,
+        className: "hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+      };
+    }
+    return {
+      text: "Start Recording",
+      action: startRecording,
+      disabled: false,
+      className: "hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+    };
+  };
+
   return (
     <section 
       aria-label="Voice Recording and Accent Analysis"
@@ -212,41 +250,24 @@ export default function Recording() {
         </header>
 
         <div className="flex flex-col items-center space-y-6">
-          {/* Recording Controls */}
-          <div className="flex space-x-4">
-            <button
-              onClick={startRecording}
-              disabled={isRecording}
-              className={`
-                px-6 py-2 rounded-full font-medium transition-all duration-200
-                ${isRecording 
-                  ? 'opacity-50 cursor-not-allowed' 
-                  : 'hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'}
-                border border-black dark:border-white
-                text-black dark:text-white
-              `}
-            >
-              {isRecording ? (
-                <span className="flex items-center">
-                  <span className="animate-pulse mr-2 text-red-500">●</span> Recording...
-                </span>
-              ) : (
-                "Start Recording"
-              )}
-            </button>
-            <button
-              onClick={stopRecording}
-              disabled={!isRecording}
-              className={`
-                px-6 py-2 rounded-full font-medium transition-all duration-200
-                ${!isRecording 
-                  ? 'opacity-50 cursor-not-allowed' 
-                  : 'bg-black text-white dark:bg-white dark:text-black hover:opacity-90'}
-              `}
-            >
-              Stop Recording
-            </button>
-          </div>
+          {/* Single Recording Control Button */}
+          {(() => {
+            const { text, action, disabled, className } = getButtonConfig();
+            return (
+              <button
+                onClick={action}
+                disabled={disabled}
+                className={`
+                  px-6 py-2 rounded-full font-medium transition-all duration-200
+                  border border-black dark:border-white
+                  text-black dark:text-white
+                  ${className}
+                `}
+              >
+                {text}
+              </button>
+            );
+          })()}
 
           {/* Audio Player */}
           {audioURL && (
@@ -362,18 +383,6 @@ export default function Recording() {
                   Join Waitlist
                 </button>
               </div>
-            </div>
-          )}
-          
-          {/* Display "Record Again" if the recording has been processed */}
-          {isProcessed && (
-            <div className="flex justify-center mt-4">
-              <button
-                onClick={resetRecording}
-                className="px-6 py-2 rounded-full font-medium transition-all duration-200 border border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
-              >
-                Record Again
-              </button>
             </div>
           )}
         </div>
