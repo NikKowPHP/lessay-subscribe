@@ -20,31 +20,54 @@ const Recording = dynamic(() => import('../components/Recording'), {
 });
 
 export const metadata: Metadata = {
-  title: "AI-Powered Language Learning Platform | lessay",
-  description: "Join lessay's waitlist for revolutionary AI-driven language learning. Skip the fluff and learn efficiently with personalized, adaptive lessons.",
+  title: "AI Accent Analysis & Language Learning | lessay",
+  description: "Get instant AI-powered feedback on pronunciation, fluency, and language patterns. Join lessay's waitlist for advanced language learning.",
+  keywords: ["accent analysis", "pronunciation feedback", "language learning AI", "fluency assessment"],
   openGraph: {
-    title: "Join lessay - Revolutionary Language Learning Platform",
-    description: "Transform your language learning journey with AI-powered personalized lessons. Join our waitlist today.",
+    title: "AI-Powered Language Analysis | lessay",
+    description: "Revolutionary AI technology for accent assessment and language learning",
+    images: [
+      {
+        url: "/og-accent-analysis.jpg",
+        width: 1200,
+        height: 630,
+        alt: "AI Accent Analysis Interface",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Accent Analysis & Language Learning | lessay",
+    description: "Get instant feedback on your pronunciation with AI technology",
+    images: ["/og-accent-analysis.jpg"],
   },
 };
 
 
 export default function Home() {
 
-   const generateJsonLd = () => {
-    return {
-      '@context': 'https://schema.org',
-      '@type': 'WebSite',
-      name: 'lessay',
-      description: 'AI-Powered Language Learning Platform',
-      url: 'https://lessay-app.vercel.app',
-      potentialAction: {
-        '@type': 'SignUp',
-        name: 'Join Waitlist',
-        target: 'https://lessay-app.vercel.app/#waitlist'
+   const generateJsonLd = () => ({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How does the AI accent analysis work?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Our AI system analyzes your speech patterns, pronunciation, and language structure using advanced machine learning models to provide detailed feedback"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What languages are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The system currently supports analysis for 50+ languages including English, Spanish, Mandarin, French, and German"
+        }
       }
-    };
-  };
+    ]
+  });
   
   const jsonLd = generateJsonLd();
 
