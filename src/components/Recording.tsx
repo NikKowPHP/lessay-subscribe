@@ -5,6 +5,8 @@ import logger from '@/utils/logger';
 import { useState, useRef } from 'react';
 import { useError } from '@/hooks/useError';
 
+
+
 export default function Recording() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState<string | null>(null);
@@ -21,8 +23,43 @@ export default function Recording() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder.current = new MediaRecorder(stream);
+      // Reset states before starting
+      setIsProcessed(false);
+      setAiResponse(null);
+      setAudioURL(null);
+
+      // Check if mediaDevices API is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Media devices API not supported in this browser');
+      }
+
+      // Check if any audio input devices are available
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioDevices = devices.filter(device => device.kind === 'audioinput');
+      
+      if (audioDevices.length === 0) {
+        throw new Error('No audio input devices found');
+      }
+
+      // Request microphone permission with constraints
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video: false
+      });
+
+      // Only proceed if we got the stream successfully
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/mp4';
+
+      mediaRecorder.current = new MediaRecorder(stream, {
+        mimeType: mimeType
+      });
+
       audioChunks.current = [];
       startTimeRef.current = Date.now();
 
@@ -31,7 +68,7 @@ export default function Recording() {
       };
 
       mediaRecorder.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/mpeg' });
+        const audioBlob = new Blob(audioChunks.current, { type: mimeType });
         const url = URL.createObjectURL(audioBlob);
         setAudioURL(url);
 
@@ -44,29 +81,63 @@ export default function Recording() {
         const base64Data = await blobToBase64(audioBlob);
         await handleSend(base64Data);
         setIsProcessed(true);
+        
+        // Clean up the stream tracks when done
+        stream.getTracks().forEach(track => track.stop());
       };
 
+      // Start recording only after all handlers are set
       mediaRecorder.current.start();
       setIsRecording(true);
-      setIsProcessed(false);
-      setAiResponse(null);
+
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        logger.error("Error starting recording:", error);
-        showError(
-          error.name === 'NotAllowedError'
-            ? 'Please allow microphone access to record audio.'
-            : 'Could not start recording. Please check your microphone.',
-          'error'
-        );
-      }
-    } finally {
       setIsRecording(false);
+      logger.error("Error starting recording:", error);
+
+      if (error instanceof Error) {
+        switch (error.name) {
+          case 'NotAllowedError':
+            showError(
+              'Microphone access denied. Please allow microphone access and try again.',
+              'error'
+            );
+            break;
+          case 'NotFoundError':
+            showError(
+              'No microphone found. Please connect a microphone and try again.',
+              'error'
+            );
+            break;
+          case 'NotReadableError':
+            showError(
+              'Microphone is already in use. Please close other applications using the microphone.',
+              'error'
+            );
+            break;
+          default:
+            if (error.message === 'Media devices API not supported in this browser') {
+              showError(
+                'Your browser does not support audio recording. Please try a modern browser like Chrome or Firefox.',
+                'error'
+              );
+            } else if (error.message === 'No audio input devices found') {
+              showError(
+                'No microphone detected. Please connect a microphone and try again.',
+                'error'
+              );
+            } else {
+              showError(
+                'Could not start recording. Please check your microphone connection.',
+                'error'
+              );
+            }
+        }
+      }
     }
-  }
+  };
 
   const stopRecording = () => {
-    if (mediaRecorder.current) {
+    if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
       mediaRecorder.current.stop();
       setIsRecording(false);
     }
