@@ -315,7 +315,7 @@ export default function Recording() {
               Record your voice in any language and reveal the subtle impact of your native tongue.
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              We'll provide detailed insights into how your background shapes your pronunciation, rhythm, and overall speaking style.
+              We will provide detailed insights into how your background shapes your pronunciation, rhythm, and overall speaking style.
             </p>
           </div>
         </header>
