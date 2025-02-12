@@ -2,10 +2,12 @@
 
 import { AIResponse, AIResponseModel } from '@/models/aiResponse.model';
 import logger from '@/utils/logger';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
 
 const MAX_RECORDING_TIME_MS = 60000; // 1 minute
+const MAX_RECORDING_ATTEMPTS = 3;
+const ATTEMPTS_RESET_TIME_MS = 3600000; // 1 hour
 
 export default function Recording() {
   const [isRecording, setIsRecording] = useState(false);
@@ -17,10 +19,39 @@ export default function Recording() {
   const startTimeRef = useRef<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const recordingTimerInterval = useRef<NodeJS.Timeout | null>(null); // Ref to hold timer interval ID
+  const [recordingAttempts, setRecordingAttempts] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0; // SSR
+    const storedAttempts = localStorage.getItem('recordingAttempts');
+    const storedTimestamp = localStorage.getItem('attemptsTimestamp');
+
+    if (storedAttempts && storedTimestamp) {
+      const attempts = parseInt(storedAttempts, 10);
+      const timestamp = parseInt(storedTimestamp, 10);
+      const now = Date.now();
+
+      if (now - timestamp < ATTEMPTS_RESET_TIME_MS) {
+        return attempts;
+      }
+    }
+    return 0;
+  });
 
   const { showError } = useError();
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return; // SSR
+    localStorage.setItem('recordingAttempts', recordingAttempts.toString());
+    if (recordingAttempts === 0) {
+      localStorage.setItem('attemptsTimestamp', Date.now().toString());
+    }
+  }, [recordingAttempts]);
+
   const startRecording = async () => {
+    if (recordingAttempts >= MAX_RECORDING_ATTEMPTS) {
+      showError(`You have reached the maximum number of recording attempts (${MAX_RECORDING_ATTEMPTS}) in the last hour. Please try again later.`, 'warning');
+      return;
+    }
+
     try {
       // Reset states before starting
       setIsProcessed(false);
@@ -88,6 +119,9 @@ export default function Recording() {
       mediaRecorder.current.start();
       setIsRecording(true);
       startTimeRef.current = Date.now();
+
+      // Increment recording attempts
+      setRecordingAttempts((prevAttempts) => prevAttempts + 1);
 
       // Set up timer to stop recording after MAX_RECORDING_TIME_MS
       recordingTimerInterval.current = setInterval(() => {
