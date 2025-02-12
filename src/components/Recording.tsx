@@ -5,7 +5,7 @@ import logger from '@/utils/logger';
 import { useState, useRef } from 'react';
 import { useError } from '@/hooks/useError';
 
-
+const MAX_RECORDING_TIME_MS = 60000; // 1 minute
 
 export default function Recording() {
   const [isRecording, setIsRecording] = useState(false);
@@ -16,6 +16,7 @@ export default function Recording() {
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const startTimeRef = useRef<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const recordingTimerInterval = useRef<NodeJS.Timeout | null>(null); // Ref to hold timer interval ID
 
   const { showError } = useError();
 
@@ -86,10 +87,29 @@ export default function Recording() {
       // Start recording only after all handlers are set
       mediaRecorder.current.start();
       setIsRecording(true);
+      startTimeRef.current = Date.now();
+
+      // Set up timer to stop recording after MAX_RECORDING_TIME_MS
+      recordingTimerInterval.current = setInterval(() => {
+        if (isRecording) { // Check if still recording to avoid issues if stopped quickly
+          const elapsedTime = Date.now() - startTimeRef.current;
+          if (elapsedTime >= MAX_RECORDING_TIME_MS) {
+            stopRecording();
+            showError('Maximum recording time reached (1 minute). Recording stopped.', 'warning');
+            clearInterval(recordingTimerInterval.current!); // Clear interval after stopping
+            recordingTimerInterval.current = null;
+          }
+        } else {
+          clearInterval(recordingTimerInterval.current!); // Clear interval if recording is manually stopped
+          recordingTimerInterval.current = null;
+        }
+      }, 1000); // Check every 1 second
 
     } catch (error: unknown) {
       setIsRecording(false);
       logger.error("Error starting recording:", error);
+      clearInterval(recordingTimerInterval.current!); // Clear interval in case of error
+      recordingTimerInterval.current = null;
 
       if (error instanceof Error) {
         switch (error.name) {
@@ -137,6 +157,8 @@ export default function Recording() {
     if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
       mediaRecorder.current.stop();
       setIsRecording(false);
+      clearInterval(recordingTimerInterval.current!); // Clear interval when manually stopped
+      recordingTimerInterval.current = null;
     }
   };
 
