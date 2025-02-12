@@ -17,6 +17,7 @@ class MessageGenerator {
       4. 2-3 most noticeable non-native speaker markers
       5. Suggested focus areas for improvement in this specific language
       
+      Use direct speech
       Format response in clear sections with linguistic terminology explained in parentheses.
       Conclude with an encouraging note about our full platform's language learning and accent improvement modules.
     `;
@@ -62,7 +63,7 @@ class MessageGenerator {
       ]
       \`\`\`
 
-      Ensure the response is a valid JSON array containing a single object with the above fields.
+      Ensure the response is a valid JSON array containing a single object with the above fields , and that all feedback is expressed in direct speech.
     `;
   }
 }
