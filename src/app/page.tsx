@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import SubscriptionForm from '../components/form';
 import type { Metadata } from 'next';
 import Script from 'next/script';
+import YouTubeVideoWrapper from '@/components/YoutubeWrapper';
 
 // Dynamically import non-critical components
 const FeaturesDropdown = dynamic(() => import('../components/FeaturesDropdown'), {
@@ -18,6 +19,11 @@ const Recording = dynamic(() => import('../components/Recording'), {
   ssr: true,
   loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
 });
+
+// const YouTubeVideo = dynamic(() => import('../components/YoutubeVideo'), {
+//   ssr: false,
+//   loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
+// });
 
 export const metadata: Metadata = {
   title: "AI Accent Analysis & Language Learning | lessay",
@@ -45,6 +51,8 @@ export const metadata: Metadata = {
 
 
 export default function Home() {
+
+
 
    const generateJsonLd = () => ({
     "@context": "https://schema.org",
@@ -87,6 +95,10 @@ export default function Home() {
           </p>
         </div>
 
+       
+          {/* <YouTubeVideo videoId="vNMmQsKgOgs" pageLoaded={true} /> */}
+          <YouTubeVideoWrapper videoId="vNMmQsKgOgs" /> 
+
         <div
           id="waitlist"
           className="sticky top-8 w-full max-w-4xl bg-white/80 dark:bg-black/80 backdrop-blur-sm p-6 rounded-xl border border-black/[.08] dark:border-white/[.145]"
@@ -109,6 +121,9 @@ export default function Home() {
         <Suspense fallback={<div className="animate-pulse h-40 bg-gray-200 rounded-xl" />}>
           <FeaturesDropdown />
         </Suspense>
+     
+        
+      
       </main>
 
       <Suspense fallback={<div className="h-20" />}>
