@@ -3,9 +3,7 @@ import { Suspense } from 'react';
 import SubscriptionForm from '../components/form';
 import type { Metadata } from 'next';
 import Script from 'next/script';
-import YouTubeVideoWrapper from '@/components/YoutubeWrapper';
 
-// Dynamically import non-critical components
 const FeaturesDropdown = dynamic(() => import('../components/FeaturesDropdown'), {
   loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
   ssr: true
@@ -19,11 +17,6 @@ const Recording = dynamic(() => import('../components/Recording'), {
   ssr: true,
   loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
 });
-
-// const YouTubeVideo = dynamic(() => import('../components/YoutubeVideo'), {
-//   ssr: false,
-//   loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
-// });
 
 export const metadata: Metadata = {
   title: "AI Accent Analysis & Language Learning | lessay",
