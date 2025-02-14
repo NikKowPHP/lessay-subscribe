@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
 
 const MAX_RECORDING_TIME_MS = 60000; // 1 minute
-const MAX_RECORDING_ATTEMPTS = 3;
+let  MAX_RECORDING_ATTEMPTS = 1;
 const ATTEMPTS_RESET_TIME_MS = 3600000; // 1 hour
 
 export default function Recording() {
@@ -35,6 +35,8 @@ export default function Recording() {
     }
     return 0;
   });
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribedBannerShowed, setIsSubscribedBannerShowed] = useState(false);
 
   const { showError } = useError();
 
@@ -46,9 +48,50 @@ export default function Recording() {
     }
   }, [recordingAttempts]);
 
+
+  useEffect(() => {
+    if (!isSubscribed) {
+      checkSubscription();
+      
+    } else {
+      MAX_RECORDING_ATTEMPTS = 1000;
+      if (!isSubscribedBannerShowed) {
+        showError('You are subscribed to the waitlist. You can now record unlimited times.', 'success');
+        setIsSubscribedBannerShowed(true);
+      }
+    }
+  }, [recordingAttempts, isSubscribed]);
+
+
+  const checkSubscription = async () => {
+    try {
+      const response = await fetch('/api/subscribe', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setIsSubscribed(data.isSubscribed);
+     
+    } catch (error: unknown) {
+      logger.error("Error sending recording:", error);
+      // showError(
+      //   'Failed to process your recording. Please try again in a moment.',
+      //   'error'
+      // );
+    }
+  }
+
   const startRecording = async () => {
     if (recordingAttempts >= MAX_RECORDING_ATTEMPTS) {
-      showError(`You have reached the maximum number of recording attempts (${MAX_RECORDING_ATTEMPTS}) in the last hour. Please try again later.`, 'warning');
+      showError(`You have reached the maximum number of recording attempts (${MAX_RECORDING_ATTEMPTS}) in the last hour. Subscribe to our waitlist to get unlimited analyses.`, 'warning');
       return;
     }
 

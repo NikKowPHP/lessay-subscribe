@@ -50,3 +50,21 @@ export async function POST(req: Request) {
     );
   }
 }
+export async function GET(req: Request) {
+  const ip_address =
+    req.headers.get("x-forwarded-for") ||
+    req.headers.get("x-real-ip") ||
+    "";
+
+  const { data, error } = await supabase.from('waitlist').select('*').eq('ip_address', ip_address);
+  if (error) {
+    return NextResponse.json(
+      { message: error.message, isSubscribed: false },
+      { status: 500 }
+    );
+  }
+  return NextResponse.json(
+    { message: "Subscription successful", isSubscribed: data.length > 0 },
+    { status: 200 }
+  );
+}

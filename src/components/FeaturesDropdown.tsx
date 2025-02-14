@@ -50,7 +50,7 @@ export default function FeaturesDropdown() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Adaptive Learning</h3>
+                <h2 className="font-semibold mb-1">Adaptive Learning</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Our algorithms tailor lessons to your current level and learning style.
                 </p>
@@ -72,7 +72,7 @@ export default function FeaturesDropdown() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Smart Progress</h3>
+                <h2 className="font-semibold mb-1">Smart Progress</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Focus on what matters - skip what you already know.
                 </p>
