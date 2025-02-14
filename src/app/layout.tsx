@@ -37,7 +37,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         
         {/* Add preload for critical assets */}
-        <link rel="preload" as="image" href="/og-image.jpg" />
+        <link rel="preload" as="image" href="/og-image.webp" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased relative`}

@@ -43,7 +43,7 @@ export const siteMetadata: Metadata = {
     siteName: "lessay",
     images: [
       {
-        url: `${baseUrl}/og-image.jpg`,
+        url: `${baseUrl}/og-image.webp`,
         width: 1200,
         height: 630,
       }
@@ -55,7 +55,7 @@ export const siteMetadata: Metadata = {
     card: "summary_large_image",
     title: "lessay - Learn Languages Smarter",
     description: "AI-powered adaptive language learning platform",
-    images: [`${baseUrl}/og-image.jpg`],
+    images: [`${baseUrl}/og-image.webp`],
     creator: "@lessay_app"
   },
   robots: {
