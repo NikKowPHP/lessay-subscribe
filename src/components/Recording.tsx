@@ -430,12 +430,12 @@ export default function Recording() {
                     <h3 className="font-semibold text-lg">{aiResponse.language_identification}</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Speaking Language</p>
                   </div>
-                  <div className="text-right">
+                  {/* <div className="text-right">
                     <span className="text-lg font-medium text-green-600 dark:text-green-400">
                       {aiResponse.confidence_level}
                     </span>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Confidence</p>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Native Language Card */}
