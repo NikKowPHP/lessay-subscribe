@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import RecordingService from '@/services/recordingService';
 import logger from '@/utils/logger';
+import { mockResponse } from '@/models/aiResponse.model';
 
 const API_KEY = process.env.AI_API_KEY;
 
@@ -28,7 +29,13 @@ export async function POST(req: NextRequest) {
       ); 
     }
     const recordingService = new RecordingService(API_KEY); 
-    const aiResponse = await recordingService.submitRecording(userIP, audioData, recordingTime, recordingSize);
+    let aiResponse;
+  
+    if (process.env.NODE_ENV === 'development') {
+      aiResponse = mockResponse
+    } else {
+       aiResponse = await recordingService.submitRecording(userIP, audioData, recordingTime, recordingSize);
+    }
     logger.log("AI Response:", aiResponse);
 
     return NextResponse.json(
