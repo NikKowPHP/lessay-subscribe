@@ -97,7 +97,7 @@ export default function Home() {
 
        
           {/* <YouTubeVideo videoId="vNMmQsKgOgs" pageLoaded={true} /> */}
-          <YouTubeVideoWrapper videoId="vNMmQsKgOgs" /> 
+          {/* <YouTubeVideoWrapper videoId="vNMmQsKgOgs" />  */}
 
         <div
           id="waitlist"
