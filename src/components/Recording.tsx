@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
 
 const MAX_RECORDING_TIME_MS = 60000; // 1 minute
-let  MAX_RECORDING_ATTEMPTS = 1;
+
 const ATTEMPTS_RESET_TIME_MS = 3600000; // 1 hour
 
 export default function Recording() {
@@ -19,6 +19,8 @@ export default function Recording() {
   const startTimeRef = useRef<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const recordingTimerInterval = useRef<NodeJS.Timeout | null>(null); // Ref to hold timer interval ID
+
+  const [maxRecordingAttempts, setMaxRecordingAttempts] = useState<number>(1);
   const [recordingAttempts, setRecordingAttempts] = useState<number>(() => {
     if (typeof window === 'undefined') return 0; // SSR
     const storedAttempts = localStorage.getItem('recordingAttempts');
@@ -49,19 +51,21 @@ export default function Recording() {
   }, [recordingAttempts]);
 
 
+
+
   useEffect(() => {
-    if (!isSubscribed) {
-      checkSubscription();
-      
-    } else {
-      MAX_RECORDING_ATTEMPTS = 1000;
+    checkSubscription();
+  }, []);
+
+  useEffect(() => {
+    if (isSubscribed) {
+      setMaxRecordingAttempts(1000);
       if (!isSubscribedBannerShowed) {
         showError('You are subscribed to the waitlist. You can now record unlimited times.', 'success');
         setIsSubscribedBannerShowed(true);
       }
     }
-  }, [recordingAttempts, isSubscribed]);
-
+  }, [isSubscribed]);
 
   const checkSubscription = async () => {
     try {
@@ -90,8 +94,8 @@ export default function Recording() {
   }
 
   const startRecording = async () => {
-    if (recordingAttempts >= MAX_RECORDING_ATTEMPTS) {
-      showError(`You have reached the maximum number of recording attempts (${MAX_RECORDING_ATTEMPTS}) in the last hour. Subscribe to our waitlist to get unlimited analyses.`, 'warning');
+    if (recordingAttempts >= maxRecordingAttempts) {
+      showError(`You have reached the maximum number of recording attempts (${maxRecordingAttempts}) in the last hour. Subscribe to our waitlist to get unlimited analyses.`, 'warning');
       return;
     }
 

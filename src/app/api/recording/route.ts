@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const recordingService = new RecordingService(API_KEY); 
     let aiResponse;
   
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.MOCK_AI_RESPONSE === 'true') {
       aiResponse = mockResponse
     } else {
        aiResponse = await recordingService.submitRecording(userIP, audioData, recordingTime, recordingSize);
