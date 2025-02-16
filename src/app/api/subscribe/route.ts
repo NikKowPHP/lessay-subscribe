@@ -26,6 +26,15 @@ export async function POST(req: Request) {
       req.headers.get("x-real-ip") ||
       "";
 
+    // Check if email already exists
+    const { data } = await supabase.from('waitlist').select('*').eq('email', email);
+    if (data && data.length > 0) {
+      return NextResponse.json(
+        { message: "Email already exists" },
+        { status: 400 }
+      );
+    }
+
     // Insert the email along with additional metadata into the "waitlist" table
     const { error } = await supabase
       .from('waitlist')
@@ -50,6 +59,7 @@ export async function POST(req: Request) {
     );
   }
 }
+
 export async function GET(req: Request) {
   const ip_address =
     req.headers.get("x-forwarded-for") ||
