@@ -58,6 +58,7 @@ export default function Recording() {
   }, []);
 
   useEffect(() => {
+    console.log('isSubscribed', isSubscribed);
     if (isSubscribed) {
       setMaxRecordingAttempts(1000);
       if (!isSubscribedBannerShowed) {
