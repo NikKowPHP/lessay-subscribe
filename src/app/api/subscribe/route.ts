@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     if (data && data.length > 0) {
       return NextResponse.json(
         { message: "Email already exists" },
-        { status: 400 }
+        { status: 200 }
       );
     }
 
