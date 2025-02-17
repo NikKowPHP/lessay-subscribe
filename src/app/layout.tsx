@@ -22,6 +22,7 @@ const geistMono = Geist_Mono({
 
 
 import { siteMetadata } from '@/utils/metadata';
+import { SubscriptionProvider } from "@/context/SubscriptionContext";
 export const metadata = siteMetadata;
 
 export default function RootLayout({
@@ -43,8 +44,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased relative`}
       >
         <ErrorProvider>
-          {children}
+        <SubscriptionProvider>
+            {children}
+        </SubscriptionProvider>
         </ErrorProvider>
+     
         <SpeedInsights />
         <Analytics />
       </body>
