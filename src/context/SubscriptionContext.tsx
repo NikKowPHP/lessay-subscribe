@@ -3,6 +3,7 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import { useError } from '@/hooks/useError';
 import logger from '@/utils/logger';
+import { FormService } from '@/services/formService';
 
 interface SubscriptionContextType {
   isSubscribed: boolean;
@@ -10,11 +11,22 @@ interface SubscriptionContextType {
   isSubscribedBannerShowed: boolean;
   setIsSubscribedBannerShowed: (isSubscribedBannerShowed: boolean) => void;
   checkSubscription: () => Promise<void>;
+  handleSubmit: (e: React.FormEvent) => Promise<void>;
+  status: 'idle' | 'loading' | 'success' | 'error';
+  email: string;
+  setEmail: (email: string) => void;
+  errorMessage: string;
+  setErrorMessage: (errorMessage: string) => void;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export const SubscriptionProvider = ({ children }: { children: React.ReactNode }) => {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle');
+  const [errorMessage, setErrorMessage] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSubscribedBannerShowed, setIsSubscribedBannerShowed] = useState(false);
   const { showError } = useError();
@@ -47,12 +59,35 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('loading');
+    setErrorMessage('');
+
+    try {
+      await FormService.submitEmail(email);
+      setStatus('success');
+      setEmail('');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Subscription failed'
+      );
+    }
+  };
+
   const value: SubscriptionContextType = {
     isSubscribed,
     setIsSubscribed,
     isSubscribedBannerShowed,
     setIsSubscribedBannerShowed,
     checkSubscription,
+    handleSubmit,
+    status,
+    email,
+    setEmail,
+    errorMessage,
+    setErrorMessage
   };
 
   return (

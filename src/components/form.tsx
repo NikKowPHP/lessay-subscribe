@@ -1,31 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { FormService } from '../services/formService';
+import { useSubscription } from '@/context/SubscriptionContext';
 
 export default function SubscriptionForm() {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<
-    'idle' | 'loading' | 'success' | 'error'
-  >('idle');
-  const [errorMessage, setErrorMessage] = useState('');
+  const { handleSubmit, status, email, setEmail, errorMessage } = useSubscription();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setStatus('loading');
-    setErrorMessage('');
 
-    try {
-      await FormService.submitEmail(email);
-      setStatus('success');
-      setEmail('');
-    } catch (error) {
-      setStatus('error');
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Subscription failed'
-      );
-    }
-  };
 
   return (
     <div className="w-full ">
