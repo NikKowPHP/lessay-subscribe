@@ -13,14 +13,21 @@ export class FormService {
       // You could add more fields here if needed, e.g., languagePreference: 'en'
     };
     try {
-      const response = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      let response;
+
+      if (process.env.NODE_ENV === 'development') {
+        response = { ok: true, json: () => Promise.resolve({ isSubscribed: true }) };
+
+      } else { 
+        response = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
       });
 
+      }
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Subscription failed');

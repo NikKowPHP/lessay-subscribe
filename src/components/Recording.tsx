@@ -4,12 +4,14 @@ import { AIResponse, AIResponseModel } from '@/models/aiResponse.model';
 import logger from '@/utils/logger';
 import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
+import { useSubscription } from '@/context/SubscriptionContext';
 
 const MAX_RECORDING_TIME_MS = 60000; // 1 minute
 
 const ATTEMPTS_RESET_TIME_MS = 3600000; // 1 hour
 
 export default function Recording() {
+  const { isSubscribed, isSubscribedBannerShowed, setIsSubscribedBannerShowed } = useSubscription();
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState<string | null>(null);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
@@ -37,8 +39,6 @@ export default function Recording() {
     }
     return 0;
   });
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isSubscribedBannerShowed, setIsSubscribedBannerShowed] = useState(false);
 
   const { showError } = useError();
 
@@ -53,9 +53,6 @@ export default function Recording() {
 
 
 
-  useEffect(() => {
-    checkSubscription();
-  }, []);
 
   useEffect(() => {
     console.log('isSubscribed', isSubscribed);
@@ -68,31 +65,7 @@ export default function Recording() {
     }
   }, [isSubscribed]);
 
-  const checkSubscription = async () => {
-    try {
-      const response = await fetch('/api/subscribe', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setIsSubscribed(data.isSubscribed);
-     
-    } catch (error: unknown) {
-      logger.error("Error sending recording:", error);
-      // showError(
-      //   'Failed to process your recording. Please try again in a moment.',
-      //   'error'
-      // );
-    }
-  }
+ 
 
   const startRecording = async () => {
     if (recordingAttempts >= maxRecordingAttempts) {

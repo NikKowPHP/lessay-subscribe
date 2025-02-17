@@ -68,6 +68,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       await FormService.submitEmail(email);
       setStatus('success');
       setEmail('');
+      setIsSubscribed(true);
     } catch (error) {
       setStatus('error');
       setErrorMessage(
