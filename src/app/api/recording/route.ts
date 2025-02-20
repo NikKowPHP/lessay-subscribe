@@ -5,10 +5,33 @@ import logger from '@/utils/logger';
 import { mockResponse } from '@/models/aiResponse.model';
 
 const API_KEY = process.env.AI_API_KEY;
+// Set maximum allowed payload size to 50MB
+const MAX_PAYLOAD_SIZE = 50 * 1024 * 1024; // 50MB in bytes
 
 export async function POST(req: NextRequest) {
-  const userIP = req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || '';
-  const data = await req.json();
+  // Check payload size using the Content-Length header if available
+  const contentLength = req.headers.get('content-length');
+  if (contentLength && Number(contentLength) > MAX_PAYLOAD_SIZE) {
+    return NextResponse.json(
+      { message: "Payload Too Large" },
+      { status: 413 }
+    );
+  }
+
+  const userIP =
+    req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || '';
+
+  // Parse the request body. Wrapping this in try/catch for robustness.
+  let data;
+  try {
+    data = await req.json();
+  } catch (err) {
+    logger.error('Error parsing JSON payload:', err);
+    return NextResponse.json(
+      { message: "Invalid JSON payload" },
+      { status: 400 }
+    );
+  }
 
   logger.log('Received data:', data);
   logger.log('User IP:', userIP);
@@ -32,9 +55,14 @@ export async function POST(req: NextRequest) {
     let aiResponse;
   
     if (process.env.MOCK_AI_RESPONSE === 'true') {
-      aiResponse = mockResponse
+      aiResponse = mockResponse;
     } else {
-       aiResponse = await recordingService.submitRecording(userIP, audioData, recordingTime, recordingSize);
+      aiResponse = await recordingService.submitRecording(
+        userIP,
+        audioData,
+        recordingTime,
+        recordingSize
+      );
     }
     logger.log("AI Response:", aiResponse);
 
@@ -43,7 +71,8 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred';
     logger.error("Subscription error:", errorMessage);
     return NextResponse.json(
       { message: "Internal server error", error: errorMessage },
