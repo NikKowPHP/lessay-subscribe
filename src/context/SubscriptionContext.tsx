@@ -50,7 +50,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
       const data = await response.json();
       setIsSubscribed(data.isSubscribed);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Error checking subscription:", error);
       showError(
         'Failed to check your subscription status. Please try again later.',
