@@ -77,9 +77,7 @@ export default function Home() {
       <main className="flex flex-col gap-8 row-start-2 items-center max-w-full sm:max-w-[1000px]">
         <div className="text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-            <span
-              className="bg-gradient-to-r from-black to-black/70 dark:from-white dark:to-white/70 inline-block bg-clip-text text-transparent"
-            >
+            <span className="bg-gradient-to-r from-black to-black/70 dark:from-white dark:to-white/70 inline-block bg-clip-text text-transparent">
               lessay
             </span>
           </h1>
@@ -88,9 +86,8 @@ export default function Home() {
           </p>
         </div>
 
-       
-          {/* <YouTubeVideo videoId="vNMmQsKgOgs" pageLoaded={true} /> */}
-          {/* <YouTubeVideoWrapper videoId="vNMmQsKgOgs" />  */}
+        {/* <YouTubeVideo videoId="vNMmQsKgOgs" pageLoaded={true} /> */}
+        {/* <YouTubeVideoWrapper videoId="vNMmQsKgOgs" />  */}
 
         <div
           id="waitlist"
@@ -102,21 +99,35 @@ export default function Home() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
             Be the first to experience smarter language learning.
           </p>
-          <Suspense fallback={<div className="animate-pulse h-10 bg-gray-200 rounded w-full" />}>
+          <Suspense
+            fallback={
+              <div className="animate-pulse h-10 bg-gray-200 rounded w-full" />
+            }
+          >
             <SubscriptionForm />
           </Suspense>
         </div>
 
-         <Suspense fallback={<div className="animate-pulse h-40 bg-gray-200 rounded-xl" />}>
+        <Suspense
+          fallback={
+            <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />
+          }
+        >
           <Recording />
         </Suspense>
 
-        <Suspense fallback={<div className="animate-pulse h-40 bg-gray-200 rounded-xl" />}>
+        <Suspense
+          fallback={
+            <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />
+          }
+        >
           <FeaturesDropdown />
         </Suspense>
-     
-        
-      
+
+        <div>
+          <h3 className="text-xl font-semibold mb-2 text-center">Contact Us</h3>
+          <a href="mailto:lessay.tech@gmail.com">lessay.tech@gmail.com</a>
+        </div>
       </main>
 
       <Suspense fallback={<div className="h-20" />}>
