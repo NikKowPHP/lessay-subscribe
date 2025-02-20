@@ -50,6 +50,7 @@ class AIService {
     gemini_2_flash_exp: "gemini-2.0-flash-exp",
     gemini_2_0_thinking_exp: "gemini-2.0-flash-thinking-exp-01-21",
     gemini_2_0_flash: "gemini-2.0-flash",
+    gemini_2_0_flash_lite: "gemini-2.0-flash-lite-preview-02-05",
   }
 
   /**
@@ -75,7 +76,7 @@ class AIService {
   }
 
   async generateContent(audioDataBase64: string, userMessage: string, systemMessage: string): Promise<Record<string, unknown>> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AIService.models.gemini_2_0_flash}:generateContent?key=${this.apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AIService.models.gemini_2_flash_exp}:generateContent?key=${this.apiKey}`;
     
     const data = {
       contents: [{
@@ -120,10 +121,17 @@ class AIService {
       
       // Extract the JSON string from the response
       const jsonString = response.data.candidates[0].content.parts[0].text;
+
+      const cleanedJson = jsonString
+      .replace(/```json/g, '')
+      .replace(/```/g, '')
+      .trim();
+      logger.log("Cleaned JSON:", cleanedJson);
+
       
       // Parse the JSON string to get the actual analysis object
       try {
-        const analysisData = JSON.parse(jsonString);
+        const analysisData = JSON.parse(cleanedJson);
         // Return the first item in the array as that's our analysis
         return analysisData[0];
       } catch (parseError) {

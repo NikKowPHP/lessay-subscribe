@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  logger.log('Received data:', data);
+  // logger.log('Received data:', data);
   logger.log('User IP:', userIP);
 
   try {

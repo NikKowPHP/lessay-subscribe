@@ -3,7 +3,7 @@ class MessageGenerator {
 
   generateUserMessage(recording: string): string {
     return `
-      Please analyze this spoken language sample and provide feedback directly to the speaker:
+      Please analyze this spoken language sample and provide feedback :
       "${recording}"
 
      First, identify the language being spoken.
