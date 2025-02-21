@@ -263,7 +263,7 @@ export default function Recording() {
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
       const data = await response.json();
-      const transformedResponse = AIResponseModel.fromJson(data.aiResponse);
+      const transformedResponse = AIResponseModel.fromJson(data.aiResponse, isDeepAnalysis);
       setAiResponse(transformedResponse);
     } catch (error) {
       logger.error('Error sending recording:', error);
