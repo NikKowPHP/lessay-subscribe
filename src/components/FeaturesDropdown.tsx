@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Mic, GraduationCap, Lightbulb } from "lucide-react";
 
 interface FeatureCardProps {
   title: string;
@@ -32,60 +33,18 @@ export default function FeaturesDropdown() {
       title: "Pronunciation Analysis: How it works",
       description:
         "Our AI uses Automatic Speech Recognition (ASR) and advanced acoustic modeling to analyze your speech. Leveraging a massive language model, it evaluates phonetic features, prosodic elements, directly from the audio, providing a comprehensive pronunciation assessment.",
-      icon: (
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-      ),
+        icon: <Mic className="w-5 h-5" />,
     },
     {
       title: "Adaptive Learning",
       description:
         "Our algorithms tailor lessons to your current level and learning style.",
-      icon: (
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 10V3L4 14h7v7l9-11h-7z"
-          />
-        </svg>
-      ),
+        icon: <GraduationCap className="w-5 h-5" />,
     },
     {
       title: "Smart Progress",
       description: "Focus on what matters - skip what you already know.",
-      icon: (
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
+      icon: <Lightbulb className="w-5 h-5" />,
     }
   ];
 
