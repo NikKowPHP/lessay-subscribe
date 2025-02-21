@@ -16,21 +16,30 @@ class RecordingService {
     this.metricsService = new MetricsService();
   }
 
+
+  async uploadFile(
+    audioBuffer: Buffer,
+    mimeType: string,
+    fileName: string
+  ): Promise<string> {
+    return await this.aiService.uploadFile(audioBuffer, mimeType, fileName);
+  }
+
   async submitRecording(
     userIP: string, 
-    audioData: string,  // Changed from 'recording' to 'audioData'
+    fileUri: string,  // Changed from audioData to fileUri
     recordingTime: number, 
     recordingSize: number
   ): Promise<Record<string, unknown>> {
     try {
-      const userMessage = this.messageGenerator.generateUserMessage(audioData);
+      const userMessage = this.messageGenerator.generateUserMessage();
       const systemMessage = this.messageGenerator.generateSystemMessage();
 
       // Generate content using AI service
       const startTime = Date.now();
 
       const aiResponse = await this.aiService.generateContent(
-        audioData,  // Pass the base64 string directly
+        fileUri,  // Now passing file URI instead of base64
         userMessage, 
         systemMessage
       );
@@ -41,7 +50,7 @@ class RecordingService {
       // Collect interaction data
       await this.metricsService.collectInteractionData(
         userIP, 
-        audioData, 
+        fileUri,  // Store file URI instead of raw data
         aiResponse, 
         recordingTime, 
         responseTime, 

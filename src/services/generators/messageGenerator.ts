@@ -1,10 +1,9 @@
 class MessageGenerator {
   constructor() {}
 
-  generateUserMessage(recording: string): string {
+  generateUserMessage(): string {
     return `
-      Please analyze this spoken language sample and provide feedback :
-      "${recording}"
+      Please analyze this spoken language sample and provide feedback:
 
      First, identify the language being spoken.
       Then provide detailed feedback on:

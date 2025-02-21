@@ -75,24 +75,61 @@ class AIService {
     return undefined;
   }
 
-  async generateContent(audioDataBase64: string, userMessage: string, systemMessage: string): Promise<Record<string, unknown>> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AIService.models.gemini_2_flash_exp}:generateContent?key=${this.apiKey}`;
+  async uploadFile(audioBuffer: Buffer, mimeType: string, displayName: string): Promise<string> {
+    const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${this.apiKey}`;
+    
+    const config: Record<string, unknown> = {
+      headers: {
+        'X-Goog-Upload-Command': 'start, upload, finalize',
+        'X-Goog-Upload-Header-Content-Length': audioBuffer.length.toString(),
+        'X-Goog-Upload-Header-Content-Type': mimeType,
+        'Content-Type': 'application/json'
+      }
+    };
+
+    if (this.proxyAgent) {
+      config.httpsAgent = this.proxyAgent;
+      config.proxy = false;
+    }
+
+    try {
+      const response = await axios.post(uploadUrl, {
+        file: { display_name: displayName }
+      }, config);
+      
+      // Upload the binary data
+      await axios.put(response.headers['x-goog-upload-url'], audioBuffer, {
+        headers: {
+          'Content-Length': audioBuffer.length.toString(),
+          'Content-Type': mimeType
+        }
+      });
+
+      return response.data.file.uri;
+    } catch (error) {
+      logger.error("File upload error:", error);
+      throw new Error("Failed to upload audio file");
+    }
+  }
+
+  async generateContent(fileUri: string, userMessage: string, systemMessage: string): Promise<Record<string, unknown>> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AIService.models.gemini_2_pro_exp}:generateContent?key=${this.apiKey}`;
     
     const data = {
       contents: [{
         role: "user",
         parts: [
           {
-            inlineData: {
-              data: audioDataBase64,
-              mimeType: "audio/mpeg"
+            fileData: {
+              fileUri: fileUri,
+              mimeType: "audio/aac-adts"
             }
           },
           { text: userMessage }
         ]
       }],
       systemInstruction: {
-        role: "user",
+        role: "system",
         parts: [{ text: systemMessage }]
       },
       generationConfig: {

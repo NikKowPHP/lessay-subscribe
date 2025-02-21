@@ -51,15 +51,24 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       ); 
     }
-    const recordingService = new RecordingService(API_KEY); 
+
+    // Convert base64 to Buffer
+    const audioBuffer = Buffer.from(audioData, 'base64');
+    
+    const recordingService = new RecordingService(API_KEY);
+    const fileUri = await recordingService.uploadFile(
+      audioBuffer,
+      'audio/aac-adts',
+      'user-recording.aac'
+    );
+
     let aiResponse;
-  
     if (process.env.MOCK_AI_RESPONSE === 'true') {
       aiResponse = mockResponse;
     } else {
       aiResponse = await recordingService.submitRecording(
         userIP,
-        audioData,
+        fileUri,  // Now using file URI instead of base64
         recordingTime,
         recordingSize
       );
