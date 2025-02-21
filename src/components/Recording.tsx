@@ -22,7 +22,7 @@ export default function Recording() {
   const [isProcessing, setIsProcessing] = useState(false);
   const recordingTimerInterval = useRef<NodeJS.Timeout | null>(null); // Ref to hold timer interval ID
 
-  const [maxRecordingAttempts, setMaxRecordingAttempts] = useState<number>(1);
+  const [maxRecordingAttempts, setMaxRecordingAttempts] = useState<number>(1000);
   const [recordingAttempts, setRecordingAttempts] = useState<number>(() => {
     if (typeof window === 'undefined') return 0; // SSR
     const storedAttempts = localStorage.getItem('recordingAttempts');
@@ -127,12 +127,14 @@ export default function Recording() {
         const timeDiff = endTime - startTimeRef.current;
         const blobSize = audioBlob.size;
 
-        // Convert Blob to base64 before sending
-        const base64Data = await blobToBase64(audioBlob);
-        await handleSend(base64Data, timeDiff, blobSize);
+        // Create File object for upload
+        const audioFile = new File([audioBlob], 'recording.aac', { 
+          type: 'audio/aac-adts' 
+        });
+        
+        await handleSend(audioFile, timeDiff, blobSize);
         setIsProcessed(true);
         
-        // Clean up the stream tracks when done
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -217,60 +219,37 @@ export default function Recording() {
     }
   };
 
-  // Helper function to convert Blob to base64
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          // Remove the data URL prefix (e.g., "data:audio/mpeg;base64,")
-          const base64 = reader.result.split(',')[1];
-          resolve(base64);
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
-
-  // Modify handleSend to track when analysis is complete
+  // Updated handleSend to use File instead of base64
   const handleSend = async (
-    audioData: string,
+    audioFile: File,
     recTime: number,
     recSize: number
   ) => {
-    if (!audioData || !recTime || !recSize) {
+    if (!audioFile || !recTime || !recSize) {
       showError('No audio recorded. Please try again.', 'warning');
       return;
     }
     
     setIsProcessing(true);
     try {
+      const formData = new FormData();
+      formData.append('audio', audioFile);
+      formData.append('recordingTime', recTime.toString());
+      formData.append('recordingSize', recSize.toString());
+
       const response = await fetch('/api/recording', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          audioData: audioData,
-          recordingTime: recTime,
-          recordingSize: recSize,
-        }),
+        body: formData
       });
 
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
       const data = await response.json();
       const transformedResponse = AIResponseModel.fromJson(data.aiResponse);
       setAiResponse(transformedResponse);
-    } catch (error: unknown) {
+    } catch (error) {
       logger.error("Error sending recording:", error);
-      showError(
-        'Failed to process your recording. Please try again in a moment.',
-        'error'
-      );
+      showError('Failed to process recording. Please try again.', 'error');
     } finally {
       setIsProcessing(false);
     }

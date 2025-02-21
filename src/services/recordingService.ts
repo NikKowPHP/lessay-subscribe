@@ -43,6 +43,8 @@ class RecordingService {
         userMessage, 
         systemMessage
       );
+
+      logger.log("AI Response:", aiResponse);
       // const aiResponse = mockResponse; // Use mock response
       const endTime = Date.now();
       const responseTime = endTime - startTime;

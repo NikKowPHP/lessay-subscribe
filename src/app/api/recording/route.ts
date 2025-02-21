@@ -1,50 +1,48 @@
-'use server'
+// 'use server'
 import { NextRequest, NextResponse } from 'next/server';
 import RecordingService from '@/services/recordingService';
 import logger from '@/utils/logger';
 import { mockResponse } from '@/models/aiResponse.model';
+import { IncomingForm } from 'formidable';
+import { readFile } from 'fs/promises';
+import { IncomingMessage } from 'http';
 
 const API_KEY = process.env.AI_API_KEY;
 // Set maximum allowed payload size to 50MB
 const MAX_PAYLOAD_SIZE = 50 * 1024 * 1024; // 50MB in bytes
 
+export const config = {
+  api: {
+    bodyParser: false, // Disable default body parsing
+  },
+};
+
 export async function POST(req: NextRequest) {
-  // Check payload size using the Content-Length header if available
-  const contentLength = req.headers.get('content-length');
-  if (contentLength && Number(contentLength) > MAX_PAYLOAD_SIZE) {
-    return NextResponse.json(
-      { message: "Payload Too Large" },
-      { status: 413 }
-    );
-  }
-
-  const userIP =
-    req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || '';
-
-  // Parse the request body. Wrapping this in try/catch for robustness.
-  let data;
   try {
-    data = await req.json();
-  } catch (err) {
-    logger.error('Error parsing JSON payload:', err);
-    return NextResponse.json(
-      { message: "Invalid JSON payload" },
-      { status: 400 }
-    );
-  }
+    const formData = await new Promise<{ fields: any; files: any }>((resolve, reject) => {
+      const form = new IncomingForm();
+      form.parse(req as unknown as IncomingMessage, (err, fields, files) => {
+        if (err) reject(err);
+        resolve({ fields, files });
+      });
+    });
 
-  // logger.log('Received data:', data);
-  logger.log('User IP:', userIP);
+    const audioFile = formData.files.audio?.[0];
+    const recordingTime = formData.fields.recordingTime?.[0];
+    const recordingSize = formData.fields.recordingSize?.[0];
 
-  try {
-    const { audioData, recordingTime, recordingSize } = data;
-
-    if (!audioData || !recordingTime || !recordingSize) {
+    if (!audioFile || !recordingTime || !recordingSize) {
       return NextResponse.json(
-        { message: "Missing audioData or recordingTime" },
+        { message: "Missing required fields" },
         { status: 400 }
       );
     }
+
+    const userIP =
+      req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || '';
+
+    // logger.log('User IP:', userIP);
+
     if (!API_KEY) {
       return NextResponse.json(
         { message: "API KEY IS NOT PROVIDED" },
@@ -52,15 +50,16 @@ export async function POST(req: NextRequest) {
       ); 
     }
 
-    // Convert base64 to Buffer
-    const audioBuffer = Buffer.from(audioData, 'base64');
+    // Read file buffer
+    const audioBuffer = await readFile(audioFile.filepath);
     
     const recordingService = new RecordingService(API_KEY);
     const fileUri = await recordingService.uploadFile(
       audioBuffer,
-      'audio/aac-adts',
-      'user-recording.aac'
+      audioFile.mimetype || 'audio/aac-adts',
+      audioFile.originalFilename || 'recording.aac'
     );
+    logger.log("File URI:", fileUri);
 
     let aiResponse;
     if (process.env.MOCK_AI_RESPONSE === 'true') {
@@ -69,8 +68,8 @@ export async function POST(req: NextRequest) {
       aiResponse = await recordingService.submitRecording(
         userIP,
         fileUri,  // Now using file URI instead of base64
-        recordingTime,
-        recordingSize
+        Number(recordingTime),
+        Number(recordingSize)
       );
     }
     logger.log("AI Response:", aiResponse);
