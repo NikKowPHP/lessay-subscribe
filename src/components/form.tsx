@@ -49,7 +49,7 @@ export default function SubscriptionForm() {
         </p>
       )}
       <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
-        We collect your email to gauge interest in our service and understand user engagement. We will not send you any unsolicited messages.
+        We collect your email to gauge interest in our service and understand user engagement. <b>We will not send you any unsolicited messages.</b>
       </p>
     </div>
   );
