@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import RecordingService from '@/services/recordingService';
 import logger from '@/utils/logger';
-import { mockResponse } from '@/models/aiResponse.model';
+import { mockDetailedResponse, mockResponse } from '@/models/aiResponse.model';
 import { IncomingForm } from 'formidable';
 import { readFile } from 'fs/promises';
 import { Readable } from 'stream';
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     let aiResponse;
     if (process.env.MOCK_AI_RESPONSE === 'true') {
-      aiResponse = mockResponse;
+      aiResponse = isDeepAnalysis ? mockDetailedResponse : mockResponse;
     } else {
       aiResponse = await recordingService.submitRecording(
         userIP,

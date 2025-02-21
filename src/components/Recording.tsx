@@ -1,6 +1,6 @@
 'use client';
 
-import { AIResponse, DetailedAIResponse } from '@/models/aiResponse.model';
+import { AIResponse, DetailedAIResponse  } from '@/models/aiResponse.model';
 import logger from '@/utils/logger';
 import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
@@ -257,14 +257,18 @@ export default function Recording() {
         formData.append('isDeepAnalysis', 'true');
       }
 
-      const response = await fetch('/api/recording', {
-        method: 'POST',
-        body: formData,
-      });
+   
+
+       const response = await fetch('/api/recording', {
+          method: 'POST',
+          body: formData,
+        });
+      
 
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
-      const data = await response.json();
+      const data = await response.json() ;
+
       let aiResponse;
       if (isDeepAnalysis) {
         aiResponse = data.aiResponse as DetailedAIResponse;
@@ -702,9 +706,9 @@ export default function Recording() {
                             <span className="text-sm text-gray-600">at {vowel.timestamp}s</span>
                           </div>
                           <p className="text-sm mb-1">Example: "{vowel.example_word}"</p>
-                          <div className="flex justify-between text-sm">
-                            <span>Target: {vowel.target_realization}</span>
-                            <span>Observed: {vowel.observed_realization}</span>
+                          <div className="flex flex-col sm:flex-row gap-2 justify-between text-sm">
+                            <span className="font-bold">Target: {vowel.target_realization}</span>
+                            <span className="font-bold">Observed: {vowel.observed_realization}</span>
                           </div>
                           <p className="text-sm text-gray-600 mt-1">{vowel.analysis}</p>
                         </div>
