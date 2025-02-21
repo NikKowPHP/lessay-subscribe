@@ -61,7 +61,9 @@ export async function POST(req: NextRequest) {
     const audioFile = files.audio?.[0];
     const recordingTime = fields.recordingTime?.[0];
     const recordingSize = fields.recordingSize?.[0];
+    const isDeepAnalysis = fields.isDeepAnalysis?.[0] === 'true';
 
+    logger.log('isDeepAnalysis:', isDeepAnalysis);
     if (!audioFile || !recordingTime || !recordingSize) {
       return NextResponse.json(
         { message: "Missing required fields" },
