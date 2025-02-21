@@ -251,6 +251,9 @@ export default function Recording() {
       formData.append('audio', audioFile);
       formData.append('recordingTime', recTime.toString());
       formData.append('recordingSize', recSize.toString());
+      if (isDeepAnalysis) {
+        formData.append('isDeepAnalysis', 'true');
+      }
 
       const response = await fetch('/api/recording', {
         method: 'POST',
