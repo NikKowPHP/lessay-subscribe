@@ -77,6 +77,27 @@ class AIService {
   }
 
   /**
+   * A generic helper function to retry an async operation.
+   * Retries the operation up to "attempts" times with an increasing delay.
+   */
+  private async retryOperation<T>(operation: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> {
+    let lastError: any;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        logger.error(`Operation failed, attempt ${attempt + 1} of ${attempts}.`, error);
+        if (attempt < attempts - 1) {
+          // Exponential backoff: wait longer with each attempt.
+          await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
+        }
+      }
+    }
+    throw lastError;
+  }
+
+  /**
    * Upload file using a single multipart/related request.
    *
    * This method emulates the Google AI Studio curl example:
@@ -126,15 +147,12 @@ class AIService {
       config.proxy = false;
     }
 
-    try {
+    return await this.retryOperation(async () => {
       const response = await axios.post(uploadUrl, form, config);
       logger.log("Upload response:", response.data);
       // Return the file URI from the response.
       return response.data.file.uri;
-    } catch (error) {
-      logger.error("File upload error:", error);
-      throw new Error("Failed to upload audio file");
-    }
+    });
   }
 
   async generateContent(fileUri: string, userMessage: string, systemMessage: string): Promise<Record<string, unknown>> {
@@ -166,7 +184,6 @@ class AIService {
       }
     };
 
-    // Axios configuration object
     const config: Record<string, unknown> = {
       headers: {
         'Content-Type': 'application/json'
@@ -178,20 +195,17 @@ class AIService {
       config.proxy = false;
     }
 
-    try {
+    return await this.retryOperation(async () => {
       const response = await axios.post<GeminiResponse>(url, data, config);
       
       // Extract the JSON string from the response
       const jsonString = response.data.candidates[0].content.parts[0].text;
-
       const cleanedJson = jsonString
-      .replace(/```json/g, '')
-      .replace(/```/g, '')
-      .trim();
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
       logger.log("Cleaned JSON:", cleanedJson);
 
-      
-      // Parse the JSON string to get the actual analysis object
       try {
         const analysisData = JSON.parse(cleanedJson);
         // Return the first item in the array as that's our analysis
@@ -200,18 +214,7 @@ class AIService {
         logger.error("Error parsing Gemini response:", parseError);
         throw new Error("Failed to parse AI response");
       }
-    } catch (error: unknown) {
-      // Comprehensive error handling
-      if (axios.isAxiosError(error)) {
-        logger.error("Axios error calling Gemini API:");
-        logger.error("Status:", error.response?.status);
-        logger.error("Data:", error.response?.data);
-        logger.error("Config:", error.config);
-      } else {
-        logger.error("Unexpected error:", error);
-      }
-      throw new Error(`Failed to generate content from AI: ${error}`);
-    }
+    });
   }
 }
 

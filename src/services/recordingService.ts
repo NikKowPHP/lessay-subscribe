@@ -16,18 +16,37 @@ class RecordingService {
     this.metricsService = new MetricsService();
   }
 
+  /**
+   * A generic helper function to retry an async operation.
+   */
+  private async retryOperation<T>(operation: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> {
+    let lastError: any;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        logger.error(`RecordingService operation failed, attempt ${attempt + 1} of ${attempts}.`, error);
+        if (attempt < attempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
+        }
+      }
+    }
+    throw lastError;
+  }
 
   async uploadFile(
     audioBuffer: Buffer,
     mimeType: string,
     fileName: string
   ): Promise<string> {
+    // The retries for uploadFile are already handled in AIService.uploadFile.
     return await this.aiService.uploadFile(audioBuffer, mimeType, fileName);
   }
 
   async submitRecording(
     userIP: string, 
-    fileUri: string,  // Changed from audioData to fileUri
+    fileUri: string,  // File URI returned from the upload
     recordingTime: number, 
     recordingSize: number
   ): Promise<Record<string, unknown>> {
@@ -35,28 +54,25 @@ class RecordingService {
       const userMessage = this.messageGenerator.generateUserMessage();
       const systemMessage = this.messageGenerator.generateSystemMessage();
 
-      // Generate content using AI service
+      // Generate content using AI service with retry logic.
       const startTime = Date.now();
-
-      const aiResponse = await this.aiService.generateContent(
-        fileUri,  // Now passing file URI instead of base64
-        userMessage, 
-        systemMessage
+      const aiResponse = await this.retryOperation(() =>
+        this.aiService.generateContent(fileUri, userMessage, systemMessage)
       );
-
       logger.log("AI Response:", aiResponse);
-      // const aiResponse = mockResponse; // Use mock response
       const endTime = Date.now();
       const responseTime = endTime - startTime;
 
-      // Collect interaction data
-      await this.metricsService.collectInteractionData(
-        userIP, 
-        fileUri,  // Store file URI instead of raw data
-        aiResponse, 
-        recordingTime, 
-        responseTime, 
-        recordingSize
+      // Collect interaction data with retry logic.
+      await this.retryOperation(() =>
+        this.metricsService.collectInteractionData(
+          userIP, 
+          fileUri, 
+          aiResponse, 
+          recordingTime, 
+          responseTime, 
+          recordingSize
+        )
       );
 
       return aiResponse;
@@ -65,14 +81,6 @@ class RecordingService {
       throw error;
     }
   }
-  
-
-
-
-
 }
-
-
-
 
 export default RecordingService;
