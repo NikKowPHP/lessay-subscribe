@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import RecordingService from '@/services/recordingService';
 import logger from '@/utils/logger';
 import { mockDetailedResponse, mockResponse } from '@/models/aiResponse.model';
-import { IncomingForm } from 'formidable';
+import formidable, { IncomingForm, Fields, File } from 'formidable';
 import { readFile } from 'fs/promises';
 import { Readable } from 'stream';
 import { IncomingMessage } from 'http';
@@ -17,7 +17,9 @@ export const config = {
 };
 
 // Helper: Convert NextRequest into a Node.js-expected fake request
-async function parseForm(req: NextRequest): Promise<{ fields: any; files: any }> {
+async function parseForm(
+  req: NextRequest
+): Promise<{ fields: Record<string, string[]>; files: Record<string, File[]> }> {
   // Read the full request body as a Buffer
   const buf = Buffer.from(await req.arrayBuffer());
   
@@ -47,7 +49,19 @@ async function parseForm(req: NextRequest): Promise<{ fields: any; files: any }>
       if (err) {
         return reject(err);
       }
-      resolve({ fields, files });
+      // Type assertion to Fields<string>
+      const typedFields = fields as Fields<string>;
+      // Convert formidable fields to the desired type
+      const parsedFields: Record<string, string[]> = {};
+      for (const key in typedFields) {
+        const value = typedFields[key];
+        if (value !== undefined) {
+          parsedFields[key] = Array.isArray(value) ? value : [value];
+        }
+      }
+      // Type assertion to Record<string, formidable.File[]>
+      const parsedFiles = files as Record<string, formidable.File[]>;
+      resolve({ fields: parsedFields, files: parsedFiles });
     });
   });
 }
