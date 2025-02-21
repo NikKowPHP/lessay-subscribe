@@ -48,11 +48,12 @@ class RecordingService {
     userIP: string, 
     fileUri: string,  // File URI returned from the upload
     recordingTime: number, 
-    recordingSize: number
+    recordingSize: number,
+    isDeepAnalysis: boolean
   ): Promise<Record<string, unknown>> {
     try {
-      const userMessage = this.messageGenerator.generateUserMessage();
-      const systemMessage = this.messageGenerator.generateSystemMessage();
+      const userMessage = this.messageGenerator.generateUserMessage(isDeepAnalysis);
+      const systemMessage = this.messageGenerator.generateSystemMessage(isDeepAnalysis);
 
       // Generate content using AI service with retry logic.
       const startTime = Date.now();

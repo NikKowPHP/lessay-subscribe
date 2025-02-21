@@ -1,7 +1,20 @@
 class MessageGenerator {
   constructor() {}
+  generateUserMessage(isDeepAnalysis: boolean): string {
+    if (isDeepAnalysis) {
+      return this.generateDetailedAccentAnalysisPrompt();
+    }
+    return this.generateBasicUserMessage();
+  }
 
-  generateUserMessage(): string {
+  generateSystemMessage(isDeepAnalysis: boolean): string {
+    if (isDeepAnalysis) {
+      return this.generateDetailedAccentAnalysisInstruction();
+    }
+    return this.generateBasicSystemMessage();
+  }
+
+  generateBasicUserMessage(): string {
     return `
       Please analyze this spoken language sample and provide feedback:
 
@@ -22,7 +35,7 @@ class MessageGenerator {
     `;
   }
 
-  generateSystemMessage(): string {
+  generateBasicSystemMessage(): string {
     return `
       You are Dr. Lessay, PhD in Applied Linguistics from Cambridge University with 15 years experience 
       in multilingual speech analysis and accent coaching. Your expertise spans across major world languages 

@@ -102,7 +102,8 @@ export async function POST(req: NextRequest) {
         userIP,
         fileUri,  // Now using file URI instead of base64
         Number(recordingTime),
-        Number(recordingSize)
+        Number(recordingSize),
+        isDeepAnalysis
       );
     }
     logger.log("AI Response:", aiResponse);
