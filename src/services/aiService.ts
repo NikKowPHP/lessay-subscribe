@@ -81,7 +81,7 @@ class AIService {
    * Retries the operation up to "attempts" times with an increasing delay.
    */
   private async retryOperation<T>(operation: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
     for (let attempt = 0; attempt < attempts; attempt++) {
       try {
         return await operation();

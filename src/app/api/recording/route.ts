@@ -9,8 +9,6 @@ import { Readable } from 'stream';
 import { IncomingMessage } from 'http';
 
 const API_KEY = process.env.AI_API_KEY;
-// Set maximum allowed payload size to 50MB
-const MAX_PAYLOAD_SIZE = 50 * 1024 * 1024; // 50MB in bytes
 
 export const config = {
   api: {

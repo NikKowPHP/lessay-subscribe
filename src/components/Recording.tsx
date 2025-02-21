@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
 import { useSubscription } from '@/context/SubscriptionContext';
 
-const MAX_RECORDING_TIME_MS = 60000; // 1 minute
+const MAX_RECORDING_TIME_MS = 600000; // 10 minutes
 
 const ATTEMPTS_RESET_TIME_MS = 3600000; // 1 hour
 
@@ -59,7 +59,6 @@ export default function Recording() {
   }, [recordingAttempts]);
 
   useEffect(() => {
-    console.log('isSubscribed', isSubscribed);
     if (isSubscribed) {
       setMaxRecordingAttempts(1000);
       if (!isSubscribedBannerShowed) {
@@ -73,7 +72,9 @@ export default function Recording() {
   }, [isSubscribed]);
 
   const startRecording = async () => {
-    if (recordingAttempts >= maxRecordingAttempts) {
+    const isDev = process.env.NEXT_PUBLIC_ENVIRONMENT === 'development';
+    
+    if ((recordingAttempts >= maxRecordingAttempts) && !isDev) {
       showError(
         `You have reached the maximum number of recording attempts (${maxRecordingAttempts}) in the last hour. Subscribe to our waitlist to get unlimited analyses.`,
         'warning'

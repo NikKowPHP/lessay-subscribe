@@ -20,7 +20,7 @@ class RecordingService {
    * A generic helper function to retry an async operation.
    */
   private async retryOperation<T>(operation: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
     for (let attempt = 0; attempt < attempts; attempt++) {
       try {
         return await operation();

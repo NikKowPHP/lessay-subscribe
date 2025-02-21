@@ -1,4 +1,3 @@
-import logger from "@/utils/logger";
 
 export interface PhonemeAnalysis {
   phoneme: string;
