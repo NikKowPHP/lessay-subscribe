@@ -1,6 +1,7 @@
 import logger from '@/utils/logger';
 import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import FormData from 'form-data';
 
 interface GeminiResponse {
   candidates: {
@@ -75,16 +76,49 @@ class AIService {
     return undefined;
   }
 
+  /**
+   * Upload file using a single multipart/related request.
+   *
+   * This method emulates the Google AI Studio curl example:
+   *
+   * curl "https://generativelanguage.googleapis.com/upload/v1beta/files?key=${API_KEY}" \
+   *   -H "X-Goog-Upload-Command: start, upload, finalize" \
+   *   -H "X-Goog-Upload-Header-Content-Length: NUM_BYTES" \
+   *   -H "X-Goog-Upload-Header-Content-Type: MIME_TYPE" \
+   *   -H "Content-Type: application/json" \
+   *   -d "{'file': {'display_name': 'DISPLAY_NAME'}}" \
+   *   --data-binary "@FILENAME"
+   *
+   * The multipart request includes both the JSON metadata and the binary file.
+   */
   async uploadFile(audioBuffer: Buffer, mimeType: string, displayName: string): Promise<string> {
     const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${this.apiKey}`;
     
+    // Create a new FormData instance.
+    const form = new FormData();
+    // Append the JSON metadata.
+    form.append('metadata', JSON.stringify({ file: { display_name: displayName } }), {
+      contentType: 'application/json'
+    });
+    // Append the binary file.
+    form.append('file', audioBuffer, {
+      filename: displayName,
+      contentType: mimeType,
+      knownLength: audioBuffer.length
+    });
+
+    // Build the headers (note: form.getHeaders() returns necessary multipart boundaries).
+    const headers = {
+      ...form.getHeaders(),
+      'X-Goog-Upload-Command': 'start, upload, finalize',
+      'X-Goog-Upload-Header-Content-Length': audioBuffer.length.toString(),
+      'X-Goog-Upload-Header-Content-Type': mimeType,
+    };
+
     const config: Record<string, unknown> = {
-      headers: {
-        'X-Goog-Upload-Command': 'start, upload, finalize',
-        'X-Goog-Upload-Header-Content-Length': audioBuffer.length.toString(),
-        'X-Goog-Upload-Header-Content-Type': mimeType,
-        'Content-Type': 'application/json'
-      }
+      headers,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
     };
 
     if (this.proxyAgent) {
@@ -93,18 +127,9 @@ class AIService {
     }
 
     try {
-      const response = await axios.post(uploadUrl, {
-        file: { display_name: displayName }
-      }, config);
-      
-      // Upload the binary data
-      await axios.put(response.headers['x-goog-upload-url'], audioBuffer, {
-        headers: {
-          'Content-Length': audioBuffer.length.toString(),
-          'Content-Type': mimeType
-        }
-      });
-
+      const response = await axios.post(uploadUrl, form, config);
+      logger.log("Upload response:", response.data);
+      // Return the file URI from the response.
       return response.data.file.uri;
     } catch (error) {
       logger.error("File upload error:", error);
