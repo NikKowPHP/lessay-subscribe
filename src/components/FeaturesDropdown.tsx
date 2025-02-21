@@ -2,8 +2,92 @@
 
 import { useState } from "react";
 
+interface FeatureCardProps {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+function FeatureCard({ title, description, icon }: FeatureCardProps) {
+  return (
+    <div className="p-6 rounded-xl border border-black/[.08] dark:border-white/[.145] transition-all">
+      <div className="flex items-start space-x-4">
+        <div className="bg-gradient-to-b from-black/[.08] to-black/[.04] dark:from-white/[.08] dark:to-white/[.04] rounded-lg p-2">
+          {icon}
+        </div>
+        <div>
+          <h2 className="font-semibold mb-1">{title}</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FeaturesDropdown() {
   const [open, setOpen] = useState(false);
+
+  const features = [
+    {
+      title: "Pronunciation Analysis: How it works",
+      description:
+        "Our AI uses Automatic Speech Recognition (ASR) and advanced acoustic modeling to analyze your speech. Leveraging a massive language model, it evaluates phonetic features, prosodic elements, directly from the audio, providing a comprehensive pronunciation assessment.",
+      icon: (
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 4v16m8-8H4"
+          />
+        </svg>
+      ),
+    },
+    {
+      title: "Adaptive Learning",
+      description:
+        "Our algorithms tailor lessons to your current level and learning style.",
+      icon: (
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 10V3L4 14h7v7l9-11h-7z"
+          />
+        </svg>
+      ),
+    },
+    {
+      title: "Smart Progress",
+      description: "Focus on what matters - skip what you already know.",
+      icon: (
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      ),
+    }
+  ];
 
   return (
     <div className="w-full">
@@ -36,49 +120,14 @@ export default function FeaturesDropdown() {
         }`}
       >
         <div className="grid grid-cols-1 gap-3">
-          {/* Feature Card: Adaptive Learning */}
-          <div className="p-6 rounded-xl border border-black/[.08] dark:border-white/[.145] transition-all">
-            <div className="flex items-start space-x-4">
-              <div className="bg-gradient-to-b from-black/[.08] to-black/[.04] dark:from-white/[.08] dark:to-white/[.04] rounded-lg p-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="font-semibold mb-1">Adaptive Learning</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Our algorithms tailor lessons to your current level and learning style.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Feature Card: Smart Progress */}
-          <div className="p-6 rounded-xl border border-black/[.08] dark:border-white/[.145] transition-all">
-            <div className="flex items-start space-x-4">
-              <div className="bg-gradient-to-b from-black/[.08] to-black/[.04] dark:from-white/[.08] dark:to-white/[.04] rounded-lg p-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="font-semibold mb-1">Smart Progress</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Focus on what matters - skip what you already know.
-                </p>
-              </div>
-            </div>
-          </div>
+          {features.map((feature, index) => (
+            <FeatureCard
+              key={index}
+              title={feature.title}
+              description={feature.description}
+              icon={feature.icon}
+            />
+          ))}
         </div>
       </div>
     </div>
