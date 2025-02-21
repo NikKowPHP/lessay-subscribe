@@ -27,7 +27,7 @@ export interface AIResponse {
 }
 
 // Define a new interface for the detailed deep analysis response
-export interface DeepAccentAnalysis {
+export interface DetailedAIResponse {
   primary_analysis: {
     identified_language: string;
     confidence_score: number;
@@ -107,59 +107,55 @@ export interface DeepAccentAnalysis {
   };
 }
 
-// Update the DetailedAIResponse interface to include the deep analysis object
-export interface DetailedAIResponse extends AIResponse {
-  detailed_accent_analysis: DeepAccentAnalysis;
-}
+
 
 export class AIResponseModel {
   static fromJson(json: unknown, isDeepAnalysis: boolean): AIResponse {
     if (isDeepAnalysis) {
-      return this.fromJsonDetailed(json);
+      // return this.fromJsonDetailed(json);
+      return this.fromJsonBasic(json);
     } else {
       return this.fromJsonBasic(json);
     }
   }
 
-  static fromJsonDetailed(json: unknown): DetailedAIResponse {
-    try {
-      logger.log("Parsing Detailed JSON:", JSON.stringify(json, null, 2));
-      if (typeof json !== "object" || json === null) {
-        throw new Error("Invalid JSON for Detailed AIResponse");
-      }
-      const data = json as Record<string, unknown>;
-      if (!data.detailed_accent_analysis) {
-        throw new Error("Missing detailed_accent_analysis field");
-      }
+  // static fromJsonDetailed(json: unknown): DetailedAIResponse {
+  //   try {
+  //     logger.log("Parsing Detailed JSON:", JSON.stringify(json, null, 2));
+  //     if (typeof json !== "object" || json === null) {
+  //       throw new Error("Invalid JSON for Detailed AIResponse");
+  //     }
+  //     const data = json 
+   
 
-      const detailedAnalysis = data.detailed_accent_analysis as DeepAccentAnalysis;
+  //     const detailedAnalysis = data as DetailedAIResponse;
 
-      // Build the DetailedAIResponse object.
-      const response: DetailedAIResponse = {
-        language_identification: typeof data.language_identification === "string" ? data.language_identification : "Unknown",
-        confidence_level: typeof data.confidence_level === "string" ? data.confidence_level : "0%",
-        user_native_language_guess: typeof data.user_native_language_guess === "string" ? data.user_native_language_guess : "Unknown",
-        native_language_influence_analysis: typeof data.native_language_influence_analysis === "string" ? data.native_language_influence_analysis : "N/A",
-        "language-specific_phonological_assessment": Array.isArray(data["language-specific_phonological_assessment"])
-          ? (data["language-specific_phonological_assessment"] as PhonemeAnalysis[])
-          : [],
-        suprasegmental_features_analysis: Array.isArray(data.suprasegmental_features_analysis)
-          ? (data.suprasegmental_features_analysis as SuprasegmentalFeatureAnalysis[])
-          : [],
-        "cross-linguistic_influence_note": typeof data["cross-linguistic_influence_note"] === "string" ? data["cross-linguistic_influence_note"] as string : "N/A",
-        CEFR_aligned_proficiency_indicators: typeof data.CEFR_aligned_proficiency_indicators === "string" ? data.CEFR_aligned_proficiency_indicators as string : "N/A",
-        personalized_learning_pathway_suggestions: Array.isArray(data.personalized_learning_pathway_suggestions)
-          ? (data.personalized_learning_pathway_suggestions as string[])
-          : [],
-        call_to_action: typeof data.call_to_action === "string" ? data.call_to_action : "Please provide a clear speech sample for analysis.",
-        detailed_accent_analysis: detailedAnalysis
-      };
-      return response;
-    } catch (error) {
-      logger.error("Error parsing Detailed AI response:", error);
-      throw new Error("Failed to parse Detailed AI response");
-    }
-  }
+  //     // Build the DetailedAIResponse object.
+  //     const response: DetailedAIResponse = {
+  //       language_identification: typeof data.language_identification === "string" ? data.language_identification : "Unknown",
+  //       confidence_level: typeof data.confidence_level === "string" ? data.confidence_level : "0%",
+  //       user_native_language_guess: typeof data.user_native_language_guess === "string" ? data.user_native_language_guess : "Unknown",
+  //       native_language_influence_analysis: typeof data.native_language_influence_analysis === "string" ? data.native_language_influence_analysis : "N/A",
+  //       "language-specific_phonological_assessment": Array.isArray(data["language-specific_phonological_assessment"])
+  //         ? (data["language-specific_phonological_assessment"] as PhonemeAnalysis[])
+  //         : [],
+  //       suprasegmental_features_analysis: Array.isArray(data.suprasegmental_features_analysis)
+  //         ? (data.suprasegmental_features_analysis as SuprasegmentalFeatureAnalysis[])
+  //         : [],
+  //       "cross-linguistic_influence_note": typeof data["cross-linguistic_influence_note"] === "string" ? data["cross-linguistic_influence_note"] as string : "N/A",
+  //       CEFR_aligned_proficiency_indicators: typeof data.CEFR_aligned_proficiency_indicators === "string" ? data.CEFR_aligned_proficiency_indicators as string : "N/A",
+  //       personalized_learning_pathway_suggestions: Array.isArray(data.personalized_learning_pathway_suggestions)
+  //         ? (data.personalized_learning_pathway_suggestions as string[])
+  //         : [],
+  //       call_to_action: typeof data.call_to_action === "string" ? data.call_to_action : "Please provide a clear speech sample for analysis.",
+  //       detailed_accent_analysis: detailedAnalysis
+  //     };
+  //     return response;
+  //   } catch (error) {
+  //     logger.error("Error parsing Detailed AI response:", error);
+  //     throw new Error("Failed to parse Detailed AI response");
+  //   }
+  // }
 
   static fromJsonBasic(json: unknown): AIResponse {
     try {

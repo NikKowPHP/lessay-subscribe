@@ -1,6 +1,6 @@
 'use client';
 
-import { AIResponse, AIResponseModel } from '@/models/aiResponse.model';
+import { AIResponse, AIResponseModel, DetailedAIResponse } from '@/models/aiResponse.model';
 import logger from '@/utils/logger';
 import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
@@ -22,6 +22,7 @@ export default function Recording() {
   const audioChunks = useRef<Blob[]>([]);
   const [isProcessed, setIsProcessed] = useState(false);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
+  const [detailedAiResponse, setDetailedAiResponse] = useState<DetailedAIResponse | null>(null);
   const startTimeRef = useRef<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const recordingTimerInterval = useRef<NodeJS.Timeout | null>(null); // Ref to hold timer interval ID
@@ -263,8 +264,14 @@ export default function Recording() {
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
       const data = await response.json();
-      const transformedResponse = AIResponseModel.fromJson(data.aiResponse, isDeepAnalysis);
-      setAiResponse(transformedResponse);
+      let aiResponse;
+      if (isDeepAnalysis) {
+        aiResponse = data.aiResponse as DetailedAIResponse;
+        setDetailedAiResponse(aiResponse);
+      } else {
+        aiResponse = data.aiResponse as AIResponse;
+        setAiResponse(aiResponse);
+      }
     } catch (error) {
       logger.error('Error sending recording:', error);
       showError('Failed to process recording. Please try again.', 'error');
@@ -605,6 +612,159 @@ export default function Recording() {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
                     ✨ Get early access and special perks when we launch!
                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Deep Analysis Section */}
+          {!isProcessing && detailedAiResponse && (
+            <div className="mt-8 space-y-6">
+              <h2 className="text-xl font-semibold mb-4">Detailed Accent Analysis</h2>
+              
+              {/* Primary Analysis */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                  <h3 className="font-semibold mb-3">Accent Classification</h3>
+                  <div className="space-y-2">
+                    <p className="flex justify-between">
+                      <span>Primary Accent:</span>
+                      <span className="font-medium">{detailedAiResponse.accent_classification.primary_accent}</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Confidence:</span>
+                      <span className="text-green-600">{(aiResponse as DetailedAIResponse).detailed_accent_analysis.accent_classification.confidence_level}%</span>
+                    </p>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Regional Influences:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(aiResponse as DetailedAIResponse).detailed_accent_analysis.accent_classification.regional_influences.map((influence, index) => (
+                          <span key={index} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
+                            {influence}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                    <h3 className="font-semibold mb-3">Native Language Assessment</h3>
+                    <div className="space-y-2">
+                      <p className="flex justify-between">
+                        <span>Probable L1:</span>
+                        <span className="font-medium">{(aiResponse as DetailedAIResponse).detailed_accent_analysis.native_language_assessment.probable_l1}</span>
+                      </p>
+                      <p className="flex justify-between">
+                        <span>Confidence:</span>
+                        <span className="text-green-600">{(aiResponse as DetailedAIResponse).detailed_accent_analysis.native_language_assessment.confidence_level}%</span>
+                      </p>
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Supporting Features:</p>
+                        <ul className="list-disc list-inside text-sm">
+                          {(aiResponse as DetailedAIResponse).detailed_accent_analysis.native_language_assessment.supporting_features.map((feature, index) => (
+                            <li key={index}>{feature}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phonetic Analysis */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Detailed Phonetic Analysis</h3>
+                  
+                  {/* Vowel Production */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                    <h4 className="font-medium mb-3">Vowel Production</h4>
+                    <div className="space-y-3">
+                      {(aiResponse as DetailedAIResponse).detailed_accent_analysis.phonetic_analysis.vowel_production.map((vowel, index) => (
+                        <div key={index} className="border-b border-gray-200 dark:border-gray-700 pb-2 last:border-0">
+                          <div className="flex justify-between mb-1">
+                            <span className="font-medium">{vowel.phoneme}</span>
+                            <span className="text-sm text-gray-600">at {vowel.timestamp}s</span>
+                          </div>
+                          <p className="text-sm mb-1">Example: "{vowel.example_word}"</p>
+                          <div className="flex justify-between text-sm">
+                            <span>Target: {vowel.target_realization}</span>
+                            <span>Observed: {vowel.observed_realization}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">{vowel.analysis}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Prosodic Features */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                    <h4 className="font-medium mb-3">Prosodic Features</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <h5 className="text-sm font-medium mb-2">Rhythm Patterns</h5>
+                        <p className="text-sm">{(aiResponse as DetailedAIResponse).detailed_accent_analysis.prosodic_features.rhythm_patterns.description}</p>
+                        <div className="mt-2">
+                          {(aiResponse as DetailedAIResponse).detailed_accent_analysis.prosodic_features.rhythm_patterns.notable_features.map((feature, index) => (
+                            <span key={index} className="inline-block mr-2 mb-2 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-sm">
+                              {feature}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Improvement Plan */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                    <h4 className="font-medium mb-3">Personalized Improvement Plan</h4>
+                    <div className="space-y-4">
+                      {(aiResponse as DetailedAIResponse).detailed_accent_analysis.improvement_plan.priority_areas.map((area, index) => (
+                        <div key={index} className="border-l-4 border-blue-500 pl-4">
+                          <h5 className="font-medium">{area.focus}</h5>
+                          <div className="flex items-center gap-2 my-1">
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${
+                              area.importance === 'high' ? 'bg-red-100 text-red-800' :
+                              area.importance === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {area.importance} priority
+                            </span>
+                            <span className="text-sm text-gray-600">{area.expected_timeline}</span>
+                          </div>
+                          <ul className="list-disc list-inside text-sm">
+                            {area.exercises.map((exercise, i) => (
+                              <li key={i}>{exercise}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                  <h3 className="font-semibold mb-3">Analysis Summary</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Key Strengths</h4>
+                      <ul className="list-disc list-inside">
+                        {(aiResponse as DetailedAIResponse).detailed_accent_analysis.summary.key_strengths.map((strength, index) => (
+                          <li key={index} className="text-sm text-gray-700 dark:text-gray-300">{strength}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Primary Challenges</h4>
+                      <ul className="list-disc list-inside">
+                        {(aiResponse as DetailedAIResponse).detailed_accent_analysis.summary.primary_challenges.map((challenge, index) => (
+                          <li key={index} className="text-sm text-gray-700 dark:text-gray-300">{challenge}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <p className="text-sm italic mt-4">
+                      {(aiResponse as DetailedAIResponse).detailed_accent_analysis.summary.overall_assessment}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
