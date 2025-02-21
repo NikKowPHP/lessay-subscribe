@@ -49,7 +49,7 @@ class MessageGenerator {
           "confidence_level": "Confidence Level (%)",
           "user_native_language_guess": "User's Native Language Guess",
           "native_language_influence_analysis": "Analysis of the speaker's native language influence",
-          "language-specific_phonological_assessment": [
+          "language_specific_phonological_assessment": [
             {
               "phoneme": "Specific phoneme",
               "example": "Example word",
@@ -64,7 +64,7 @@ class MessageGenerator {
               "observation": "Observation of rhythm or intonation"
             }
           ],
-          "cross-linguistic_influence_note": "Note on cross-linguistic influence",
+          "cross_linguistic_influence_note": "Note on cross-linguistic influence",
           "CEFR_aligned_proficiency_indicators": "CEFR level",
           "personalized_learning_pathway_suggestions": [
             "Suggestion 1",

@@ -208,8 +208,9 @@ class AIService {
 
       try {
         const analysisData = JSON.parse(cleanedJson);
+        console.log("Analysis Data:", analysisData);
         // Return the first item in the array as that's our analysis
-        return analysisData[0];
+        return analysisData;
       } catch (parseError) {
         logger.error("Error parsing Gemini response:", parseError);
         throw new Error("Failed to parse AI response");

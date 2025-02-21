@@ -85,6 +85,7 @@ export default function Recording() {
       // Reset states before starting
       setIsProcessed(false);
       setAiResponse(null);
+      setDetailedAiResponse(null);
       setAudioURL(null);
 
       // Check if mediaDevices API is supported
