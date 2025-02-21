@@ -220,3 +220,209 @@ export const mockResponse = [
     }
   }
 ];
+
+
+export const mockDetailedResponse = {
+  primary_analysis: {
+    identified_language: "English",
+    confidence_score: 98,
+    accent_classification: {
+      primary_accent: "Non-Native English",
+      regional_influences: [],
+      confidence_level: 85,
+    },
+    native_language_assessment: {
+      probable_l1: "Eastern European Language (likely Polish or Russian)",
+      confidence_level: 75,
+      supporting_features: [
+        "Devoicing of voiced consonants in certain contexts",
+        "Monophthongization of certain diphthongs",
+        "Possible dentalization of alveolar consonants",
+      ],
+    },
+  },
+  phonetic_analysis: {
+    vowel_production: [
+      {
+        phoneme: "/æ/",
+        target_realization: "/æ/ (as in 'cat')",
+        observed_realization: "/ɛ/ (closer to 'bet')",
+        example_word: "platform",
+        timestamp: 0.9,
+        analysis:
+          "The speaker tends to raise and front the /æ/ vowel, resulting in a sound closer to /ɛ/. This is a common feature in speakers whose native languages have a different vowel inventory.",
+      },
+      {
+        phoneme: "/ʌ/",
+        target_realization: "/ʌ/ (as in 'cut')",
+        observed_realization: "/a/ (more open and back)",
+        example_word: "understanding",
+        timestamp: 25.2,
+        analysis:
+          "The /ʌ/ vowel is often produced as a more open /a/ sound, influenced by vowel systems where these distinctions are less pronounced.",
+      },
+      {
+        phoneme: "/ɪ/",
+        target_realization: "/ɪ/ (as in 'bit')",
+        observed_realization: "/i/ (closer to 'beet')",
+        example_word: "rigid",
+        timestamp: 0.18,
+        analysis:
+          "Tendency to raise /ɪ/ towards /i/, reducing the distinction between these two vowels. This is also common for native speakers of some European languages",
+      },
+    ],
+    consonant_production: [
+      {
+        phoneme: "/θ/",
+        target_realization: "/θ/ (as in 'think')",
+        observed_realization: "/t/ or /s/",
+        example_word: "through",
+        timestamp: 4.4,
+        analysis:
+          "The dental fricative /θ/ is often replaced with /t/, a common substitution influenced by the phonological systems of many languages that do not have this sound.",
+      },
+      {
+        phoneme: "/ð/",
+        target_realization: "/ð/ (as in 'this')",
+        observed_realization: "/d/ or /z/",
+        example_word: "this",
+        timestamp: 9.1,
+        analysis:
+          "Similar to /θ/, the /ð/ sound is frequently replaced with /d/ due to the absence of this voiced dental fricative in many languages. Sometimes realized as /z/.",
+      },
+      {
+        phoneme: "/v/",
+        target_realization: "/v/ (as in 'very')",
+        observed_realization: "/w/",
+        example_word: "various",
+        timestamp: 29.1,
+        analysis:
+          "The /v/ is sometimes realized as /w/, indicating influence from languages with a similar but distinct sound. Common in some dialects of Slavic languages.",
+      },
+    ],
+  },
+  prosodic_features: {
+    rhythm_patterns: {
+      description:
+        "The speaker exhibits a tendency towards syllable-timed rhythm rather than the stress-timed rhythm characteristic of native English speech.",
+      notable_features: [
+        "More equal duration of syllables",
+        "Less reduction of unstressed syllables",
+        "Pauses occurring more frequently at syllable or word boundaries rather than within phrases",
+      ],
+      impact_on_intelligibility:
+        "This can slightly reduce intelligibility for native English speakers, who are accustomed to hearing variations in syllable duration based on stress.",
+    },
+    stress_patterns: {
+      word_level: [
+        "Occasional misplacement of stress within words (e.g., stressing the first syllable of 'exercises' instead of the second)",
+      ],
+      sentence_level: [
+        "Less emphasis on content words compared to function words, leading to a somewhat monotone delivery",
+      ],
+      deviations: [
+        "Inconsistent stress placement affects the natural flow of speech and can occasionally obscure meaning.",
+      ],
+    },
+    intonation: {
+      patterns: [
+        "Limited pitch range compared to native English speakers",
+        "Less variation in intonation contours, resulting in a flatter overall prosody",
+      ],
+      notable_features: [
+        "Tendency to use rising intonation even at the end of declarative sentences",
+      ],
+      l1_influence:
+        "The relatively flat intonation and terminal rises may be influenced by the intonational patterns of the speaker's native language.",
+    },
+  },
+  diagnostic_markers: [
+    {
+      feature: "Substitution of /θ/ and /ð/",
+      description: "Replacing dental fricatives with alveolar stops or fricatives.",
+      impact:
+        "Can occasionally lead to misinterpretation (e.g., 'think' sounding like 'tink').",
+      frequency: "Frequent",
+    },
+    {
+      feature: "Vowel raising/fronting",
+      description: "Raising and fronting of low vowels, particularly /æ/ and /ʌ/.",
+      impact: "Affects the perceived quality of words, making the accent noticeable.",
+      frequency: "Occasional",
+    },
+    {
+      feature: "Syllable-timed rhythm",
+      description: "Equalizing syllable durations.",
+      impact:
+        "Reduces the natural emphasis and flow of English speech, potentially affecting ease of comprehension.",
+      frequency: "Frequent",
+    },
+  ],
+  proficiency_assessment: {
+    cefr_level: "B2",
+    intelligibility_score: 80,
+    fluency_rating: 75,
+    accent_strength: 65,
+    detailed_evaluation:
+      "The speaker demonstrates good overall proficiency in English, capable of expressing complex ideas clearly. Intelligibility is generally high, though the non-native accent is noticeable and can occasionally require listeners to pay closer attention. Fluency is slightly impacted by occasional pauses and self-corrections.",
+  },
+  improvement_plan: {
+    priority_areas: [
+      {
+        focus: "Dental Fricatives (/θ/ and /ð/)",
+        importance: "High",
+        exercises: [
+          "Minimal pair drills (e.g., 'thin' vs. 'tin', 'this' vs. 'dis')",
+          "Tongue placement exercises using a mirror",
+          "Reading aloud with conscious attention to these sounds",
+        ],
+        expected_timeline: "6-8 weeks",
+      },
+      {
+        focus: "Vowel Quality (especially /æ/ and /ʌ/)",
+        importance: "Medium",
+        exercises: [
+          "Listening to native speakers and imitating their vowel sounds",
+          "Using visual aids (e.g., vowel charts) to understand tongue placement",
+          "Recording and comparing own pronunciation with native speakers",
+        ],
+        expected_timeline: "4-6 weeks",
+      },
+      {
+        focus: "Prosody and Rhythm",
+        importance: "Medium",
+        exercises: [
+          "Shadowing native speakers (imitating their intonation and rhythm)",
+          "Practicing sentence stress and reduction of unstressed syllables",
+          "Marking stressed syllables in written text and practicing aloud",
+        ],
+        expected_timeline: "8-10 weeks",
+      },
+    ],
+    recommended_resources: [
+      "Online pronunciation courses (e.g., Rachel's English)",
+      "Interactive phonetic apps (e.g., Sounds Right)",
+      "Recordings of native English speakers (podcasts, audiobooks)",
+    ],
+    practice_strategies: [
+      "Consistent daily practice (15-30 minutes)",
+      "Focusing on one specific sound or prosodic feature at a time",
+      "Seeking feedback from native English speakers",
+      "Using a recording device to monitor progress",
+    ],
+  },
+  summary: {
+    key_strengths: [
+      "Good vocabulary and grammar",
+      "Clear articulation of most sounds",
+      "Ability to express complex ideas",
+    ],
+    primary_challenges: [
+      "Inconsistent pronunciation of specific sounds (/θ/, /ð/, /æ/, /ʌ/)",
+      "Slightly monotone prosody and syllable-timed rhythm",
+      "Occasional misplacement of word stress",
+    ],
+    overall_assessment:
+      "The speaker is a proficient English user with a noticeable non-native accent. Targeted practice on specific sounds and prosodic features can significantly improve their intelligibility and communication effectiveness.",
+  },
+};
