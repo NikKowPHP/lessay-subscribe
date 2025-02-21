@@ -408,6 +408,9 @@ export default function Recording() {
               We will provide detailed insights into how your background shapes
               your pronunciation, rhythm, and overall speaking style.
             </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              We do not store your audio recordings. By submitting, you consent to sending your voice recording to our AI system for processing. We only store metric information to improve our service. The audio is deleted immediately from the server and is not used for training purposes.
+            </p>
           </div>
         </header>
 
@@ -805,5 +808,6 @@ export default function Recording() {
         </div>
       </article>
     </section>
+   
   );
 }
