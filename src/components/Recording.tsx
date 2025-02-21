@@ -678,7 +678,7 @@ export default function Recording() {
                             <span className="font-medium">{vowel.phoneme}</span>
                             <span className="text-sm text-gray-600">at {vowel.timestamp}s</span>
                           </div>
-                          <p className="text-sm mb-1">Example: "{vowel.example_word}"</p>
+                          <p className="text-sm mb-1">Example: &quot;{vowel.example_word}&quot;</p>
                           <div className="flex flex-col sm:flex-row gap-2 justify-between text-sm">
                             <span className="font-bold">Target: {vowel.target_realization}</span>
                             <span className="font-bold">Observed: {vowel.observed_realization}</span>
