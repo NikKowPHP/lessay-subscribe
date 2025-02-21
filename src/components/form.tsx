@@ -48,6 +48,9 @@ export default function SubscriptionForm() {
           Thanks for subscribing!
         </p>
       )}
+      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+        We collect your email to gauge interest in our service and understand user engagement. We will not send you any unsolicited messages.
+      </p>
     </div>
   );
 }
