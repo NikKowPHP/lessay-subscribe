@@ -28,7 +28,7 @@ export default function Recording() {
   const recordingTimerInterval = useRef<NodeJS.Timeout | null>(null); // Ref to hold timer interval ID
 
   const [maxRecordingAttempts, setMaxRecordingAttempts] =
-    useState<number>(1000);
+    useState<number>(2);
   const [recordingAttempts, setRecordingAttempts] = useState<number>(() => {
     if (typeof window === 'undefined') return 0; // SSR
     const storedAttempts = localStorage.getItem('recordingAttempts');
