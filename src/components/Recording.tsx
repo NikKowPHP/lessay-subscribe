@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { AIResponse, AIResponseModel } from '@/models/aiResponse.model';
 import logger from '@/utils/logger';
@@ -11,7 +11,11 @@ const MAX_RECORDING_TIME_MS = 60000; // 1 minute
 const ATTEMPTS_RESET_TIME_MS = 3600000; // 1 hour
 
 export default function Recording() {
-  const { isSubscribed, isSubscribedBannerShowed, setIsSubscribedBannerShowed } = useSubscription();
+  const {
+    isSubscribed,
+    isSubscribedBannerShowed,
+    setIsSubscribedBannerShowed,
+  } = useSubscription();
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState<string | null>(null);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
@@ -22,7 +26,8 @@ export default function Recording() {
   const [isProcessing, setIsProcessing] = useState(false);
   const recordingTimerInterval = useRef<NodeJS.Timeout | null>(null); // Ref to hold timer interval ID
 
-  const [maxRecordingAttempts, setMaxRecordingAttempts] = useState<number>(1000);
+  const [maxRecordingAttempts, setMaxRecordingAttempts] =
+    useState<number>(1000);
   const [recordingAttempts, setRecordingAttempts] = useState<number>(() => {
     if (typeof window === 'undefined') return 0; // SSR
     const storedAttempts = localStorage.getItem('recordingAttempts');
@@ -40,6 +45,8 @@ export default function Recording() {
     return 0;
   });
 
+  const [isDeepAnalysis, setIsDeepAnalysis] = useState<boolean>(false); // New state variable
+
   const { showError } = useError();
 
   useEffect(() => {
@@ -50,26 +57,26 @@ export default function Recording() {
     }
   }, [recordingAttempts]);
 
-
-
-
-
   useEffect(() => {
     console.log('isSubscribed', isSubscribed);
     if (isSubscribed) {
       setMaxRecordingAttempts(1000);
       if (!isSubscribedBannerShowed) {
-        showError('You are subscribed to the waitlist. You can now record unlimited times.', 'success');
+        showError(
+          'You are subscribed to the waitlist. You can now record unlimited times.',
+          'success'
+        );
         setIsSubscribedBannerShowed(true);
       }
     }
   }, [isSubscribed]);
 
- 
-
   const startRecording = async () => {
     if (recordingAttempts >= maxRecordingAttempts) {
-      showError(`You have reached the maximum number of recording attempts (${maxRecordingAttempts}) in the last hour. Subscribe to our waitlist to get unlimited analyses.`, 'warning');
+      showError(
+        `You have reached the maximum number of recording attempts (${maxRecordingAttempts}) in the last hour. Subscribe to our waitlist to get unlimited analyses.`,
+        'warning'
+      );
       return;
     }
 
@@ -86,8 +93,10 @@ export default function Recording() {
 
       // Check if any audio input devices are available
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioDevices = devices.filter(device => device.kind === 'audioinput');
-      
+      const audioDevices = devices.filter(
+        (device) => device.kind === 'audioinput'
+      );
+
       if (audioDevices.length === 0) {
         throw new Error('No audio input devices found');
       }
@@ -97,9 +106,9 @@ export default function Recording() {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true
+          autoGainControl: true,
         },
-        video: false
+        video: false,
       });
 
       // Only proceed if we got the stream successfully
@@ -108,7 +117,7 @@ export default function Recording() {
         : 'audio/mp4';
 
       mediaRecorder.current = new MediaRecorder(stream, {
-        mimeType: mimeType
+        mimeType: mimeType,
       });
 
       audioChunks.current = [];
@@ -128,14 +137,14 @@ export default function Recording() {
         const blobSize = audioBlob.size;
 
         // Create File object for upload
-        const audioFile = new File([audioBlob], 'recording.aac', { 
-          type: 'audio/aac-adts' 
+        const audioFile = new File([audioBlob], 'recording.aac', {
+          type: 'audio/aac-adts',
         });
-        
+
         await handleSend(audioFile, timeDiff, blobSize);
         setIsProcessed(true);
-        
-        stream.getTracks().forEach(track => track.stop());
+
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       // Start recording only after all handlers are set
@@ -148,11 +157,15 @@ export default function Recording() {
 
       // Set up timer to stop recording after MAX_RECORDING_TIME_MS
       recordingTimerInterval.current = setInterval(() => {
-        if (isRecording) { // Check if still recording to avoid issues if stopped quickly
+        if (isRecording) {
+          // Check if still recording to avoid issues if stopped quickly
           const elapsedTime = Date.now() - startTimeRef.current;
           if (elapsedTime >= MAX_RECORDING_TIME_MS) {
             stopRecording();
-            showError('Maximum recording time reached (1 minute). Recording stopped.', 'warning');
+            showError(
+              'Maximum recording time reached (1 minute). Recording stopped.',
+              'warning'
+            );
             clearInterval(recordingTimerInterval.current!); // Clear interval after stopping
             recordingTimerInterval.current = null;
           }
@@ -161,10 +174,9 @@ export default function Recording() {
           recordingTimerInterval.current = null;
         }
       }, 1000); // Check every 1 second
-
     } catch (error: unknown) {
       setIsRecording(false);
-      logger.error("Error starting recording:", error);
+      logger.error('Error starting recording:', error);
       clearInterval(recordingTimerInterval.current!); // Clear interval in case of error
       recordingTimerInterval.current = null;
 
@@ -189,7 +201,10 @@ export default function Recording() {
             );
             break;
           default:
-            if (error.message === 'Media devices API not supported in this browser') {
+            if (
+              error.message ===
+              'Media devices API not supported in this browser'
+            ) {
               showError(
                 'Your browser does not support audio recording. Please try a modern browser like Chrome or Firefox.',
                 'error'
@@ -229,7 +244,7 @@ export default function Recording() {
       showError('No audio recorded. Please try again.', 'warning');
       return;
     }
-    
+
     setIsProcessing(true);
     try {
       const formData = new FormData();
@@ -239,7 +254,7 @@ export default function Recording() {
 
       const response = await fetch('/api/recording', {
         method: 'POST',
-        body: formData
+        body: formData,
       });
 
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
@@ -248,7 +263,7 @@ export default function Recording() {
       const transformedResponse = AIResponseModel.fromJson(data.aiResponse);
       setAiResponse(transformedResponse);
     } catch (error) {
-      logger.error("Error sending recording:", error);
+      logger.error('Error sending recording:', error);
       showError('Failed to process recording. Please try again.', 'error');
     } finally {
       setIsProcessing(false);
@@ -257,7 +272,7 @@ export default function Recording() {
 
   // Smooth scroll to subscription/waitlist section
   const scrollToWaitlist = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Reset the recording state to allow a new recording.
@@ -271,42 +286,46 @@ export default function Recording() {
   const getButtonConfig = () => {
     if (isProcessing) {
       return {
-        text: "Processing...",
+        text: 'Processing...',
         action: () => {},
         disabled: true,
-        className: "opacity-50 cursor-not-allowed"
+        className: 'opacity-50 cursor-not-allowed',
       };
     }
     if (isRecording) {
       return {
         text: (
           <span className="flex items-center">
-            <span className="animate-pulse mr-2 text-red-500">●</span> Stop Recording
+            <span className="animate-pulse mr-2 text-red-500">●</span> Stop
+            Recording
           </span>
         ),
         action: stopRecording,
         disabled: false,
-        className: "bg-black text-white dark:bg-white dark:text-black hover:opacity-90"
+        className:
+          'bg-black text-white dark:bg-white dark:text-black hover:opacity-90',
       };
     }
     if (isProcessed) {
       return {
-        text: "Record Again",
+        text: 'Record Again',
         action: resetRecording,
         disabled: false,
-        className: "hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+        className:
+          'hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black',
       };
     }
     return {
-      text: "Start Recording",
+      text: 'Start Recording',
       action: startRecording,
       disabled: false,
-      className: "hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+      className:
+        'hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black',
     };
   };
 
   return (
-    <section 
+    <section
       aria-label="Voice Recording and Accent Analysis"
       className="w-full max-w-4xl bg-white/80 dark:bg-black/80 backdrop-blur-sm p-6 rounded-xl border border-black/[.08] dark:border-white/[.145]"
     >
@@ -314,86 +333,113 @@ export default function Recording() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "HowTo",
-            "name": "Analyze Your Accent with AI",
-            "description": "Get instant AI-powered feedback on your pronunciation, fluency, and accent characteristics in any language",
-            "estimatedCost": {
-              "@type": "MonetaryAmount",
-              "currency": "USD",
-              "value": "0"
+            '@context': 'https://schema.org',
+            '@type': 'HowTo',
+            name: 'Analyze Your Accent with AI',
+            description:
+              'Get instant AI-powered feedback on your pronunciation, fluency, and accent characteristics in any language',
+            estimatedCost: {
+              '@type': 'MonetaryAmount',
+              currency: 'USD',
+              value: '0',
             },
-            "tool": [{
-              "@type": "HowToTool",
-              "name": "Microphone"
-            }],
-            "step": [
+            tool: [
               {
-                "@type": "HowToStep",
-                "name": "Allow Microphone Access",
-                "text": "Grant microphone permissions when prompted to enable voice recording",
-                "url": "https://yourdomain.com#recording"
+                '@type': 'HowToTool',
+                name: 'Microphone',
               },
-              {
-                "@type": "HowToStep",
-                "name": "Start Recording",
-                "text": "Click the start button and speak clearly in any language",
-                "url": "https://yourdomain.com#recording"
-              },
-              {
-                "@type": "HowToStep",
-                "name": "Complete Recording",
-                "text": "Click stop when finished to submit your recording",
-                "url": "https://yourdomain.com#recording"
-              },
-              {
-                "@type": "HowToStep",
-                "name": "Get Analysis",
-                "text": "Receive detailed AI analysis of your pronunciation and accent characteristics",
-                "url": "https://yourdomain.com#analysis"
-              }
             ],
-            "totalTime": "PT2M"
-          })
+            step: [
+              {
+                '@type': 'HowToStep',
+                name: 'Allow Microphone Access',
+                text: 'Grant microphone permissions when prompted to enable voice recording',
+                url: 'https://yourdomain.com#recording',
+              },
+              {
+                '@type': 'HowToStep',
+                name: 'Start Recording',
+                text: 'Click the start button and speak clearly in any language',
+                url: 'https://yourdomain.com#recording',
+              },
+              {
+                '@type': 'HowToStep',
+                name: 'Complete Recording',
+                text: 'Click stop when finished to submit your recording',
+                url: 'https://yourdomain.com#recording',
+              },
+              {
+                '@type': 'HowToStep',
+                name: 'Get Analysis',
+                text: 'Receive detailed AI analysis of your pronunciation and accent characteristics',
+                url: 'https://yourdomain.com#analysis',
+              },
+            ],
+            totalTime: 'PT2M',
+          }),
         }}
       />
       <article itemScope itemType="https://schema.org/HowTo">
         <header className="text-center mb-8">
-          <h1 
-            itemProp="name" 
-            className="text-2xl font-semibold mb-3"
-          >
+          <h1 itemProp="name" className="text-2xl font-semibold mb-3">
             Speak & Uncover Your Accent
           </h1>
           <div itemProp="description" className="space-y-2">
             <p className="text-lg text-gray-700 dark:text-gray-300">
-              Record your voice in any language and reveal the subtle impact of your native tongue.
+              Record your voice in any language and reveal the subtle impact of
+              your native tongue.
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              We will provide detailed insights into how your background shapes your pronunciation, rhythm, and overall speaking style.
+              We will provide detailed insights into how your background shapes
+              your pronunciation, rhythm, and overall speaking style.
             </p>
           </div>
         </header>
 
         <div className="flex flex-col items-center space-y-6">
           {/* Single Recording Control Button */}
-          {(() => {
-            const { text, action, disabled, className } = getButtonConfig();
-            return (
-              <button
-                onClick={action}
-                disabled={disabled}
-                className={`
+          <div className="flex items-center gap-4">
+            {(() => {
+              const { text, action, disabled, className } = getButtonConfig();
+              return (
+                <button
+                  onClick={action}
+                  disabled={disabled}
+                  className={`
                   px-6 py-2 rounded-full font-medium transition-all duration-200
                   border border-black dark:border-white
                   text-black dark:text-white
                   ${className}
                 `}
-              >
-                {text}
-              </button>
-            );
-          })()}
+                >
+                  {text}
+                </button>
+              );
+            })()}
+
+            <button
+              onClick={() => setIsDeepAnalysis(!isDeepAnalysis)}
+              className={`
+                px-6 py-2 rounded-full font-medium transition-all duration-200
+                ${isDeepAnalysis ? 'bg-blue-500 text-white' : 'border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white'}
+                
+              `}
+            >
+              Deep Analysis
+            </button>
+          </div>
+
+          {/* New button for Deep Analysis */}
+
+          {/* Conditional message for Deep Analysis */}
+          {isDeepAnalysis && (
+            <div className="mt-2">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Please provide a minimum 1 minute of recording for deep
+                analysis.
+              </p>
+            </div>
+          )}
 
           {/* Audio Player */}
           {audioURL && (
@@ -427,8 +473,12 @@ export default function Recording() {
                 {/* Language Detection Card */}
                 <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                   <div>
-                    <h3 className="font-semibold text-lg">{aiResponse.language_identification}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Speaking Language</p>
+                    <h3 className="font-semibold text-lg">
+                      {aiResponse.language_identification}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Speaking Language
+                    </p>
                   </div>
                   {/* <div className="text-right">
                     <span className="text-lg font-medium text-green-600 dark:text-green-400">
@@ -441,8 +491,12 @@ export default function Recording() {
                 {/* Native Language Card */}
                 <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                   <div>
-                    <h3 className="font-semibold text-lg">{aiResponse.user_native_language_guess}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Native Language</p>
+                    <h3 className="font-semibold text-lg">
+                      {aiResponse.user_native_language_guess}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Native Language
+                    </p>
                   </div>
                   <div className="flex items-center">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
@@ -454,48 +508,67 @@ export default function Recording() {
 
               {/* Native Language Influence */}
               <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                <h3 className="font-semibold mb-2">Native Language Influence</h3>
-                <p className="text-gray-700 dark:text-gray-300">{aiResponse.native_language_influence_analysis}</p>
+                <h3 className="font-semibold mb-2">
+                  Native Language Influence
+                </h3>
+                <p className="text-gray-700 dark:text-gray-300">
+                  {aiResponse.native_language_influence_analysis}
+                </p>
               </div>
 
               {/* Phonological Assessment */}
               <div className="space-y-4">
                 <h3 className="font-semibold">Pronunciation Analysis</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {aiResponse['language-specific_phonological_assessment'].map((assessment, index) => (
-                    <div key={index} className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                      <div className="flex justify-between mb-2">
-                        <span className="font-medium">{assessment.phoneme}</span>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          in &quot;{assessment.example}&quot;
-                        </span>
+                  {aiResponse['language-specific_phonological_assessment'].map(
+                    (assessment, index) => (
+                      <div
+                        key={index}
+                        className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+                      >
+                        <div className="flex justify-between mb-2">
+                          <span className="font-medium">
+                            {assessment.phoneme}
+                          </span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            in &quot;{assessment.example}&quot;
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                          {assessment.analysis}
+                        </p>
+                        <div className="flex justify-between text-sm">
+                          <span>Target: {assessment.IPA_target}</span>
+                          <span>Observed: {assessment.IPA_observed}</span>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{assessment.analysis}</p>
-                      <div className="flex justify-between text-sm">
-                        <span>Target: {assessment.IPA_target}</span>
-                        <span>Observed: {assessment.IPA_observed}</span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               </div>
 
               {/* CEFR Level */}
               <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                 <h3 className="font-semibold mb-2">Proficiency Level</h3>
-                <p className="text-gray-700 dark:text-gray-300">{aiResponse.CEFR_aligned_proficiency_indicators}</p>
+                <p className="text-gray-700 dark:text-gray-300">
+                  {aiResponse.CEFR_aligned_proficiency_indicators}
+                </p>
               </div>
 
               {/* Learning Suggestions */}
               <div className="space-y-4">
                 <h3 className="font-semibold">Improvement Suggestions</h3>
                 <ul className="space-y-2">
-                  {aiResponse.personalized_learning_pathway_suggestions.map((suggestion, index) => (
-                    <li key={index} className="flex items-start">
-                      <span className="mr-2 text-green-500">•</span>
-                      <span className="text-gray-700 dark:text-gray-300">{suggestion}</span>
-                    </li>
-                  ))}
+                  {aiResponse.personalized_learning_pathway_suggestions.map(
+                    (suggestion, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="mr-2 text-green-500">•</span>
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {suggestion}
+                        </span>
+                      </li>
+                    )
+                  )}
                 </ul>
               </div>
 
