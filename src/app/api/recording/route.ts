@@ -5,6 +5,7 @@ import logger from '@/utils/logger';
 import { mockResponse } from '@/models/aiResponse.model';
 import { IncomingForm } from 'formidable';
 import { readFile } from 'fs/promises';
+import { Readable } from 'stream';
 import { IncomingMessage } from 'http';
 
 const API_KEY = process.env.AI_API_KEY;
@@ -17,19 +18,49 @@ export const config = {
   },
 };
 
+// Helper: Convert NextRequest into a Node.js-expected fake request
+async function parseForm(req: NextRequest): Promise<{ fields: any; files: any }> {
+  // Read the full request body as a Buffer
+  const buf = Buffer.from(await req.arrayBuffer());
+  
+  // Create a Node.js readable stream from the Buffer
+  const stream = new Readable();
+  stream.push(buf);
+  stream.push(null);
+
+  // Convert NextRequest headers (a Headers object) into a plain object
+  const headersObj: Record<string, string> = {};
+  req.headers.forEach((value, key) => {
+    headersObj[key] = value;
+  });
+  
+  // Ensure content-length is present – use the buffer length if not provided
+  if (!headersObj['content-length']) {
+    headersObj['content-length'] = buf.length.toString();
+  }
+
+  // Create a "fake" request by merging the stream with the headers.
+  // Formidable will use `req.headers` (and specifically content-length) when parsing.
+  const fakeReq = Object.assign(stream, { headers: headersObj });
+
+  return new Promise((resolve, reject) => {
+    const form = new IncomingForm();
+    form.parse(fakeReq as unknown as IncomingMessage, (err, fields, files) => {
+      if (err) {
+        return reject(err);
+      }
+      resolve({ fields, files });
+    });
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const formData = await new Promise<{ fields: any; files: any }>((resolve, reject) => {
-      const form = new IncomingForm();
-      form.parse(req as unknown as IncomingMessage, (err, fields, files) => {
-        if (err) reject(err);
-        resolve({ fields, files });
-      });
-    });
+    const { fields, files } = await parseForm(req);
 
-    const audioFile = formData.files.audio?.[0];
-    const recordingTime = formData.fields.recordingTime?.[0];
-    const recordingSize = formData.fields.recordingSize?.[0];
+    const audioFile = files.audio?.[0];
+    const recordingTime = fields.recordingTime?.[0];
+    const recordingSize = fields.recordingSize?.[0];
 
     if (!audioFile || !recordingTime || !recordingSize) {
       return NextResponse.json(
@@ -50,7 +81,7 @@ export async function POST(req: NextRequest) {
       ); 
     }
 
-    // Read file buffer
+    // Read file buffer from the temporary file location provided by formidable
     const audioBuffer = await readFile(audioFile.filepath);
     
     const recordingService = new RecordingService(API_KEY);
