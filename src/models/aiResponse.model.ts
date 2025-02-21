@@ -26,6 +26,7 @@ export interface AIResponse {
   call_to_action: string;
 }
 
+
 // Define a new interface for the detailed deep analysis response
 export interface DetailedAIResponse {
   primary_analysis: {
@@ -109,13 +110,13 @@ export interface DetailedAIResponse {
 
 
 
-export const mockResponse = [
+export const mockResponse = 
   {
     language_identification: "German",
     confidence_level: "99.9%",
     user_native_language_guess: "Russian",
     native_language_influence_analysis: "The speaker's native language appears to be of Slavic origin.",
-    "language-specific_phonological_assessment": [
+    language_specific_phonological_assessment: [
       {
         phoneme: "/r/",
         example: "andere",
@@ -125,7 +126,7 @@ export const mockResponse = [
       }
     ],
     suprasegmental_features_analysis: [],
-    "cross-linguistic_influence_note": "N/A",
+    cross_linguistic_influence_note: "N/A",
     CEFR_aligned_proficiency_indicators: "B1-B2",
     personalized_learning_pathway_suggestions: [
       "Practice minimal pairs for /r/ articulation."
@@ -218,8 +219,7 @@ export const mockResponse = [
         overall_assessment: "Encouraging, with focused areas for improvement."
       }
     }
-  }
-];
+  };
 
 
 export const mockDetailedResponse = {

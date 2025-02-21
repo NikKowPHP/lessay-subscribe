@@ -43,7 +43,6 @@ class MessageGenerator {
 
       Follow this JSON structure:
       \`\`\`json
-      [
         {
           "language_identification": "Identified Language",
           "confidence_level": "Confidence Level (%)",
@@ -72,7 +71,6 @@ class MessageGenerator {
           ],
           "call_to_action": "Call to action"
         }
-      ]
       \`\`\`
 
       Ensure the response is a valid JSON array containing a single object with the above fields , and that all feedback is expressed in direct speech.
