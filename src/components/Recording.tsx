@@ -276,6 +276,7 @@ export default function Recording() {
         setDetailedAiResponse(aiResponse);
       } else {
         aiResponse = data.aiResponse as AIResponse;
+        debugger;
         setAiResponse(aiResponse);
       }
     } catch (error) {

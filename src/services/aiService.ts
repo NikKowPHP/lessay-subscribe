@@ -209,6 +209,13 @@ class AIService {
       try {
         const analysisData = JSON.parse(cleanedJson);
         console.log("Analysis Data:", analysisData);
+
+        if (Array.isArray(analysisData)) {
+          if (analysisData.length === 0) {
+            throw new Error("Empty analysis array");
+          }
+          return analysisData[0];
+        }
         // Return the first item in the array as that's our analysis
         return analysisData;
       } catch (parseError) {

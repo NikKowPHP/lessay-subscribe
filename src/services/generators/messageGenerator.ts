@@ -31,7 +31,6 @@ class MessageGenerator {
       
       Use direct speech
       Format response in clear sections with linguistic terminology explained in parentheses.
-      Conclude with an encouraging note about our full platform's language learning and accent improvement modules.
     `;
   }
 
@@ -68,8 +67,7 @@ class MessageGenerator {
           "personalized_learning_pathway_suggestions": [
             "Suggestion 1",
             "Suggestion 2"
-          ],
-          "call_to_action": "Call to action"
+          ]
         }
       \`\`\`
 
