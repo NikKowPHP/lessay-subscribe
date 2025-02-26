@@ -26,6 +26,7 @@ const PhonemePlayer: React.FC<PhonemePlayerProps> = ({
     if (typeof window !== 'undefined') {
       synthRef.current = window.speechSynthesis;
     }
+    logger.log('label', label)
     
     // Cleanup
     return () => {
