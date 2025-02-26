@@ -8,7 +8,6 @@ import { readFile } from 'fs/promises';
 import { Readable } from 'stream';
 import { IncomingMessage } from 'http';
 
-const API_KEY = process.env.AI_API_KEY;
 
 export const config = {
   api: {
@@ -88,17 +87,11 @@ export async function POST(req: NextRequest) {
 
     // logger.log('User IP:', userIP);
 
-    if (!API_KEY) {
-      return NextResponse.json(
-        { message: "API KEY IS NOT PROVIDED" },
-        { status: 500 }
-      ); 
-    }
 
     // Read file buffer from the temporary file location provided by formidable
     const audioBuffer = await readFile(audioFile.filepath);
     
-    const recordingService = new RecordingService(API_KEY);
+    const recordingService = new RecordingService();
     const fileUri = await recordingService.uploadFile(
       audioBuffer,
       audioFile.mimetype || 'audio/aac-adts',

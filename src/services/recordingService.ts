@@ -5,13 +5,11 @@ import MetricsService from './metricsService';
 
 class RecordingService {
   private aiService: AIService;
-  private apiKey: string;
   private messageGenerator: MessageGenerator;
   private metricsService: MetricsService;
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
-    this.aiService = new AIService(this.apiKey);
+  constructor() {
+    this.aiService = new AIService();
     this.messageGenerator = new MessageGenerator();
     this.metricsService = new MetricsService();
   }

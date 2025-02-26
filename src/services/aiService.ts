@@ -2,6 +2,7 @@ import logger from '@/utils/logger';
 import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import FormData from 'form-data';
+import ApiKeyGenerator from './generators/apiKeyGenerator';
 
 interface GeminiResponse {
   candidates: {
@@ -41,8 +42,8 @@ class AIService {
   private apiKey: string;
   private proxyAgent: unknown | undefined;
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor() {
+    this.apiKey = ApiKeyGenerator.getInstance().getApiKey();
     this.proxyAgent = this.createProxyAgent();
   }
 
@@ -156,7 +157,7 @@ class AIService {
   }
 
   async generateContent(fileUri: string, userMessage: string, systemMessage: string): Promise<Record<string, unknown>> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AIService.models.gemini_2_pro_exp}:generateContent?key=${this.apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AIService.models.gemini_2_flash_exp}:generateContent?key=${this.apiKey}`;
     
     const data = {
       contents: [{
