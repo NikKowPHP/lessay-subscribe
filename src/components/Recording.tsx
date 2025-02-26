@@ -5,6 +5,7 @@ import logger from '@/utils/logger';
 import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
 import { useSubscription } from '@/context/subscription-context';
+import posthog from 'posthog-js';
 
 const MAX_RECORDING_TIME_MS = 600000; // 10 minutes
 
@@ -234,6 +235,7 @@ export default function Recording() {
       setIsRecording(false);
       clearInterval(recordingTimerInterval.current!); // Clear interval when manually stopped
       recordingTimerInterval.current = null;
+      posthog?.capture('stop_recording_clicked');
     }
   };
 
@@ -288,15 +290,26 @@ export default function Recording() {
   };
 
   // Smooth scroll to subscription/waitlist section
-  const scrollToWaitlist = () => {
+  const onWaitlistClick = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    posthog?.capture('join_waitlist_clicked');
   };
 
   // Reset the recording state to allow a new recording.
+  const onResetRecordingClick = () => {
+    posthog?.capture('try_another_recording_clicked');
+    resetRecording();
+  };
+
   const resetRecording = () => {
     setAudioURL(null);
     setAiResponse(null);
     setIsProcessed(false);
+  };
+
+  const onDeepAnalysisClick = () => {
+    setIsDeepAnalysis(!isDeepAnalysis);
+    posthog?.capture('deep_analysis_toggled', { isDeepAnalysis: !isDeepAnalysis });
   };
 
   // Helper function to get button text and action
@@ -438,7 +451,7 @@ export default function Recording() {
             })()}
 
             <button
-              onClick={() => setIsDeepAnalysis(!isDeepAnalysis)}
+              onClick={onDeepAnalysisClick}
               className={`
                 px-6 py-2 rounded-full font-medium transition-all duration-200
                 ${isDeepAnalysis ? 'bg-blue-500 text-white' : 'border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white'}
@@ -788,7 +801,7 @@ export default function Recording() {
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                     <button
-                      onClick={scrollToWaitlist}
+                      onClick={onWaitlistClick}
                       className="px-6 py-2 rounded-lg font-medium transition-all duration-200 
                                bg-black text-white dark:bg-white dark:text-black 
                                hover:opacity-90 hover:scale-105"
@@ -796,7 +809,7 @@ export default function Recording() {
                       Join Waitlist
                     </button>
                     <button
-                      onClick={resetRecording}
+                      onClick={onResetRecordingClick}
                       className="px-6 py-2 rounded-lg font-medium transition-all duration-200 
                                border border-black/10 dark:border-white/10
                                hover:bg-black/5 dark:hover:bg-white/5"
