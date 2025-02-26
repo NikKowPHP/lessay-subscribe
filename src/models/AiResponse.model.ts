@@ -134,7 +134,7 @@ export interface DetailedAIResponse {
   improvement_plan: {
     priority_areas: Array<{
       focus: string;
-      importance: string;
+      importance: "High" | "Medium" | "Low";
       exercises: string[];
       expected_timeline: string;
     }>;

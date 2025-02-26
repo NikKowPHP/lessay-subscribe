@@ -1,6 +1,6 @@
 'use client';
 
-import { AIResponse, DetailedAIResponse  } from '@/models/aiResponse.model';
+import { AIResponse, DetailedAIResponse  } from '@/models/AiResponse.model';
 import logger from '@/utils/logger';
 import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
@@ -260,26 +260,21 @@ export default function Recording() {
         formData.append('isDeepAnalysis', 'true');
       }
 
-   
-
-       const response = await fetch('/api/recording', {
-          method: 'POST',
-          body: formData,
-        });
-      
+      const response = await fetch('/api/recording', {
+        method: 'POST',
+        body: formData,
+      });
 
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
-      const data = await response.json() ;
+      const data = await response.json();
 
-      let aiResponse;
       if (isDeepAnalysis) {
-        aiResponse = data.aiResponse as DetailedAIResponse;
-        setDetailedAiResponse(aiResponse);
+        const detailedResponse = data.aiResponse as DetailedAIResponse;
+        setDetailedAiResponse(detailedResponse);
       } else {
-        aiResponse = data.aiResponse as AIResponse;
-        debugger;
-        setAiResponse(aiResponse);
+        const standardResponse = data.aiResponse as AIResponse;
+        setAiResponse(standardResponse);
       }
     } catch (error) {
       logger.error('Error sending recording:', error);
@@ -501,52 +496,57 @@ export default function Recording() {
           {/* AI Response */}
           {!isProcessing && aiResponse && (
             <div className="w-full mt-8 space-y-6">
-              {/* Language Identification & Native Language */}
+              {/* Language & Accent Identification */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Language Detection Card */}
                 <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                   <div>
                     <h3 className="font-semibold text-lg">
-                      {aiResponse.language_identification}
+                      {aiResponse.language_analyzed}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Speaking Language
+                      Language Detected
                     </p>
                   </div>
-                  {/* <div className="text-right">
-                    <span className="text-lg font-medium text-green-600 dark:text-green-400">
-                      {aiResponse.confidence_level}
-                    </span>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Confidence</p>
-                  </div> */}
                 </div>
 
-                {/* Native Language Card */}
+                {/* Accent Identification Card */}
                 <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                   <div>
                     <h3 className="font-semibold text-lg">
-                      {aiResponse.user_native_language_guess}
+                      {aiResponse.accent_identification.specific_accent}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Native Language
+                      Accent Type: {aiResponse.accent_identification.accent_type}
                     </p>
                   </div>
                   <div className="flex items-center">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                      Detected
+                      {aiResponse.accent_identification.accent_strength}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Native Language Influence */}
+              {/* Speaker Background */}
               <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                <h3 className="font-semibold mb-2">
-                  Native Language Influence
-                </h3>
-                <p className="text-gray-700 dark:text-gray-300">
-                  {aiResponse.native_language_influence_analysis}
-                </p>
+                <h3 className="font-semibold mb-2">Speaker Background</h3>
+                <div className="space-y-2">
+                  <p className="text-gray-700 dark:text-gray-300">
+                    <span className="font-medium">Native Language:</span> {aiResponse.speaker_background.probable_native_language}
+                  </p>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    <span className="font-medium">Probable Region:</span> {aiResponse.speaker_background.probable_region}
+                  </p>
+                  <div className="mt-3">
+                    <p className="font-medium">Supporting Evidence:</p>
+                    <ul className="list-disc list-inside mt-1">
+                      {aiResponse.speaker_background.supporting_evidence.map((evidence: string, index: number) => (
+                        <li key={index} className="text-gray-700 dark:text-gray-300">{evidence}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
 
               {/* Phonological Assessment */}
@@ -554,7 +554,13 @@ export default function Recording() {
                 <h3 className="font-semibold">Pronunciation Analysis</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {aiResponse.language_specific_phonological_assessment.map(
-                    (assessment, index) => (
+                    (assessment: {
+                      phoneme: string;
+                      example: string;
+                      analysis: string;
+                      IPA_target: string;
+                      IPA_observed: string;
+                    }, index: number) => (
                       <div
                         key={index}
                         className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
@@ -580,32 +586,108 @@ export default function Recording() {
                 </div>
               </div>
 
-              {/* CEFR Level */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                <h3 className="font-semibold mb-2">Proficiency Level</h3>
-                <p className="text-gray-700 dark:text-gray-300">
-                  {aiResponse.CEFR_aligned_proficiency_indicators}
-                </p>
-              </div>
-
-              {/* Learning Suggestions */}
+              {/* Suprasegmental Features */}
               <div className="space-y-4">
-                <h3 className="font-semibold">Improvement Suggestions</h3>
-                <ul className="space-y-2">
-                  {aiResponse.personalized_learning_pathway_suggestions.map(
-                    (suggestion, index) => (
-                      <li key={index} className="flex items-start">
-                        <span className="mr-2 text-green-500">•</span>
-                        <span className="text-gray-700 dark:text-gray-300">
-                          {suggestion}
-                        </span>
-                      </li>
+                <h3 className="font-semibold">Rhythm, Intonation & Stress</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  {aiResponse.suprasegmental_features_analysis.map(
+                    (feature: {
+                      feature: string;
+                      observation: string;
+                      comparison: string;
+                    }, index: number) => (
+                      <div
+                        key={index}
+                        className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+                      >
+                        <div className="flex justify-between mb-2">
+                          <span className="font-medium">{feature.feature}</span>
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                          {feature.observation}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                          {feature.comparison}
+                        </p>
+                      </div>
                     )
                   )}
-                </ul>
+                </div>
               </div>
 
-         
+              {/* Diagnostic Accent Markers */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                <h3 className="font-semibold mb-3">Diagnostic Accent Markers</h3>
+                <div className="space-y-3">
+                  {aiResponse.diagnostic_accent_markers.map((marker: {
+                    feature: string;
+                    description: string;
+                    association: string;
+                  }, index: number) => (
+                    <div key={index} className="border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0 last:pb-0">
+                      <p className="font-medium">{marker.feature}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{marker.description}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        <span className="italic">Association:</span> {marker.association}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Proficiency Assessment */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                <h3 className="font-semibold mb-3">Proficiency Assessment</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <div className="text-center p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                      {aiResponse.proficiency_assessment.intelligibility}
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Intelligibility</p>
+                  </div>
+                  <div className="text-center p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                      {aiResponse.proficiency_assessment.fluency}
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Fluency</p>
+                  </div>
+                  <div className="text-center p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                      {aiResponse.proficiency_assessment.CEFR_level}
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">CEFR Level</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Improvement Suggestions */}
+              <div className="space-y-4">
+                <h3 className="font-semibold">Improvement Suggestions</h3>
+                <div className="space-y-4">
+                  {aiResponse.improvement_suggestions.map((suggestion: {
+                    focus_area: string;
+                    importance: "High" | "Medium" | "Low";
+                    exercises: string[];
+                  }, index: number) => (
+                    <div key={index} className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-medium">{suggestion.focus_area}</h4>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium 
+                          ${suggestion.importance === 'High' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                          suggestion.importance === 'Medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                          'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>
+                          {suggestion.importance} Priority
+                        </span>
+                      </div>
+                      <ul className="list-disc list-inside space-y-1">
+                        {suggestion.exercises.map((exercise, idx) => (
+                          <li key={idx} className="text-sm text-gray-700 dark:text-gray-300">{exercise}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -614,61 +696,73 @@ export default function Recording() {
             <div className="mt-8 space-y-6">
               <h2 className="text-xl font-semibold mb-4">Detailed Accent Analysis</h2>
               
-              {/* Primary Analysis */}
+              {/* Accent Analysis Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Accent Classification */}
                 <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                   <h3 className="font-semibold mb-3">Accent Classification</h3>
                   <div className="space-y-2">
                     <p className="flex justify-between">
-                      <span>Primary Accent:</span>
+                      <span>Language Analyzed:</span>
                       <span className="font-medium">
-                        {detailedAiResponse.primary_analysis.accent_classification.primary_accent}
+                        {detailedAiResponse.accent_analysis.language_analyzed}
+                      </span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Accent Type:</span>
+                      <span className="font-medium">
+                        {detailedAiResponse.accent_analysis.accent_classification.accent_type}
+                      </span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Specific Accent:</span>
+                      <span className="font-medium">
+                        {detailedAiResponse.accent_analysis.accent_classification.specific_accent}
                       </span>
                     </p>
                     <p className="flex justify-between">
                       <span>Confidence:</span>
                       <span className="text-green-600">
-                        {detailedAiResponse.primary_analysis.accent_classification.confidence_level}%
+                        {detailedAiResponse.accent_analysis.accent_classification.confidence_level}%
                       </span>
                     </p>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Regional Influences:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {detailedAiResponse.primary_analysis.accent_classification.regional_influences.map(
-                          (influence, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
-                              {influence}
-                            </span>
-                          )
-                        )}
-                      </div>
-                    </div>
+                    <p className="flex justify-between">
+                      <span>Accent Strength:</span>
+                      <span className="font-medium">
+                        {detailedAiResponse.accent_analysis.accent_classification.accent_strength}
+                      </span>
+                    </p>
                   </div>
                 </div>
 
-                {/* Native Language Assessment */}
+                {/* Speaker Background */}
                 <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                  <h3 className="font-semibold mb-3">Native Language Assessment</h3>
+                  <h3 className="font-semibold mb-3">Speaker Background</h3>
                   <div className="space-y-2">
                     <p className="flex justify-between">
                       <span>Probable L1:</span>
                       <span className="font-medium">
-                        {detailedAiResponse.primary_analysis.native_language_assessment.probable_l1}
+                        {detailedAiResponse.accent_analysis.speaker_background.probable_native_language}
+                      </span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Probable Region:</span>
+                      <span className="font-medium">
+                        {detailedAiResponse.accent_analysis.speaker_background.probable_region}
                       </span>
                     </p>
                     <p className="flex justify-between">
                       <span>Confidence:</span>
                       <span className="text-green-600">
-                        {detailedAiResponse.primary_analysis.native_language_assessment.confidence_level}%
+                        {detailedAiResponse.accent_analysis.speaker_background.confidence_level}%
                       </span>
                     </p>
                     <div className="mt-2">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Supporting Features:</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Supporting Evidence:</p>
                       <ul className="list-disc list-inside text-sm">
-                        {detailedAiResponse.primary_analysis.native_language_assessment.supporting_features.map(
-                          (feature, index) => (
-                            <li key={index}>{feature}</li>
+                        {detailedAiResponse.accent_analysis.speaker_background.supporting_evidence.map(
+                          (evidence: string, index: number) => (
+                            <li key={index}>{evidence}</li>
                           )
                         )}
                       </ul>
@@ -686,7 +780,16 @@ export default function Recording() {
                   <h4 className="font-medium mb-3">Vowel Production</h4>
                   <div className="space-y-3">
                     {detailedAiResponse.phonetic_analysis.vowel_production.map(
-                      (vowel, index) => (
+                      (vowel: {
+                        phoneme: string;
+                        standard_realization: string;
+                        observed_realization: string;
+                        example_word: string;
+                        timestamp: number;
+                        analysis: string;
+                        accent_marker: boolean;
+                      }
+                      , index: number) => (
                         <div key={index} className="border-b border-gray-200 dark:border-gray-700 pb-2 last:border-0">
                           <div className="flex justify-between mb-1">
                             <span className="font-medium">{vowel.phoneme}</span>
@@ -694,10 +797,51 @@ export default function Recording() {
                           </div>
                           <p className="text-sm mb-1">Example: &quot;{vowel.example_word}&quot;</p>
                           <div className="flex flex-col sm:flex-row gap-2 justify-between text-sm">
-                            <span className="font-bold">Target: {vowel.target_realization}</span>
+                            <span className="font-bold">Standard: {vowel.standard_realization}</span>
                             <span className="font-bold">Observed: {vowel.observed_realization}</span>
                           </div>
                           <p className="text-sm text-gray-600 mt-1">{vowel.analysis}</p>
+                          {vowel.accent_marker && (
+                            <span className="inline-block mt-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs rounded-full">
+                              Accent marker
+                            </span>
+                          )}
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                {/* Consonant Production */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                  <h4 className="font-medium mb-3">Consonant Production</h4>
+                  <div className="space-y-3">
+                    {detailedAiResponse.phonetic_analysis.consonant_production.map(
+                      (consonant: {
+                        phoneme: string;
+                        standard_realization: string;
+                        observed_realization: string;
+                        example_word: string;
+                        timestamp: number;
+                        analysis: string;
+                        accent_marker: boolean;
+                      }, index: number) => (
+                        <div key={index} className="border-b border-gray-200 dark:border-gray-700 pb-2 last:border-0">
+                          <div className="flex justify-between mb-1">
+                            <span className="font-medium">{consonant.phoneme}</span>
+                            <span className="text-sm text-gray-600">at {consonant.timestamp}s</span>
+                          </div>
+                          <p className="text-sm mb-1">Example: &quot;{consonant.example_word}&quot;</p>
+                          <div className="flex flex-col sm:flex-row gap-2 justify-between text-sm">
+                            <span className="font-bold">Standard: {consonant.standard_realization}</span>
+                            <span className="font-bold">Observed: {consonant.observed_realization}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">{consonant.analysis}</p>
+                          {consonant.accent_marker && (
+                            <span className="inline-block mt-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs rounded-full">
+                              Accent marker
+                            </span>
+                          )}
                         </div>
                       )
                     )}
@@ -709,22 +853,120 @@ export default function Recording() {
               <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                 <h4 className="font-medium mb-3">Prosodic Features</h4>
                 <div className="space-y-4">
+                  {/* Rhythm Patterns */}
                   <div>
                     <h5 className="text-sm font-medium mb-2">Rhythm Patterns</h5>
-                    <p className="text-sm">
+                    <p className="text-sm mb-2">
                       {detailedAiResponse.prosodic_features.rhythm_patterns.description}
                     </p>
-                    <div className="mt-2">
-                      {detailedAiResponse.prosodic_features.rhythm_patterns.notable_features.map(
-                        (feature, index) => (
-                          <span key={index} className="inline-block mr-2 mb-2 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-sm">
-                            {feature}
-                          </span>
-                        )
-                      )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                      <div className="text-sm">
+                        <span className="font-medium">Standard Pattern:</span> {detailedAiResponse.prosodic_features.rhythm_patterns.standard_pattern}
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-medium">Observed Pattern:</span> {detailedAiResponse.prosodic_features.rhythm_patterns.observed_pattern}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                      Association: {detailedAiResponse.prosodic_features.rhythm_patterns.accent_association}
+                    </p>
+                  </div>
+
+                  {/* Stress Patterns */}
+                  <div>
+                    <h5 className="text-sm font-medium mb-2">Stress Patterns</h5>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm font-medium">Word Level:</p>
+                        <p className="text-sm">{detailedAiResponse.prosodic_features.stress_patterns.word_level.description}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                          Association: {detailedAiResponse.prosodic_features.stress_patterns.word_level.accent_association}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Sentence Level:</p>
+                        <p className="text-sm">{detailedAiResponse.prosodic_features.stress_patterns.sentence_level.description}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                          Association: {detailedAiResponse.prosodic_features.stress_patterns.sentence_level.accent_association}
+                        </p>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Intonation */}
+                  <div>
+                    <h5 className="text-sm font-medium mb-2">Intonation</h5>
+                    <ul className="list-disc list-inside text-sm mb-1">
+                      {detailedAiResponse.prosodic_features.intonation.patterns.map((pattern: string, index: number) => (
+                        <li key={index}>{pattern}</li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                      Association: {detailedAiResponse.prosodic_features.intonation.accent_association}
+                    </p>
+                  </div>
                 </div>
+              </div>
+
+              {/* Diagnostic Accent Markers */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                <h4 className="font-medium mb-3">Diagnostic Accent Markers</h4>
+                <div className="space-y-4">
+                  {detailedAiResponse.diagnostic_accent_markers.map((marker: {
+                    feature: string;
+                    description: string;
+                    example: string;
+                    timestamp: number;
+                    accent_association: string;
+                    frequency: string;
+                  }, index: number) => (
+                    <div key={index} className="border-l-4 border-yellow-500 pl-4">
+                      <div className="flex justify-between mb-1">
+                        <h5 className="font-medium">{marker.feature}</h5>
+                        <span className="text-xs text-gray-600">Frequency: {marker.frequency}</span>
+                      </div>
+                      <p className="text-sm mb-1">{marker.description}</p>
+                      <p className="text-sm mb-1">Example: &quot;{marker.example}&quot; (at {marker.timestamp}s)</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                        Association: {marker.accent_association}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Proficiency Assessment */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                <h4 className="font-medium mb-3">Proficiency Assessment</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <div className="text-center p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                      {detailedAiResponse.proficiency_assessment.intelligibility_score}%
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Intelligibility</p>
+                  </div>
+                  <div className="text-center p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                      {detailedAiResponse.proficiency_assessment.fluency_rating}%
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Fluency</p>
+                  </div>
+                  <div className="text-center p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                      {detailedAiResponse.proficiency_assessment.comprehensibility}%
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Comprehensibility</p>
+                  </div>
+                  <div className="text-center p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                      {detailedAiResponse.proficiency_assessment.CEFR_pronunciation_level}
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">CEFR Level</p>
+                  </div>
+                </div>
+                <p className="text-sm italic">
+                  {detailedAiResponse.proficiency_assessment.accent_impact_assessment}
+                </p>
               </div>
 
               {/* Improvement Plan */}
@@ -732,16 +974,21 @@ export default function Recording() {
                 <h4 className="font-medium mb-3">Personalized Improvement Plan</h4>
                 <div className="space-y-4">
                   {detailedAiResponse.improvement_plan.priority_areas.map(
-                    (area, index) => (
+                    (area: {
+                      focus: string;
+                      importance: "High" | "Medium" | "Low";
+                      exercises: string[];
+                      expected_timeline: string;
+                    }, index: number) => (
                       <div key={index} className="border-l-4 border-blue-500 pl-4">
                         <h5 className="font-medium">{area.focus}</h5>
                         <div className="flex items-center gap-2 my-1">
                           <span className={`px-2 py-0.5 rounded-full text-xs ${
-                            area.importance === 'high'
-                              ? 'bg-red-100 text-red-800'
-                              : area.importance === 'medium'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-green-100 text-green-800'
+                            area.importance === 'High'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              : area.importance === 'Medium'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                           }`}>
                             {area.importance} priority
                           </span>
@@ -756,35 +1003,68 @@ export default function Recording() {
                     )
                   )}
                 </div>
+                
+                {/* Recommended Resources */}
+                <div className="mt-4">
+                  <h5 className="text-sm font-medium mb-2">Recommended Resources</h5>
+                  <ul className="list-disc list-inside text-sm">
+                    {detailedAiResponse.improvement_plan.recommended_resources.map(
+                      (resource: string, index: number) => (
+                        <li key={index}>{resource}</li>
+                      )
+                    )}
+                  </ul>
+                </div>
+                
+                {/* Practice Strategies */}
+                <div className="mt-4">
+                  <h5 className="text-sm font-medium mb-2">Practice Strategies</h5>
+                  <ul className="list-disc list-inside text-sm">
+                    {detailedAiResponse.improvement_plan.practice_strategies.map(
+                      (strategy: string, index: number) => (
+                        <li key={index}>{strategy}</li>
+                      )
+                    )}
+                  </ul>
+                </div>
               </div>
 
-              {/* Summary */}
+              {/* Linguistic Background Insights */}
               <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                <h3 className="font-semibold mb-3">Analysis Summary</h3>
-                <div className="space-y-4">
+                <h4 className="font-medium mb-3">Linguistic Background Insights</h4>
+                <div className="space-y-3">
                   <div>
-                    <h4 className="text-sm font-medium mb-2">Key Strengths</h4>
-                    <ul className="list-disc list-inside">
-                      {detailedAiResponse.summary.key_strengths.map(
-                        (strength, index) => (
-                          <li key={index} className="text-sm text-gray-700 dark:text-gray-300">{strength}</li>
+                    <h5 className="text-sm font-medium mb-1">L1 Transfer Effects</h5>
+                    <ul className="list-disc list-inside text-sm">
+                      {detailedAiResponse.linguistic_background_insights.probable_l1_transfer_effects.map(
+                        (effect: string, index: number) => (
+                          <li key={index}>{effect}</li>
                         )
                       )}
                     </ul>
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium mb-2">Primary Challenges</h4>
-                    <ul className="list-disc list-inside">
-                      {detailedAiResponse.summary.primary_challenges.map(
-                        (challenge, index) => (
-                          <li key={index} className="text-sm text-gray-700 dark:text-gray-300">{challenge}</li>
+                    <h5 className="text-sm font-medium mb-1">Cultural Speech Patterns</h5>
+                    <ul className="list-disc list-inside text-sm">
+                      {detailedAiResponse.linguistic_background_insights.cultural_speech_patterns.map(
+                        (pattern: string, index: number) => (
+                          <li key={index}>{pattern}</li>
                         )
                       )}
                     </ul>
                   </div>
-                  <p className="text-sm italic mt-4">
-                    {detailedAiResponse.summary.overall_assessment}
-                  </p>
+                  {detailedAiResponse.linguistic_background_insights.multilingual_influences.length > 0 && (
+                    <div>
+                      <h5 className="text-sm font-medium mb-1">Multilingual Influences</h5>
+                      <ul className="list-disc list-inside text-sm">
+                        {detailedAiResponse.linguistic_background_insights.multilingual_influences.map(
+                          (influence: string, index: number) => (
+                            <li key={index}>{influence}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
