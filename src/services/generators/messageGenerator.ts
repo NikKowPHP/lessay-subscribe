@@ -96,7 +96,7 @@ class MessageGenerator {
          - Intonation and rhythm deviations from standard ${analysisLanguage}
          - Influence of speaker's probable native language
       5. 2-3 most noticeable accent markers in speaker's ${analysisLanguage}
-      6. Suggested focus areas for improving ${analysisLanguage} pronunciation
+      6. Suggested focus areas for improving ${analysisLanguage} pronunciation and a youtube search prompt for each focus area
       
       Use direct speech.
       Format response in clear sections with linguistic terminology explained in parentheses.
@@ -161,7 +161,8 @@ class MessageGenerator {
             {
               "focus_area": "Specific area to improve",
               "importance": "High/Medium/Low",
-              "exercises": ["Suggested exercises"]
+              "exercises": ["Suggested exercises"],
+              "youtube_search_prompt": "[focus_area] ${analysisLanguage} pronunciation"
             }
           ]
         }
@@ -323,7 +324,8 @@ class MessageGenerator {
               "focus": "string",
               "importance": "string (high|medium|low)",
               "exercises": ["string"],
-              "expected_timeline": "string"
+              "expected_timeline": "string",
+              "youtube_search_prompt": "string"
             }
           ],
           "recommended_resources": ["string"],
@@ -346,7 +348,7 @@ class MessageGenerator {
       6. Keep technical terminology but provide clear explanations
       7. Make recommendations specific and actionable for the identified accent
       8. Base all assessments on concrete evidence from the audio sample
-  
+      9. Provide a youtube search prompt for each recommendation
       Your analysis should be thorough yet accessible, professional yet engaging, and always supported by specific examples from the speech sample.
     `;
   }
