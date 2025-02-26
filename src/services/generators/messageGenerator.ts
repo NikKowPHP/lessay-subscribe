@@ -1,3 +1,5 @@
+import { LanguageDetectionResponse } from "@/models/Language-detection.model";
+
 class MessageGenerator {
   constructor() { }
  

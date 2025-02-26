@@ -3,6 +3,7 @@ import AIService from './ai.service';
 import MessageGenerator from './generators/messageGenerator';
 import MetricsService from './metrics.service';
 import { retryOperation } from '@/utils/retryWithOperation';
+import { LanguageDetectionResponse } from '@/models/Language-detection.model';
 
 class RecordingService {
   private aiService: AIService;

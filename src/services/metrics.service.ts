@@ -1,5 +1,6 @@
 import logger from "@/utils/logger";
 import { supabase } from "@/repositories/supabase/supabase";
+import { LanguageDetectionResponse } from "@/models/Language-detection.model";
 
 class MetricsService {
   constructor() {}
