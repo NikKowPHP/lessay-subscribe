@@ -710,6 +710,9 @@ export default function Recording() {
           {!isProcessing && detailedAiResponse && (
             <div className="mt-8 space-y-6">
               <h2 className="text-xl font-semibold mb-4">Detailed Accent Analysis</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                The audio of phonetics is just an approximation of the actual pronunciation due to limitations with text-to-speech technology.
+              </p>
               
               {/* Accent Analysis Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -729,19 +732,19 @@ export default function Recording() {
                         {detailedAiResponse.accent_analysis.accent_classification.accent_type}
                       </span>
                     </p>
-                    <p className="flex justify-between">
+                    <p className="flex flex-col md:flex-row justify-between">
                       <span>Specific Accent:</span>
                       <span className="font-medium">
                         {detailedAiResponse.accent_analysis.accent_classification.specific_accent}
                       </span>
                     </p>
-                    <p className="flex justify-between">
+                    <p className="flex  justify-between">
                       <span>Confidence:</span>
                       <span className="text-green-600">
                         {detailedAiResponse.accent_analysis.accent_classification.confidence_level}%
                       </span>
                     </p>
-                    <p className="flex justify-between">
+                    <p className="flex  justify-between">
                       <span>Accent Strength:</span>
                       <span className="font-medium">
                         {detailedAiResponse.accent_analysis.accent_classification.accent_strength}
