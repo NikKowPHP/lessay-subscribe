@@ -162,7 +162,7 @@ class MessageGenerator {
               "focus_area": "Specific area to improve",
               "importance": "High/Medium/Low",
               "exercises": ["Suggested exercises"],
-              "youtube_search_prompt": "[focus_area] ${analysisLanguage} pronunciation"
+              "youtube_search_prompt": "[focus_area] IPA pronunciation ${analysisLanguage}"
             }
           ]
         }
