@@ -1,20 +1,20 @@
 class MessageGenerator {
   constructor() {}
-  generateUserMessage(isDeepAnalysis: boolean): string {
+ public generateUserMessage(detectedLanguage: LanguageDetectionResponse, isDeepAnalysis: boolean): string {
     if (isDeepAnalysis) {
-      return this.generateDetailedAccentAnalysisPrompt();
+      return this.generateDetailedAccentAnalysisPrompt(detectedLanguage);
     }
-    return this.generateBasicUserMessage();
+    return this.generateBasicUserMessage(detectedLanguage);
   }
 
-  generateSystemMessage(isDeepAnalysis: boolean): string {
+  public generateSystemMessage(detectedLanguage: LanguageDetectionResponse, isDeepAnalysis: boolean): string {
     if (isDeepAnalysis) {
-      return this.generateDetailedAccentAnalysisInstruction();
+      return this.generateDetailedAccentAnalysisInstruction(detectedLanguage);
     }
-    return this.generateBasicSystemMessage();
+    return this.generateBasicSystemMessage(detectedLanguage);
   }
 
-  generateTargetLanguageDetectionPrompt(): {
+  public generateTargetLanguageDetectionPrompt(detectedLanguage: LanguageDetectionResponse): {
     userPrompt: string;
     systemPrompt: string;
   } {
@@ -25,6 +25,37 @@ class MessageGenerator {
       systemPrompt: systemMessage
     }
   }
+
+  public generatePersonalizedPrompts(detectedLanguage: LanguageDetectionResponse, isDeepAnalysis: boolean): {
+    userPrompt: string;
+    systemPrompt: string;
+  } {
+     const {userMessage, systemMessage} = this.getPromptsBasedOnLanguageAndAnalysis(detectedLanguage, isDeepAnalysis);
+
+    return {
+      userPrompt: userMessage,
+      systemPrompt: systemMessage
+    }
+  }
+  private getPromptsBasedOnLanguageAndAnalysis(detectedLanguage: LanguageDetectionResponse, isDeepAnalysis: boolean): {
+    userMessage: string;
+    systemMessage: string;
+  } {
+    let userMessage 
+    let systemMessage 
+    if(isDeepAnalysis) {
+      userMessage = this.generateDetailedAccentAnalysisPrompt(detectedLanguage);
+      systemMessage = this.generateDetailedAccentAnalysisInstruction(detectedLanguage);
+    } else {
+      userMessage = this.generateBasicUserMessage(detectedLanguage);
+      systemMessage = this.generateBasicSystemMessage(detectedLanguage);
+    }
+    return {
+      userMessage,
+      systemMessage
+    };
+  }
+
 
   private generateLanguageDetectionUserMessage(): string {
     return `
@@ -58,7 +89,7 @@ class MessageGenerator {
   }
 
 
-  private generateBasicUserMessage(): string {
+  private generateBasicUserMessage(detectedLanguage: LanguageDetectionResponse): string {
     return `
       Please analyze this spoken language sample and provide feedback:
 
@@ -78,7 +109,7 @@ class MessageGenerator {
     `;
   }
 
-  private generateBasicSystemMessage(): string {
+  private generateBasicSystemMessage(detectedLanguage: LanguageDetectionResponse): string {
     return `
       You are Dr. Lessay, PhD in Applied Linguistics from Cambridge University with 15 years experience 
       in multilingual speech analysis and accent coaching. Your expertise spans across major world languages 
@@ -123,7 +154,7 @@ class MessageGenerator {
    * Generates a highly detailed accent analysis prompt for user requests.
    * This message instructs the AI to deliver an in-depth accent and speech analysis.
    */
-  private generateDetailedAccentAnalysisPrompt(): string {
+  private generateDetailedAccentAnalysisPrompt(detectedLanguage: LanguageDetectionResponse): string {
     return `
       Perform a detailed linguistic analysis of this speech sample, focusing on accent characteristics and speech patterns. 
       Your analysis should cover:
@@ -175,7 +206,7 @@ class MessageGenerator {
    * Generates a detailed system instruction for accent analysis.
    * This instructs the AI (acting as a language analysis expert) to perform a deep accent and phonetic analysis in its output.
    */
-  private generateDetailedAccentAnalysisInstruction(): string {
+  private generateDetailedAccentAnalysisInstruction(detectedLanguage: LanguageDetectionResponse): string {
     return `
       You are Dr. Sarah Chen-Martinez, PhD in Applied Linguistics and Phonetics from Cambridge University, 
       with 20 years of expertise in accent analysis, speech pathology, and multilingual phonetics. 
