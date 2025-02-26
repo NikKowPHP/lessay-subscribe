@@ -19,12 +19,12 @@ const Recording = dynamic(() => import('../components/Recording'), {
 });
 
 export const metadata: Metadata = {
-  title: "AI Accent Analysis & Language Learning | lessay",
-  description: "Get instant AI-powered feedback on pronunciation, fluency, and language patterns. Join lessay's waitlist for advanced language learning.",
-  keywords: ["accent analysis", "pronunciation feedback", "language learning AI", "fluency assessment"],
+  title: "AI Accent & Pronunciation Analysis | lessay",
+  description: "Get instant AI-powered feedback on your accent, pronunciation patterns, and speech characteristics. Join lessay's waitlist for advanced accent analysis.",
+  keywords: ["accent analysis", "pronunciation feedback", "accent detection", "speech analysis", "phonological assessment"],
   openGraph: {
-    title: "AI-Powered Language Analysis | lessay",
-    description: "Revolutionary AI technology for accent assessment and language learning",
+    title: "AI-Powered Accent & Pronunciation Analysis | lessay",
+    description: "Revolutionary AI technology for detailed accent assessment and pronunciation feedback",
     images: [
       {
         url: "/og-accent-analysis.jpg",
@@ -36,16 +36,14 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Accent Analysis & Language Learning | lessay",
-    description: "Get instant feedback on your pronunciation with AI technology",
+    title: "AI Accent & Pronunciation Analysis | lessay",
+    description: "Get instant feedback on your accent and pronunciation with AI technology",
     images: ["/og-accent-analysis.jpg"],
   },
 };
 
 
 export default function Home() {
-
-
 
    const generateJsonLd = () => ({
     "@context": "https://schema.org",
@@ -56,15 +54,15 @@ export default function Home() {
         "name": "How does the AI accent analysis work?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Our AI system analyzes your speech patterns, pronunciation, and language structure using advanced machine learning models to provide detailed feedback"
+          "text": "Our AI system analyzes your speech patterns, pronunciation, and phonological features using advanced machine learning models to provide detailed feedback on your accent characteristics."
         }
       },
       {
         "@type": "Question",
-        "name": "What languages are supported?",
+        "name": "What languages are supported for accent analysis?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "The system currently supports analysis for 50+ languages including English, Spanish, Mandarin, French, and German"
+          "text": "The system currently supports accent analysis for 50+ languages including English, Spanish, Mandarin, French, and German, identifying regional accents and pronunciation patterns."
         }
       }
     ]
@@ -82,7 +80,7 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300">
-            Learn a language, not the fluff
+            Analyze your accent, not the fluff
           </p>
         </div>
 
@@ -97,7 +95,7 @@ export default function Home() {
             Join the waitlist
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
-            Be the first to experience smarter language learning.
+            Be the first to experience advanced AI accent and pronunciation analysis.
           </p>
           <Suspense
             fallback={

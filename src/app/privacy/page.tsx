@@ -77,7 +77,7 @@ export default function Privacy() {
               </p>
             </div>
 
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <h3 className="font-semibold text-center">Email Communications</h3>
               <p className="text-gray-600 dark:text-gray-400">
                 We use your email to:
@@ -88,7 +88,7 @@ export default function Privacy() {
                   <li>Send security-related announcements</li>
                 </ul>
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
 
