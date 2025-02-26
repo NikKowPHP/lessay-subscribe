@@ -3,6 +3,7 @@ import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/react"
 import { ErrorProvider } from "@/hooks/useError";
+import { PostHogProvider } from "@/context/posthog-context";
 
 // Optimize font loading
 const geistSans = Geist({
@@ -44,9 +45,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased relative`}
       >
         <ErrorProvider>
-        <SubscriptionProvider>
-            {children}
-        </SubscriptionProvider>
+          <PostHogProvider>
+            <SubscriptionProvider>
+              {children}
+            </SubscriptionProvider>
+          </PostHogProvider>
         </ErrorProvider>
      
         <SpeedInsights />
