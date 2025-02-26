@@ -35,7 +35,7 @@ export default function Terms() {
           <h2 className="text-xl font-semibold mb-4 text-center">Terms of Service</h2>
           <div className="space-y-6">
             <p className="text-base text-gray-600 dark:text-gray-400">
-              By using lessay's AI-powered accent and pronunciation analysis platform, you agree to these Terms. Our technology provides detailed feedback on your pronunciation patterns, accent characteristics, and phonological features.
+              By using lessay AI-powered accent and pronunciation analysis platform, you agree to these Terms. Our technology provides detailed feedback on your pronunciation patterns, accent characteristics, and phonological features.
             </p>
 
             <div className="space-y-4">
