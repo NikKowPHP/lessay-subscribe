@@ -14,7 +14,51 @@ class MessageGenerator {
     return this.generateBasicSystemMessage();
   }
 
-  generateBasicUserMessage(): string {
+  generateTargetLanguageDetectionPrompt(): {
+    userPrompt: string;
+    systemPrompt: string;
+  } {
+    const userMessage = this.generateLanguageDetectionUserMessage();
+    const systemMessage = this.generateLanguageDetectionSystemMessage();
+    return {
+      userPrompt: userMessage,
+      systemPrompt: systemMessage
+    }
+  }
+
+  private generateLanguageDetectionUserMessage(): string {
+    return `
+      Please identify the language being spoken in the provided audio sample.
+      Focus only on language identification with high accuracy.
+      Return your analysis in the specified JSON format.
+    `;
+  }
+
+  private generateLanguageDetectionSystemMessage(): string {
+    return `
+      You are Dr. Lessay, PhD in Applied Linguistics from Cambridge University with 15 years experience 
+      in language identification and phonological analysis. Your expertise covers over 100 languages and their
+      regional variants. Your task is to identify the language in the provided audio sample with high accuracy.
+
+      Analyze the phonological patterns, prosody, and distinctive features of the speech to identify the language.
+      
+      Respond ONLY with a valid JSON object using this exact structure:
+      \`\`\`json
+      {
+        "language": "Name of identified language",
+        "confidence": "Confidence level (0-100)",
+        "possible_alternatives": ["Alternative language 1", "Alternative language 2"],
+        "language_family": "Indo-European/Sino-Tibetan/etc"
+      }
+      \`\`\`
+
+      Do not include any additional text, explanations, or notes outside of the JSON object.
+      Ensure the JSON is valid and properly formatted.
+    `;
+  }
+
+
+  private generateBasicUserMessage(): string {
     return `
       Please analyze this spoken language sample and provide feedback:
 
@@ -34,7 +78,7 @@ class MessageGenerator {
     `;
   }
 
-  generateBasicSystemMessage(): string {
+  private generateBasicSystemMessage(): string {
     return `
       You are Dr. Lessay, PhD in Applied Linguistics from Cambridge University with 15 years experience 
       in multilingual speech analysis and accent coaching. Your expertise spans across major world languages 
@@ -79,7 +123,7 @@ class MessageGenerator {
    * Generates a highly detailed accent analysis prompt for user requests.
    * This message instructs the AI to deliver an in-depth accent and speech analysis.
    */
-  generateDetailedAccentAnalysisPrompt(): string {
+  private generateDetailedAccentAnalysisPrompt(): string {
     return `
       Perform a detailed linguistic analysis of this speech sample, focusing on accent characteristics and speech patterns. 
       Your analysis should cover:
@@ -131,7 +175,7 @@ class MessageGenerator {
    * Generates a detailed system instruction for accent analysis.
    * This instructs the AI (acting as a language analysis expert) to perform a deep accent and phonetic analysis in its output.
    */
-  generateDetailedAccentAnalysisInstruction(): string {
+  private generateDetailedAccentAnalysisInstruction(): string {
     return `
       You are Dr. Sarah Chen-Martinez, PhD in Applied Linguistics and Phonetics from Cambridge University, 
       with 20 years of expertise in accent analysis, speech pathology, and multilingual phonetics. 
