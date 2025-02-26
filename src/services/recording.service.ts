@@ -2,6 +2,7 @@ import logger from '@/utils/logger';
 import AIService from './ai.service';
 import MessageGenerator from './generators/messageGenerator';
 import MetricsService from './metrics.service';
+import { retryOperation } from '@/utils/retryWithOperation';
 
 class RecordingService {
   private aiService: AIService;
@@ -17,21 +18,7 @@ class RecordingService {
   /**
    * A generic helper function to retry an async operation.
    */
-  private async retryOperation<T>(operation: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> {
-    let lastError: unknown;
-    for (let attempt = 0; attempt < attempts; attempt++) {
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error;
-        logger.error(`RecordingService operation failed, attempt ${attempt + 1} of ${attempts}.`, error);
-        if (attempt < attempts - 1) {
-          await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
-        }
-      }
-    }
-    throw lastError;
-  }
+  
 
   async uploadFile(
     audioBuffer: Buffer,
@@ -50,20 +37,28 @@ class RecordingService {
     isDeepAnalysis: boolean
   ): Promise<Record<string, unknown>> {
     try {
-      const userMessage = this.messageGenerator.generateUserMessage(isDeepAnalysis);
-      const systemMessage = this.messageGenerator.generateSystemMessage(isDeepAnalysis);
 
       // Generate content using AI service with retry logic.
       const startTime = Date.now();
-      const aiResponse = await this.retryOperation(() =>
-        this.aiService.generateContent(fileUri, userMessage, systemMessage)
+
+      const detectedTargetLanguage= await retryOperation(() => this.detectTargetLanguage(fileUri));
+
+      logger.log("Detected Target Language:", detectedTargetLanguage);
+
+      const personalizedPrompts = this.messageGenerator.generatePersonalizedPrompts(detectedTargetLanguage, isDeepAnalysis);
+
+      logger.log("Personalized Prompts:", personalizedPrompts);
+
+      const aiResponse = await retryOperation(() =>
+        this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt)
       );
       logger.log("AI Response:", aiResponse);
+
       const endTime = Date.now();
       const responseTime = endTime - startTime;
 
       // Collect interaction data with retry logic.
-      await this.retryOperation(() =>
+      await retryOperation(() =>
         this.metricsService.collectInteractionData(
           userIP, 
           fileUri, 
