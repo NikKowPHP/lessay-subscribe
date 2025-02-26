@@ -27,7 +27,7 @@ export default function Privacy() {
             </span>
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300">
-            Learn a language, not the fluff
+            Analyze your accent, not the fluff
           </p>
         </div>
 
@@ -42,7 +42,7 @@ export default function Privacy() {
                   <li>Pronunciation of specific phonemes</li>
                   <li>Rhythm and intonation patterns</li>
                   <li>Accent characteristics</li>
-                  <li>Use of specific vocabulary</li>
+                  <li>Phonological features and speech patterns</li>
                 </ul>
               </p>
             </div>
@@ -54,7 +54,8 @@ export default function Privacy() {
                 <ul className="list-disc pl-6 mt-2">
                   <li>Email address for account notifications</li>
                   <li>Native language (for accent analysis)</li>
-                  <li>Self-reported speaking proficiency</li>
+                  <li>Regional background information</li>
+                  <li>Speaking proficiency self-assessment</li>
                 </ul>
               </p>
             </div>
@@ -68,9 +69,10 @@ export default function Privacy() {
               <p className="text-gray-600 dark:text-gray-400">
                 Your data helps us:
                 <ul className="list-disc pl-6 mt-2">
-                  <li>Personalize accent analysis using AI</li>
-                  <li>Improve analysis algorithms</li>
-                  <li>Send progress reports and platform updates</li>
+                  <li>Identify your accent and pronunciation patterns</li>
+                  <li>Analyze phonological features and prosodic elements</li>
+                  <li>Generate personalized improvement suggestions</li>
+                  <li>Improve our AI models for accent analysis</li>
                 </ul>
               </p>
             </div>
@@ -80,9 +82,9 @@ export default function Privacy() {
               <p className="text-gray-600 dark:text-gray-400">
                 We use your email to:
                 <ul className="list-disc pl-6 mt-2">
-                  <li>Notify about analysis results</li>
-                  <li>Share speaking progress updates</li>
-                  <li>Inform about new platform features</li>
+                  <li>Provide detailed accent analysis results</li>
+                  <li>Share pronunciation improvement recommendations</li>
+                  <li>Inform about new accent analysis features</li>
                   <li>Send security-related announcements</li>
                 </ul>
               </p>
@@ -97,10 +99,10 @@ export default function Privacy() {
               <p className="text-gray-600 dark:text-gray-400">
                 You can:
                 <ul className="list-disc pl-6 mt-2">
-                  <li>Request access to collected data</li>
-                  <li>Correct inaccurate information</li>
-                  <li>Delete your speaking profile</li>
-                  <li>Opt-out of non-essential emails</li>
+                  <li>Request access to your collected speaking data</li>
+                  <li>Correct inaccurate accent or linguistic information</li>
+                  <li>Delete your speaking profile and analysis history</li>
+                  <li>Opt-out of non-essential communications</li>
                 </ul>
               </p>
             </div>
