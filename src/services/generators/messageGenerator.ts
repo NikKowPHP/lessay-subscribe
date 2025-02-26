@@ -1,20 +1,8 @@
 class MessageGenerator {
-  constructor() {}
- public generateUserMessage(detectedLanguage: LanguageDetectionResponse, isDeepAnalysis: boolean): string {
-    if (isDeepAnalysis) {
-      return this.generateDetailedAccentAnalysisPrompt(detectedLanguage);
-    }
-    return this.generateBasicUserMessage(detectedLanguage);
-  }
+  constructor() { }
+ 
 
-  public generateSystemMessage(detectedLanguage: LanguageDetectionResponse, isDeepAnalysis: boolean): string {
-    if (isDeepAnalysis) {
-      return this.generateDetailedAccentAnalysisInstruction(detectedLanguage);
-    }
-    return this.generateBasicSystemMessage(detectedLanguage);
-  }
-
-  public generateTargetLanguageDetectionPrompt(detectedLanguage: LanguageDetectionResponse): {
+  public generateTargetLanguageDetectionPrompt(): {
     userPrompt: string;
     systemPrompt: string;
   } {
@@ -30,25 +18,29 @@ class MessageGenerator {
     userPrompt: string;
     systemPrompt: string;
   } {
-     const {userMessage, systemMessage} = this.getPromptsBasedOnLanguageAndAnalysis(detectedLanguage, isDeepAnalysis);
+    const { userMessage, systemMessage } = this.getPromptsBasedOnLanguageAndAnalysis(detectedLanguage, isDeepAnalysis);
 
     return {
       userPrompt: userMessage,
       systemPrompt: systemMessage
     }
   }
+
+
+
+
   private getPromptsBasedOnLanguageAndAnalysis(detectedLanguage: LanguageDetectionResponse, isDeepAnalysis: boolean): {
     userMessage: string;
     systemMessage: string;
   } {
-    let userMessage 
-    let systemMessage 
-    if(isDeepAnalysis) {
-      userMessage = this.generateDetailedAccentAnalysisPrompt(detectedLanguage);
-      systemMessage = this.generateDetailedAccentAnalysisInstruction(detectedLanguage);
+    let userMessage
+    let systemMessage
+    if (isDeepAnalysis) {
+      userMessage = this.generateDetailedAccentAnalysisPrompt(detectedLanguage.language);
+      systemMessage = this.generateDetailedAccentAnalysisInstruction(detectedLanguage.language);
     } else {
-      userMessage = this.generateBasicUserMessage(detectedLanguage);
-      systemMessage = this.generateBasicSystemMessage(detectedLanguage);
+      userMessage = this.generateBasicUserMessage(detectedLanguage.language);
+      systemMessage = this.generateBasicSystemMessage(detectedLanguage.language);
     }
     return {
       userMessage,
@@ -89,114 +81,138 @@ class MessageGenerator {
   }
 
 
-  private generateBasicUserMessage(detectedLanguage: LanguageDetectionResponse): string {
+  private generateBasicUserMessage(analysisLanguage: string): string {
     return `
-      Please analyze this spoken language sample and provide feedback:
-
-     First, identify the language being spoken.
-      Then provide detailed feedback on:
-      1. Language identification with confidence level (%)
-      2. Probable country of origin/native language of the speaker
-      3. Accent characteristics specific to this language:
+      Please analyze this spoken ${analysisLanguage} sample and provide feedback:
+  
+      Your analysis should focus on:
+      1. Accent identification within ${analysisLanguage} (regional accent or non-native accent)
+      2. Confidence level in accent identification (%)
+      3. Probable native language/region of the speaker based on accent characteristics
+      4. Accent characteristics specific to this speaker's ${analysisLanguage}:
          - Vowel and consonant pronunciation patterns
-         - Intonation and rhythm deviations from native speech
+         - Intonation and rhythm deviations from standard ${analysisLanguage}
          - Influence of speaker's probable native language
-      4. 2-3 most noticeable non-native speaker markers
-      5. Suggested focus areas for improvement in this specific language
+      5. 2-3 most noticeable accent markers in speaker's ${analysisLanguage}
+      6. Suggested focus areas for improving ${analysisLanguage} pronunciation
       
-      Use direct speech
+      Use direct speech.
       Format response in clear sections with linguistic terminology explained in parentheses.
     `;
   }
 
-  private generateBasicSystemMessage(detectedLanguage: LanguageDetectionResponse): string {
+  private generateBasicSystemMessage(analysisLanguage: string): string {
     return `
       You are Dr. Lessay, PhD in Applied Linguistics from Cambridge University with 15 years experience 
       in multilingual speech analysis and accent coaching. Your expertise spans across major world languages 
-      and their regional variants. Your task is to analyze the provided spoken language sample and provide feedback in JSON format.
-
+      and their regional variants.
+      
+      Your task is to analyze this ${analysisLanguage} speech sample, identify the speaker's accent characteristics, 
+      determine their likely linguistic background, and provide feedback in JSON format.
+  
       Follow this JSON structure:
       \`\`\`json
         {
-          "language_identification": "Identified Language",
-          "confidence_level": "Confidence Level (%)",
-          "user_native_language_guess": "User's Native Language Guess",
-          "native_language_influence_analysis": "Analysis of the speaker's native language influence",
+          "language_analyzed": "${analysisLanguage}",
+          "accent_identification": {
+            "accent_type": "Regional or Non-native accent classification",
+            "specific_accent": "Detailed accent identification (e.g., Indian English, Mexican Spanish)",
+            "confidence_level": "Confidence Level (%)",
+            "accent_strength": "Mild/Moderate/Strong"
+          },
+          "speaker_background": {
+            "probable_native_language": "User's probable native language",
+            "probable_region": "User's probable region/country",
+            "confidence": "Confidence level (%)",
+            "supporting_evidence": "Specific accent features supporting this conclusion"
+          },
           "language_specific_phonological_assessment": [
             {
-              "phoneme": "Specific phoneme",
+              "phoneme": "Specific ${analysisLanguage} phoneme",
               "example": "Example word",
               "analysis": "Analysis of the phoneme pronunciation",
-              "IPA_target": "IPA target",
-              "IPA_observed": "IPA observed"
+              "IPA_target": "IPA target for standard ${analysisLanguage}",
+              "IPA_observed": "IPA observed in speaker"
             }
           ],
           "suprasegmental_features_analysis": [
             {
-              "feature": "Rhythm/Intonation",
-              "observation": "Observation of rhythm or intonation"
+              "feature": "Rhythm/Intonation/Stress",
+              "observation": "Observation of feature in speaker's ${analysisLanguage}",
+              "comparison": "Comparison to standard ${analysisLanguage}"
             }
           ],
-          "cross_linguistic_influence_note": "Note on cross-linguistic influence",
-          "CEFR_aligned_proficiency_indicators": "CEFR level",
-          "personalized_learning_pathway_suggestions": [
-            "Suggestion 1",
-            "Suggestion 2"
+          "diagnostic_accent_markers": [
+            {
+              "feature": "Specific accent marker",
+              "description": "Description of the feature",
+              "association": "Language/region this feature is associated with"
+            }
+          ],
+          "proficiency_assessment": {
+            "intelligibility": "Rating of ${analysisLanguage} intelligibility (0-100)",
+            "fluency": "Rating of ${analysisLanguage} fluency (0-100)",
+            "CEFR_level": "Estimated pronunciation proficiency level"
+          },
+          "improvement_suggestions": [
+            {
+              "focus_area": "Specific area to improve",
+              "importance": "High/Medium/Low",
+              "exercises": ["Suggested exercises"]
+            }
           ]
         }
       \`\`\`
-
-      Ensure the response is a valid JSON array containing a single object with the above fields , and that all feedback is expressed in direct speech.
+  
+      Ensure the response is a valid JSON containing a single object with the above fields, and that all feedback is expressed in direct speech.
     `;
   }
 
-  /**
-   * Generates a highly detailed accent analysis prompt for user requests.
-   * This message instructs the AI to deliver an in-depth accent and speech analysis.
-   */
-  private generateDetailedAccentAnalysisPrompt(detectedLanguage: LanguageDetectionResponse): string {
+
+  private generateDetailedAccentAnalysisPrompt(analysisLanguage: string): string {
     return `
-      Perform a detailed linguistic analysis of this speech sample, focusing on accent characteristics and speech patterns. 
+      Perform a detailed linguistic analysis of this ${analysisLanguage} speech sample, focusing on accent identification and characteristics.
+      
       Your analysis should cover:
-
-      1. **Language and Accent Profile:**
-         - Primary language and confidence level (%)
-         - Specific regional accent identification
-         - Dialectal variations present
-         - Influence of other languages/accents
-
+  
+      1. **Accent Identification and Classification:**
+         - Precise identification of speaker's ${analysisLanguage} accent (regional or non-native)
+         - Confidence assessment of accent classification
+         - Accent strength and consistency evaluation
+         - Probable native language/region and supporting evidence
+  
       2. **Detailed Phonetic Analysis:**
-         - Individual phoneme articulation patterns
-         - Vowel quality and placement
-         - Consonant production and modifications
-         - Sound substitutions and adaptations
-         - Precise IPA transcriptions of notable examples
-
+         - Individual ${analysisLanguage} phoneme articulation patterns
+         - ${analysisLanguage} vowel quality and placement compared to standard pronunciation
+         - ${analysisLanguage} consonant production and modifications
+         - Sound substitutions and adaptations characteristic of specific accents
+         - Precise IPA transcriptions of notable examples, comparing standard vs. observed pronunciation
+  
       3. **Prosodic Features:**
-         - Speech rhythm and timing patterns
+         - ${analysisLanguage} speech rhythm and timing patterns
          - Stress placement at word and sentence level
-         - Intonation contours and pitch patterns
-         - Voice quality characteristics
+         - ${analysisLanguage} intonation contours and pitch patterns
+         - Voice quality characteristics 
          - Speaking rate and fluency markers
-
-      4. **Accent Markers and Transfer Effects:**
-         - Key features indicating language background
-         - Cross-linguistic influence patterns
-         - Notable deviations from standard pronunciation
-         - Unique characteristics of speaker's accent
-
+  
+      4. **Accent Markers and Native Language Influence:**
+         - Key features indicating speaker's language background
+         - Cross-linguistic influence patterns from probable native language
+         - Notable deviations from standard ${analysisLanguage} pronunciation
+         - Unique characteristics that help identify speaker's origin
+  
       5. **Proficiency Assessment:**
-         - CEFR level for speaking skills
-         - Intelligibility rating
+         - Intelligibility rating in ${analysisLanguage}
          - Communication effectiveness
          - Overall fluency evaluation
-
+         - Impact of accent on comprehensibility
+  
       6. **Targeted Improvement Areas:**
-         - Priority pronunciation targets
+         - Priority ${analysisLanguage} pronunciation targets
          - Specific exercises and practice focuses
-         - Recommended learning strategies
+         - Recommended learning strategies based on identified accent
          - Progress tracking metrics
-
+  
       Format your response according to the specified JSON structure, ensuring all technical terms are explained clearly.
       Provide specific examples from the speech sample to support your analysis.
     `;
@@ -206,83 +222,94 @@ class MessageGenerator {
    * Generates a detailed system instruction for accent analysis.
    * This instructs the AI (acting as a language analysis expert) to perform a deep accent and phonetic analysis in its output.
    */
-  private generateDetailedAccentAnalysisInstruction(detectedLanguage: LanguageDetectionResponse): string {
+  private generateDetailedAccentAnalysisInstruction(analysisLanguage: string): string {
     return `
       You are Dr. Sarah Chen-Martinez, PhD in Applied Linguistics and Phonetics from Cambridge University, 
       with 20 years of expertise in accent analysis, speech pathology, and multilingual phonetics. 
       You specialize in detailed acoustic analysis and accent modification techniques across major world languages.
-
-      Analyze the provided audio sample and structure your response in the following JSON format:
-
+  
+      Analyze this ${analysisLanguage} speech sample to identify the speaker's accent characteristics, determine their 
+      linguistic background, and provide detailed feedback. Structure your response in the following JSON format:
+  
       \`\`\`json
       {
-        "primary_analysis": {
-          "identified_language": "string",
-          "confidence_score": "number (0-100)",
+        "accent_analysis": {
+          "language_analyzed": "${analysisLanguage}",
           "accent_classification": {
-            "primary_accent": "string",
-            "regional_influences": ["string"],
-            "confidence_level": "number (0-100)"
-          },
-          "native_language_assessment": {
-            "probable_l1": "string",
+            "accent_type": "Regional/Non-native accent",
+            "specific_accent": "Detailed accent identification",
             "confidence_level": "number (0-100)",
-            "supporting_features": ["string"]
+            "accent_strength": "string (mild|moderate|strong)"
+          },
+          "speaker_background": {
+            "probable_native_language": "string",
+            "probable_region": "string",
+            "confidence_level": "number (0-100)",
+            "supporting_evidence": ["phonological features supporting this conclusion"]
           }
         },
         "phonetic_analysis": {
           "vowel_production": [
             {
               "phoneme": "string (IPA)",
-              "target_realization": "string (IPA)",
-              "observed_realization": "string (IPA)",
+              "standard_realization": "string (IPA for standard ${analysisLanguage})",
+              "observed_realization": "string (IPA for speaker's pronunciation)",
               "example_word": "string",
               "timestamp": "number (seconds)",
-              "analysis": "string"
+              "analysis": "string",
+              "accent_marker": "boolean - whether this is a characteristic of identified accent"
             }
           ],
           "consonant_production": [
             {
               "phoneme": "string (IPA)",
-              "target_realization": "string (IPA)",
-              "observed_realization": "string (IPA)",
+              "standard_realization": "string (IPA for standard ${analysisLanguage})",
+              "observed_realization": "string (IPA for speaker's pronunciation)",
               "example_word": "string",
               "timestamp": "number (seconds)",
-              "analysis": "string"
+              "analysis": "string",
+              "accent_marker": "boolean - whether this is a characteristic of identified accent"
             }
           ]
         },
         "prosodic_features": {
           "rhythm_patterns": {
             "description": "string",
-            "notable_features": ["string"],
-            "impact_on_intelligibility": "string"
+            "standard_pattern": "description of standard ${analysisLanguage} rhythm",
+            "observed_pattern": "description of speaker's rhythm",
+            "accent_association": "string - what accent this pattern is associated with"
           },
           "stress_patterns": {
-            "word_level": ["string"],
-            "sentence_level": ["string"],
-            "deviations": ["string"]
+            "word_level": {
+              "description": "string",
+              "accent_association": "string"
+            },
+            "sentence_level": {
+              "description": "string",
+              "accent_association": "string"
+            }
           },
           "intonation": {
             "patterns": ["string"],
-            "notable_features": ["string"],
-            "l1_influence": "string"
+            "accent_association": "string - what accent these patterns are associated with"
           }
         },
-        "diagnostic_markers": [
+        "diagnostic_accent_markers": [
           {
             "feature": "string",
             "description": "string",
-            "impact": "string",
+            "example": "string",
+            "timestamp": "number (seconds)",
+            "accent_association": "string - what accent/language this feature is associated with",
             "frequency": "string (rare|occasional|frequent)"
           }
         ],
         "proficiency_assessment": {
-          "cefr_level": "string (A1|A2|B1|B2|C1|C2)",
           "intelligibility_score": "number (0-100)",
           "fluency_rating": "number (0-100)",
-          "accent_strength": "number (0-100)",
-          "detailed_evaluation": "string"
+          "comprehensibility": "number (0-100)",
+          "CEFR_pronunciation_level": "string (A1|A2|B1|B2|C1|C2)",
+          "accent_impact_assessment": "string - how accent affects communication"
         },
         "improvement_plan": {
           "priority_areas": [
@@ -294,26 +321,26 @@ class MessageGenerator {
             }
           ],
           "recommended_resources": ["string"],
-          "practice_strategies": ["string"]
+          "practice_strategies": ["string - specifically for identified accent"]
         },
-        "summary": {
-          "key_strengths": ["string"],
-          "primary_challenges": ["string"],
-          "overall_assessment": "string"
+        "linguistic_background_insights": {
+          "probable_l1_transfer_effects": ["string"],
+          "cultural_speech_patterns": ["string"],
+          "multilingual_influences": ["string - if applicable"]
         }
       }
       \`\`\`
-
+  
       Important Instructions:
       1. Maintain strict JSON format compliance
       2. Provide detailed, specific examples from the audio
       3. Include timestamps where relevant
       4. Use IPA symbols for all phonetic transcriptions
-      5. Ensure all scores and ratings are justified with specific observations
+      5. Ensure all accent classifications and language background assessments are justified with specific observations
       6. Keep technical terminology but provide clear explanations
-      7. Make recommendations specific and actionable
+      7. Make recommendations specific and actionable for the identified accent
       8. Base all assessments on concrete evidence from the audio sample
-
+  
       Your analysis should be thorough yet accessible, professional yet engaging, and always supported by specific examples from the speech sample.
     `;
   }
