@@ -3,10 +3,10 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: "Privacy Policy | lessay",
-  description: "Learn how lessay protects your data and privacy while delivering personalized language learning experiences through our AI-powered platform.",
+  description: "Learn how lessay protects your data and privacy while delivering personalized accent and pronunciation analysis experiences through our AI-powered platform.",
   openGraph: {
-    title: "Privacy Policy - lessay Language Learning Platform",
-    description: "Understanding how lessay handles your data and protects your privacy while learning languages.",
+    title: "Privacy Policy - lessay Accent & Pronunciation Analysis Platform",
+    description: "Understanding how lessay handles your data and protects your privacy while analyzing your accent and pronunciation.",
   },
 };
 
@@ -35,14 +35,14 @@ export default function Privacy() {
           <h2 className="text-xl font-semibold mb-4 text-center">Data Collection</h2>
           <div className="space-y-6">
             <div className="space-y-4">
-              <h3 className="font-semibold">Learning Data</h3>
+              <h3 className="font-semibold">Speaking Data</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                We collect data about your learning progress, including:
+                We collect data about your speaking patterns, including:
                 <ul className="list-disc pl-6 mt-2">
-                  <li>Lesson completion rates</li>
-                  <li>Vocabulary retention patterns</li>
-                  <li>Grammar concept mastery</li>
-                  <li>Interaction with adaptive exercises</li>
+                  <li>Pronunciation of specific phonemes</li>
+                  <li>Rhythm and intonation patterns</li>
+                  <li>Accent characteristics</li>
+                  <li>Use of specific vocabulary</li>
                 </ul>
               </p>
             </div>
@@ -53,8 +53,8 @@ export default function Privacy() {
                 We store information you provide directly:
                 <ul className="list-disc pl-6 mt-2">
                   <li>Email address for account notifications</li>
-                  <li>Language learning preferences</li>
-                  <li>Self-reported proficiency levels</li>
+                  <li>Native language (for accent analysis)</li>
+                  <li>Self-reported speaking proficiency</li>
                 </ul>
               </p>
             </div>
@@ -68,10 +68,9 @@ export default function Privacy() {
               <p className="text-gray-600 dark:text-gray-400">
                 Your data helps us:
                 <ul className="list-disc pl-6 mt-2">
-                  <li>Personalize lesson plans using AI</li>
-                  <li>Improve adaptive learning algorithms</li>
+                  <li>Personalize accent analysis using AI</li>
+                  <li>Improve analysis algorithms</li>
                   <li>Send progress reports and platform updates</li>
-                  <li>Develop new language learning features</li>
                 </ul>
               </p>
             </div>
@@ -81,8 +80,8 @@ export default function Privacy() {
               <p className="text-gray-600 dark:text-gray-400">
                 We use your email to:
                 <ul className="list-disc pl-6 mt-2">
-                  <li>Notify about lesson recommendations</li>
-                  <li>Share learning progress updates</li>
+                  <li>Notify about analysis results</li>
+                  <li>Share speaking progress updates</li>
                   <li>Inform about new platform features</li>
                   <li>Send security-related announcements</li>
                 </ul>
@@ -100,7 +99,7 @@ export default function Privacy() {
                 <ul className="list-disc pl-6 mt-2">
                   <li>Request access to collected data</li>
                   <li>Correct inaccurate information</li>
-                  <li>Delete your learning profile</li>
+                  <li>Delete your speaking profile</li>
                   <li>Opt-out of non-essential emails</li>
                 </ul>
               </p>

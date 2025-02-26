@@ -3,10 +3,10 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: "Terms of Service | lessay",
-  description: "Read lessay's terms of service. Learn about our AI-powered language learning platform's policies, user responsibilities, and subscription details.",
+  description: "Read lessay's terms of service. Learn about our AI-powered accent and pronunciation analysis platform's policies, user responsibilities, and subscription details.",
   openGraph: {
-    title: "Terms of Service - lessay Language Learning Platform",
-    description: "Important information about using lessay's AI-powered language learning platform.",
+    title: "Terms of Service - lessay Accent & Pronunciation Analysis Platform",
+    description: "Important information about using lessay's AI-powered accent and pronunciation analysis platform.",
   },
 };
 
@@ -35,39 +35,39 @@ export default function Terms() {
           <h2 className="text-xl font-semibold mb-4 text-center">Terms of Service</h2>
           <div className="space-y-6">
             <p className="text-base text-gray-600 dark:text-gray-400">
-              By using lessay&lsquo;s adaptive language learning platform, you agree to these Terms. Our AI-driven approach focuses on teaching only what you need, avoiding unnecessary repetition.
+              By using lessay&lsquo;s AI-powered accent and pronunciation analysis platform, you agree to these Terms. Our AI-driven approach focuses on providing detailed feedback on your pronunciation and accent characteristics.
             </p>
 
             <div className="space-y-4">
               <h3 className="font-semibold">1. Acceptance of Terms</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Accessing or using our AI-powered language lessons constitutes agreement to these Terms. We personalize content based on your learning patterns and goals.
+                Accessing or using our AI-powered accent analysis constitutes agreement to these Terms. We personalize feedback based on your speaking patterns and goals.
               </p>
             </div>
 
             <div className="space-y-4">
               <h3 className="font-semibold">2. User Responsibilities</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                You agree to provide accurate learning preferences and not misuse our adaptive algorithms. Content is for personal use only - no redistribution of AI-generated lesson plans.
+                You agree to provide accurate speaking samples and not misuse our analysis algorithms. Content is for personal use only - no redistribution of AI-generated analysis reports.
               </p>
             </div>
 
             <div className="space-y-4">
               <h3 className="font-semibold">3. AI-Generated Content</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Our platform dynamically creates lessons using machine learning. While we strive for accuracy, language patterns may evolve and outcomes cannot be guaranteed.
+                Our platform dynamically analyzes speech using machine learning. While we strive for accuracy, language patterns may evolve and outcomes cannot be guaranteed.
               </p>
             </div>
             <div className="space-y-4">
               <h3 className="font-semibold">4. Subscription & Access</h3>
               <p className="text-gray-600 dark:text-gray-400">
-              During our beta phase, you join a waitlist for early access. Future subscriptions will auto-renew but can be canceled anytime through your adaptive learning profile.
+              During our beta phase, you join a waitlist for early access. Future subscriptions will auto-renew but can be canceled anytime through your analysis profile.
               </p>
             </div>
             <div className="space-y-4">
               <h3 className="font-semibold">5. Termination</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                We may suspend accounts that abuse our AI systems or attempt to reverse-engineer our adaptive learning algorithms. You may opt-out of personalized tracking at any time.
+                We may suspend accounts that abuse our AI systems or attempt to reverse-engineer our analysis algorithms. You may opt-out of personalized tracking at any time.
               </p>
             </div>
           </div>
