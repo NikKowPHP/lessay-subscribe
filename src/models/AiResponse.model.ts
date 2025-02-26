@@ -12,16 +12,48 @@ export interface SuprasegmentalFeatureAnalysis {
 }
 
 export interface AIResponse {
-  language_identification: string;
-  confidence_level: string;
-  user_native_language_guess: string;
-  native_language_influence_analysis: string;
-  language_specific_phonological_assessment: PhonemeAnalysis[];
-  suprasegmental_features_analysis: SuprasegmentalFeatureAnalysis[];
-  cross_linguistic_influence_note: string;
-  CEFR_aligned_proficiency_indicators: string;
-  personalized_learning_pathway_suggestions: string[];
-  call_to_action: string;
+  language_analyzed: string;
+  accent_identification: {
+    accent_type: string;
+    specific_accent: string;
+    confidence_level: string;
+    accent_strength: string;
+  },
+  speaker_background: {
+    probable_native_language: string;
+    probable_region: string;
+    confidence: string;
+    supporting_evidence: string[];
+  },
+  language_specific_phonological_assessment: [
+    {
+      phoneme: string;
+      example: string;
+      analysis: string;
+      IPA_target: string;
+      IPA_observed: string;
+    }
+  ],
+  suprasegmental_features_analysis: {
+    feature: string;
+    observation: string;
+    comparison: string;
+  }[];
+  diagnostic_accent_markers: {
+    feature: string;
+    description: string;
+    association: string;
+  }[];
+  proficiency_assessment: {
+    intelligibility: string;
+    fluency: string;
+    CEFR_level: string;
+  };
+  improvement_suggestions: {
+    focus_area: string;
+    importance: "High" | "Medium" | "Low";
+    exercises: string[];
+  }[];
 }
 
 
