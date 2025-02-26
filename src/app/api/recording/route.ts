@@ -2,12 +2,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import RecordingService from '@/services/recording.service';
 import logger from '@/utils/logger';
-import { mockDetailedResponse, mockResponse } from '@/models/aiResponse.model';
+import { mockDetailedResponse, mockResponse } from '@/models/AiResponse.model';
 import formidable, { IncomingForm, Fields, File } from 'formidable';
 import { readFile } from 'fs/promises';
 import { Readable } from 'stream';
 import { IncomingMessage } from 'http';
-
 
 export const config = {
   api: {
