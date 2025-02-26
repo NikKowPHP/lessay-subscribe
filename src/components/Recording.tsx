@@ -6,6 +6,11 @@ import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
 import { useSubscription } from '@/context/subscription-context';
 import posthog from 'posthog-js';
+import PhonemePlayer from '@/components/PhonemePlayer';
+
+
+
+
 
 const MAX_RECORDING_TIME_MS = 600000; // 10 minutes
 
@@ -572,9 +577,23 @@ export default function Recording() {
                         <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
                           {assessment.analysis}
                         </p>
-                        <div className="flex justify-between text-sm">
-                          <span>Target: {assessment.IPA_target}</span>
-                          <span>Observed: {assessment.IPA_observed}</span>
+                        <div className="flex justify-between text-sm items-center">
+                          <div className="flex items-center gap-2">
+                            <span>Target: {assessment.IPA_target}</span>
+                            <PhonemePlayer 
+                              ipa={assessment.IPA_target} 
+                              language={aiResponse.language_analyzed} 
+                              size="sm" 
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span>Observed: {assessment.IPA_observed}</span>
+                            <PhonemePlayer 
+                              ipa={assessment.IPA_observed} 
+                              language={aiResponse.language_analyzed} 
+                              size="sm" 
+                            />
+                          </div>
                         </div>
                       </div>
                     )
@@ -793,8 +812,22 @@ export default function Recording() {
                           </div>
                           <p className="text-sm mb-1">Example: &quot;{vowel.example_word}&quot;</p>
                           <div className="flex flex-col sm:flex-row gap-2 justify-between text-sm">
-                            <span className="font-bold">Standard: {vowel.standard_realization}</span>
-                            <span className="font-bold">Observed: {vowel.observed_realization}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold">Standard: {vowel.standard_realization}</span>
+                              <PhonemePlayer 
+                                ipa={vowel.phoneme} 
+                                language={detailedAiResponse.accent_analysis.language_analyzed} 
+                                size="sm" 
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold">Observed: {vowel.observed_realization}</span>
+                              <PhonemePlayer 
+                                ipa={vowel.observed_realization.split(' ')[0]} 
+                                language={detailedAiResponse.accent_analysis.language_analyzed} 
+                                size="sm" 
+                              />
+                            </div>
                           </div>
                           <p className="text-sm text-gray-600 mt-1">{vowel.analysis}</p>
                           {vowel.accent_marker && (
@@ -829,8 +862,22 @@ export default function Recording() {
                           </div>
                           <p className="text-sm mb-1">Example: &quot;{consonant.example_word}&quot;</p>
                           <div className="flex flex-col sm:flex-row gap-2 justify-between text-sm">
-                            <span className="font-bold">Standard: {consonant.standard_realization}</span>
-                            <span className="font-bold">Observed: {consonant.observed_realization}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold">Standard: {consonant.standard_realization}</span>
+                              <PhonemePlayer 
+                                ipa={consonant.phoneme} 
+                                language={detailedAiResponse.accent_analysis.language_analyzed} 
+                                size="sm" 
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold">Observed: {consonant.observed_realization}</span>
+                              <PhonemePlayer 
+                                ipa={consonant.observed_realization.split(' ')[0]} 
+                                language={detailedAiResponse.accent_analysis.language_analyzed} 
+                                size="sm" 
+                              />
+                            </div>
                           </div>
                           <p className="text-sm text-gray-600 mt-1">{consonant.analysis}</p>
                           {consonant.accent_marker && (
