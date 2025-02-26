@@ -4,7 +4,7 @@ import { AIResponse, DetailedAIResponse  } from '@/models/aiResponse.model';
 import logger from '@/utils/logger';
 import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
-import { useSubscription } from '@/context/SubscriptionContext';
+import { useSubscription } from '@/context/subscription-context';
 
 const MAX_RECORDING_TIME_MS = 600000; // 10 minutes
 

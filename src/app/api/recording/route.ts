@@ -1,6 +1,6 @@
 // 'use server'
 import { NextRequest, NextResponse } from 'next/server';
-import RecordingService from '@/services/recordingService';
+import RecordingService from '@/services/recording.service';
 import logger from '@/utils/logger';
 import { mockDetailedResponse, mockResponse } from '@/models/aiResponse.model';
 import formidable, { IncomingForm, Fields, File } from 'formidable';

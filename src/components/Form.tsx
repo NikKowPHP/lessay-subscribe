@@ -1,6 +1,6 @@
 'use client';
 
-import { useSubscription } from '@/context/SubscriptionContext';
+import { useSubscription } from '@/context/subscription-context';
 
 export default function SubscriptionForm() {
   const { handleSubmit, status, email, setEmail, errorMessage } = useSubscription();

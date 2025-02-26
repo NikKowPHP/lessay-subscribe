@@ -1,6 +1,6 @@
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
-import SubscriptionForm from '../components/form';
+import SubscriptionForm from '../components/Form';
 import type { Metadata } from 'next';
 import Script from 'next/script';
 

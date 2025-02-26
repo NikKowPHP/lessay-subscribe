@@ -1,7 +1,7 @@
 import logger from '@/utils/logger';
-import AIService from './aiService';
+import AIService from './ai.service';
 import MessageGenerator from './generators/messageGenerator';
-import MetricsService from './metricsService';
+import MetricsService from './metrics.service';
 
 class RecordingService {
   private aiService: AIService;

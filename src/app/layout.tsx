@@ -23,7 +23,7 @@ const geistMono = Geist_Mono({
 
 
 import { siteMetadata } from '@/utils/metadata';
-import { SubscriptionProvider } from "@/context/SubscriptionContext";
+import { SubscriptionProvider } from "@/context/subscription-context";
 export const metadata = siteMetadata;
 
 export default function RootLayout({
