@@ -57,6 +57,8 @@ export interface AIResponse {
 }
 
 
+
+
 // Define a new interface for the detailed deep analysis response
 export interface DetailedAIResponse {
   accent_analysis: {

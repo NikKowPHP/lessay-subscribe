@@ -540,11 +540,7 @@ export default function Recording() {
                   </p>
                   <div className="mt-3">
                     <p className="font-medium">Supporting Evidence:</p>
-                    <ul className="list-disc list-inside mt-1">
-                      {aiResponse.speaker_background.supporting_evidence.map((evidence: string, index: number) => (
-                        <li key={index} className="text-gray-700 dark:text-gray-300">{evidence}</li>
-                      ))}
-                    </ul>
+                    <span className="font-medium">Suporting Evidence: </span> {aiResponse.speaker_background.supporting_evidence}
                   </div>
                 </div>
               </div>
