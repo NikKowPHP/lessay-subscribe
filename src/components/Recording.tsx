@@ -6,7 +6,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useError } from '@/hooks/useError';
 import { useSubscription } from '@/context/subscription-context';
 import posthog from 'posthog-js';
-import PhonemePlayer from '@/components/PhonemePlayer';
 import { DetailedAnalysis } from './DetailedAnalysis';
 import { BasicAnalysis } from './BasicAnalysis';
 import { RecordingCallToAction } from './RecordingCallToAction';
