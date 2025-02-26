@@ -2,108 +2,132 @@ export const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.startsWith("http")
   ? process.env.NEXT_PUBLIC_BASE_URL
   : "https://lessay-app.vercel.app";
 
-
-
-  // Map of IPA symbols to approximate representations that speech synthesis can handle
+// Comprehensive map of IPA symbols to approximate representations for speech synthesis.
+// Note: This is a best-effort approximation.  Web Speech API support for IPA varies.
+//       Prioritize using pre-recorded audio files for critical accuracy.
 export const ipaToSpeechMap: Record<string, {text: string, lang: string}> = {
-  // Vowels
-  'æ': {text: 'a', lang: 'en-US'}, // as in "cat"
-  'ɑ': {text: 'ah', lang: 'en-US'}, // as in "father"
-  'ɒ': {text: 'ah', lang: 'en-US'}, // as in "cot" (British English)
-  'ə': {text: 'uh', lang: 'en-US'}, // schwa
-  'ɛ': {text: 'e', lang: 'en-US'}, // as in "bed"
-  'ɜ': {text: 'er', lang: 'en-US'}, // as in "nurse" (British English)
-  'i': {text: 'ee', lang: 'en-US'}, // as in "beet"
-  'ɪ': {text: 'i', lang: 'en-US'}, // as in "bit"
-  'ɨ': {text: 'i', lang: 'en-US'}, // close central unrounded vowel
-  'ʉ': {text: 'oo', lang: 'en-US'}, // close central rounded vowel
-  'ɯ': {text: 'oo', lang: 'en-US'}, // close back unrounded vowel
-  'ɔ': {text: 'aw', lang: 'en-US'}, // as in "caught"
-  'ʊ': {text: 'oo', lang: 'en-US'}, // as in "book"
-  'u': {text: 'oo', lang: 'en-US'}, // as in "boot"
-  'ʌ': {text: 'uh', lang: 'en-US'}, // as in "but"
-  'e': {text: 'ay', lang: 'en-US'}, // as in "say"
-  'o': {text: 'oh', lang: 'en-US'},
-  'a': {text: 'ah', lang: 'en-US'},
-  'ɘ': {text: 'uh', lang: 'en-US'}, // close-mid central unrounded vowel
-  'ɵ': {text: 'uh', lang: 'en-US'}, // close-mid central rounded vowel
-  'ɤ': {text: 'uh', lang: 'en-US'}, // close-mid back unrounded vowel
-  'ø': {text: 'er', lang: 'de-DE'}, // as in German "schön"
-  'œ': {text: 'er', lang: 'fr-FR'}, // as in French "boeuf"
-  'ɶ': {text: 'er', lang: 'fr-FR'}, // open-mid front rounded vowel
-  'ɑ̃': {text: 'ah', lang: 'fr-FR'}, // as in French "chant"
-  'ɛ̃': {text: 'eh', lang: 'fr-FR'}, // as in French "vin"
-  'ɔ̃': {text: 'oh', lang: 'fr-FR'}, // as in French "bon"
-  'œ̃': {text: 'uh', lang: 'fr-FR'}, // as in French "un"
+    // Vowels (Monophthongs)
+    'i': { text: 'ee', lang: 'en-US' },   // beet
+    'ɪ': { text: 'i', lang: 'en-US' },    // bit
+    'e': { text: 'ay', lang: 'en-US' },   // bait (often a diphthong)
+    'ɛ': { text: 'e', lang: 'en-US' },    // bet
+    'æ': { text: 'a', lang: 'en-US' },    // bat
+    'a': { text: 'a', lang: 'en-US' }, // "a" sound, varies by dialect
+    'ɑ': { text: 'ah', lang: 'en-US' },   // father
+    'ɒ': { text: 'ah', lang: 'en-GB' },   // lot, cloth (British)
+    'ɔ': { text: 'aw', lang: 'en-US' },   // caught, law
+    'o': { text: 'oh', lang: 'en-US' },   // boat (often a diphthong)
+    'ʊ': { text: 'oo', lang: 'en-US' },   // book, put
+    'u': { text: 'oo', lang: 'en-US' },   // boot
+    'ʌ': { text: 'uh', lang: 'en-US' },   // cut, but
+    'ə': { text: 'uh', lang: 'en-US' },   // about, sofa (schwa)
+    'ɝ': { text: 'er', lang: 'en-US' },   // bird (rhotic vowel)
+    'ɚ': { text: 'er', lang: 'en-US' },   // butter (rhotic schwa)
+    'ɨ': { text: 'ih', lang: 'en-US' },   // roses (close central unrounded)
+    'ʉ': { text: 'oo', lang: 'en-US' },   // (close central rounded)
+    'ɵ': {text: 'uh', lang: 'en-US'}, // close-mid central rounded vowel
+    'ɘ': {text: 'uh', lang: 'en-US'}, // close-mid central unrounded vowel
+    'ɜ': { text: 'er', lang: 'en-GB' },   // nurse (non-rhotic)
+    'ɤ': {text: 'uh', lang: 'en-US'}, // close-mid back unrounded vowel
+    'ɯ': { text: 'oo', lang: 'en-US' },   // (close back unrounded)
 
-  // Consonants
-  'p': {text: 'p', lang: 'en-US'}, // as in "pen"
-  'b': {text: 'b', lang: 'en-US'}, // as in "ball"
-  't': {text: 't', lang: 'en-US'}, // as in "top"
-  'd': {text: 'd', lang: 'en-US'}, // as in "dog"
-  'ʈ': {text: 't', lang: 'en-US'}, // retroflex t
-  'ɖ': {text: 'd', lang: 'en-US'}, // retroflex d
-  'k': {text: 'k', lang: 'en-US'}, // as in "cat"
-  'ɡ': {text: 'g', lang: 'en-US'}, // as in "go"
-  'q': {text: 'k', lang: 'en-US'}, // voiceless uvular stop
-  'ɢ': {text: 'g', lang: 'en-US'}, // voiced uvular stop
-  'ʔ': {text: '', lang: 'en-US'}, // glottal stop (uh-oh)
-  'm': {text: 'm', lang: 'en-US'}, // as in "man"
-  'ɱ': {text: 'm', lang: 'en-US'}, // labiodental nasal
-  'n': {text: 'n', lang: 'en-US'}, // as in "no"
-  'ɳ': {text: 'n', lang: 'en-US'}, // retroflex n
-  'ɲ': {text: 'ny', lang: 'es-ES'}, // palatal nasal (Spanish "ñ")
-  'ŋ': {text: 'ng', lang: 'en-US'}, // as in "sing"
-  'ɴ': {text: 'ng', lang: 'en-US'}, // uvular nasal
-  'f': {text: 'f', lang: 'en-US'}, // as in "fan"
-  'v': {text: 'v', lang: 'en-US'}, // as in "van"
-  'θ': {text: 'th', lang: 'en-US'}, // as in "think"
-  'ð': {text: 'th', lang: 'en-US'}, // as in "this"
-  's': {text: 's', lang: 'en-US'}, // as in "sun"
-  'z': {text: 'z', lang: 'en-US'}, // as in "zoo"
-  'ʃ': {text: 'sh', lang: 'en-US'}, // as in "ship"
-  'ʒ': {text: 'zh', lang: 'fr-FR'}, // as in "measure"
-  'ʂ': {text: 'sh', lang: 'en-US'}, // retroflex sh
-  'ʐ': {text: 'zh', lang: 'en-US'}, // retroflex zh
-  'ç': {text: 'ch', lang: 'de-DE'}, // as in German "ich"
-  'ʝ': {text: 'j', lang: 'es-ES'}, // palatal fricative
-  'x': {text: 'h', lang: 'de-DE'}, // as in German "Bach"
-  'ɣ': {text: 'gh', lang: 'en-US'}, // voiced velar fricative
-  'χ': {text: 'h', lang: 'en-US'}, // voiceless uvular fricative
-  'ʁ': {text: 'r', lang: 'de-DE'}, // German R
-  'ħ': {text: 'h', lang: 'ar-SA'}, // pharyngeal fricative
-  'ʕ': {text: 'ah', lang: 'ar-SA'}, // voiced pharyngeal fricative
-  'h': {text: 'h', lang: 'en-US'}, // as in "hat"
-  'ɦ': {text: 'h', lang: 'en-US'}, // breathy h
-  'ɬ': {text: 'th', lang: 'en-US'}, // voiceless lateral fricative
-  'ɮ': {text: 'dl', lang: 'en-US'}, // voiced lateral fricative
-  'ʋ': {text: 'v', lang: 'en-US'}, // labiodental approximant
-  'ɹ': {text: 'r', lang: 'en-US'}, // as in "red"
-  'ɻ': {text: 'r', lang: 'en-US'}, // retroflex approximant
-  'j': {text: 'y', lang: 'en-US'}, // as in "yes"
-  'ɰ': {text: 'w', lang: 'en-US'}, // velar approximant
-  'l': {text: 'l', lang: 'en-US'}, // as in "lip"
-  'ɭ': {text: 'l', lang: 'en-US'}, // retroflex l
-  'ʎ': {text: 'ly', lang: 'es-ES'}, // palatal l (Spanish "ll")
-  'ʟ': {text: 'l', lang: 'en-US'}, // velar l
-  'ɾ': {text: 'r', lang: 'es-ES'}, // tap
-  'ɽ': {text: 'rd', lang: 'en-US'}, // retroflex tap
-  'ʙ': {text: 'b', lang: 'en-US'}, // trill
-  'r': {text: 'r', lang: 'es-ES'}, // Trilled R
-  'ⱱ': {text: 'v', lang: 'en-US'}, // labiodental flap
-  'ʡ': {text: '', lang: 'en-US'}, // epiglottal plosive
-  'ʕ̞': {text: 'ah', lang: 'ar-SA'}, // epiglottal fricative
-  'ʜ': {text: 'h', lang: 'en-US'}, // voiceless epiglottal trill
-  'ʢ': {text: 'ah', lang: 'ar-SA'}, // voiced epiglottal trill
-  'ǀ': {text: 'click', lang: 'en-US'}, // dental click
-  'ǁ': {text: 'click', lang: 'en-US'}, // lateral click
-  'ǃ': {text: 'click', lang: 'en-US'}, // alveolar click
-  'ǂ': {text: 'click', lang: 'en-US'}, // palatal click
+    // Vowels (Rounded - Less Common/Language Specific)
+    'y': { text: 'ee', lang: 'fr-FR' },   // tu (French)
+    'ʏ': { text: 'i', lang: 'de-DE' },   // (near-close near-front rounded, German)
+    'ø': { text: 'er', lang: 'de-DE' },   // schön (German)
+    'œ': { text: 'er', lang: 'fr-FR' },   // boeuf (French)
+    'ɶ': { text: 'a', lang: 'de-DE' },  // (open front rounded, rare)
+    'ɞ': {text: 'uh', lang: 'en-US'}, // open-mid central rounded vowel
 
-  // Diphthongs (examples, adjust as needed)
-  'aɪ': {text: 'eye', lang: 'en-US'}, // as in "eye"
-  'aʊ': {text: 'ow', lang: 'en-US'}, // as in "cow"
-  'eɪ': {text: 'ay', lang: 'en-US'}, // as in "day"
-  'oʊ': {text: 'oh', lang: 'en-US'}, // as in "go"
-  'ɔɪ': {text: 'oy', lang: 'en-US'}, // as in "boy"
+    // Diphthongs (Common)
+    'aɪ': { text: 'eye', lang: 'en-US' }, // bite
+    'aʊ': { text: 'ow', lang: 'en-US' }, // bout
+    'eɪ': { text: 'ay', lang: 'en-US' }, // bait
+    'oʊ': { text: 'oh', lang: 'en-US' }, // boat
+    'ɔɪ': { text: 'oy', lang: 'en-US' }, // boy
+    'ɪə': { text: 'ear', lang: 'en-GB' },// near (British)
+    'eə': { text: 'air', lang: 'en-GB' },// where (British)
+    'ʊə': { text: 'oor', lang: 'en-GB' },// cure (British)
+
+    // Consonants (Pulmonic)
+    'p': { text: 'p', lang: 'en-US' },   // pen
+    'b': { text: 'b', lang: 'en-US' },   // ben
+    't': { text: 't', lang: 'en-US' },   // ten
+    'd': { text: 'd', lang: 'en-US' },   // den
+    'k': { text: 'k', lang: 'en-US' },   // cat
+    'ɡ': { text: 'g', lang: 'en-US' },   // get
+    'ʔ': { text: '', lang: 'en-US' },    // uh-oh (glottal stop)
+    'm': { text: 'm', lang: 'en-US' },   // man
+    'n': { text: 'n', lang: 'en-US' },   // no
+    'ŋ': { text: 'ng', lang: 'en-US' },  // sing
+    'f': { text: 'f', lang: 'en-US' },   // fan
+    'v': { text: 'v', lang: 'en-US' },   // van
+    'θ': { text: 'th', lang: 'en-US' },  // thin
+    'ð': { text: 'th', lang: 'en-US' },  // this
+    's': { text: 's', lang: 'en-US' },   // so
+    'z': { text: 'z', lang: 'en-US' },   // zoo
+    'ʃ': { text: 'sh', lang: 'en-US' },  // shoe
+    'ʒ': { text: 'zh', lang: 'fr-FR' },  // measure, vision
+    'h': { text: 'h', lang: 'en-US' },   // hat
+    'l': { text: 'l', lang: 'en-US' },   // let
+    'r': { text: 'r', lang: 'en-US' },   // red (American)
+    'j': { text: 'y', lang: 'en-US' },   // yes
+    'w': { text: 'w', lang: 'en-US' },   // wet
+
+    // Consonants (Pulmonic - Less Common/Language Specific)
+    'ʍ': { text: 'wh', lang: 'en-US' },  // which (some dialects)
+    'ɬ': { text: 'thl', lang: 'en-US' }, // Welsh ll (voiceless alveolar lateral fricative)
+    'ɮ': { text: 'dl', lang: 'en-US' }, // (voiced alveolar lateral fricative)
+    'β': { text: 'v', lang: 'es-ES' },   // (voiced bilabial fricative, Spanish)
+    'ɱ': { text: 'm', lang: 'en-US' },   // (labiodental nasal)
+    'ɲ': { text: 'ny', lang: 'es-ES' },  // (palatal nasal, Spanish ñ)
+    'ɾ': { text: 'r', lang: 'es-ES' },   // (alveolar tap, Spanish pero)
+    'ʀ': { text: 'r', lang: 'fr-FR' },   // (uvular trill, French/German)
+    'ç': { text: 'ch', lang: 'de-DE' },  // ich (German)
+    'ʝ': { text: 'y', lang: 'es-ES' },   // (voiced palatal fricative)
+    'x': { text: 'ch', lang: 'de-DE' },  // Bach (German)
+    'ɣ': { text: 'gh', lang: 'en-US' }, // voiced velar fricative
+    'χ': { text: 'ch', lang: 'de-DE' },  // (voiceless uvular fricative)
+    'ʁ': { text: 'r', lang: 'fr-FR' },   // (voiced uvular fricative/approximant, French)
+    'ħ': { text: 'h', lang: 'ar-SA' },   // (voiceless pharyngeal fricative)
+    'ʕ': { text: 'ah', lang: 'ar-SA' },  // (voiced pharyngeal fricative)
+    'ɦ': { text: 'h', lang: 'en-US' }, // breathy h
+    'ʋ': { text: 'v', lang: 'en-US'}, // labiodental approximant
+    'ɹ': { text: 'r', lang: 'en-US' },   // red (American)
+    'ɻ': { text: 'r', lang: 'en-US' }, // retroflex approximant
+    'ɰ': { text: 'w', lang: 'en-US' }, // velar approximant
+    'ɭ': { text: 'l', lang: 'en-US' }, // retroflex l
+    'ʎ': { text: 'ly', lang: 'es-ES' }, // palatal l (Spanish "ll")
+    'ʟ': { text: 'l', lang: 'en-US' }, // velar l
+    'ɽ': {text: 'rd', lang: 'en-US'}, // retroflex tap
+    'ʙ': {text: 'b', lang: 'en-US'}, // trill
+    'ⱱ': {text: 'v', lang: 'en-US'}, // labiodental flap
+
+    // Consonants (Retroflex - Less Common)
+    'ʈ': { text: 't', lang: 'en-US' },   // (retroflex t)
+    'ɖ': { text: 'd', lang: 'en-US' },   // (retroflex d)
+    'ʂ': { text: 'sh', lang: 'en-US' },  // (retroflex sh)
+    'ʐ': { text: 'zh', lang: 'en-US' },  // (retroflex zh)
+    'ɳ': { text: 'n', lang: 'en-US' },   // (retroflex n)
+
+    // Clicks (Very Limited Support - Approximations)
+    'ʘ': { text: 'click', lang: 'en-US' },// (bilabial click)
+    'ǀ': { text: 'click', lang: 'en-US' },// (dental click)
+    'ǃ': { text: 'click', lang: 'en-US' },// (alveolar click)
+    'ǂ': { text: 'click', lang: 'en-US' },// (palato-alveolar click)
+    'ǁ': { text: 'click', lang: 'en-US' },// (lateral click)
+    'ǃ˞': { text: 'click', lang: 'en-US' },// (retroflex click)
+
+    // Other Symbols (Limited/No Support - Use with Caution)
+    'ɥ': { text: 'y', lang: 'fr-FR' },   // (labial-palatal approximant)
+    'ʜ': { text: 'h', lang: 'en-US' },   // (voiceless epiglottal fricative)
+    'ʢ': { text: 'ah', lang: 'ar-SA' },  // (voiced epiglottal fricative)
+    'ʡ': { text: '', lang: 'en-US' },    // (epiglottal stop)
+    'ʕ̞': {text: 'ah', lang: 'ar-SA'}, // epiglottal fricative
+
+     // Nasalized Vowels (French - Approximations)
+    'ɑ̃': { text: 'ah', lang: 'fr-FR' }, // (French an)
+    'ɔ̃': { text: 'on', lang: 'fr-FR' }, // (French on)
+    'ɛ̃': { text: 'an', lang: 'fr-FR' }, // (French in)
+    'œ̃': { text: 'un', lang: 'fr-FR' }, // (French un)
 };
