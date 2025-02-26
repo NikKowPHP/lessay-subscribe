@@ -9,6 +9,9 @@ import posthog from 'posthog-js';
 import PhonemePlayer from '@/components/PhonemePlayer';
 import { DetailedAnalysis } from './DetailedAnalysis';
 import { BasicAnalysis } from './BasicAnalysis';
+import { RecordingCallToAction } from './RecordingCallToAction';
+import { LoadingAnimation } from './LoadingAnimation';
+import { RecordingHeader } from './RecordingHeader';
 
 
 
@@ -242,7 +245,7 @@ export default function Recording() {
       setIsRecording(false);
       clearInterval(recordingTimerInterval.current!); // Clear interval when manually stopped
       recordingTimerInterval.current = null;
-      posthog?.capture('stop_recording_clicked');
+      posthogCapture('stop_recording_clicked');
     }
   };
 
@@ -294,12 +297,18 @@ export default function Recording() {
   // Smooth scroll to subscription/waitlist section
   const onWaitlistClick = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    posthog?.capture('join_waitlist_clicked');
+    posthogCapture('join_waitlist_clicked');
   };
+
+  const posthogCapture = (event: string) => {
+    if(process.env.NEXT_PUBLIC_ENVIRONMENT === 'production') {
+      posthog?.capture(event);
+    }
+  }
 
   // Reset the recording state to allow a new recording.
   const onResetRecordingClick = () => {
-    posthog?.capture('try_another_recording_clicked');
+    posthogCapture('try_another_recording_clicked');
     resetRecording();
   };
 
@@ -311,7 +320,7 @@ export default function Recording() {
 
   const onDeepAnalysisClick = () => {
     setIsDeepAnalysis(!isDeepAnalysis);
-    posthog?.capture('deep_analysis_toggled', { isDeepAnalysis: !isDeepAnalysis });
+    posthogCapture('deep_analysis_toggled');
   };
 
   // Helper function to get button text and action
@@ -356,28 +365,7 @@ export default function Recording() {
     };
   };
 
-  const Header = () => {
-    return (
-        <header className="text-center mb-8">
-          <h1 itemProp="name" className="text-2xl font-semibold mb-3">
-        Speak & Uncover Your Accent
-      </h1>
-      <div itemProp="description" className="space-y-2">
-        <p className="text-lg text-gray-700 dark:text-gray-300">
-          Record your voice in any language and reveal the subtle impact of
-          your native tongue.
-        </p>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          We will provide detailed insights into how your background shapes
-          your pronunciation, rhythm, and overall speaking style.
-        </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          We do not store your audio recordings. By submitting, you consent to sending your voice recording to our AI system for processing. We only store metric information to improve our service. The audio is deleted immediately from the server and is not used for training purposes.
-        </p>
-      </div>
-    </header>
-)
-  }
+
 
   const RecordingButtons = () => {
     return (
@@ -418,59 +406,9 @@ export default function Recording() {
 
   
 
-  const LoadingAnimation = () => {
-    return (
-      <div className="flex flex-col items-center space-y-4 my-8">
-        <div className="relative w-16 h-16">
-          <div className="absolute top-0 left-0 w-full h-full">
-            <div className="w-16 h-16 border-4 border-gray-200 dark:border-gray-700 border-solid rounded-full animate-spin border-t-blue-600 dark:border-t-blue-400"></div>
-          </div>
-          <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-            <div className="w-8 h-8 bg-white dark:bg-black rounded-full"></div>
-          </div>
-        </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400 animate-pulse">
-          Analyzing your accent...
-        </p>
-    </div>
-    )
-  }
+ 
 
-  const CallToAction = () => {
-    return (
-      <div className="p-6 bg-gradient-to-r from-black/5 to-black/10 dark:from-white/5 dark:to-white/10 rounded-lg w-full">
-      <div className="max-w-2xl mx-auto text-center space-y-4">
-        <h3 className="text-xl font-semibold">
-          Ready to Improve Your Pronunciation And Accent?
-        </h3>
-        <p className="text-gray-700 dark:text-gray-300">
-          Join our waitlist to start speaking like a native.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <button
-            onClick={onWaitlistClick}
-            className="px-6 py-2 rounded-lg font-medium transition-all duration-200 
-                     bg-black text-white dark:bg-white dark:text-black 
-                     hover:opacity-90 hover:scale-105"
-          >
-            Join Waitlist
-          </button>
-          <button
-            onClick={onResetRecordingClick}
-            className="px-6 py-2 rounded-lg font-medium transition-all duration-200 
-                     border border-black/10 dark:border-white/10
-                     hover:bg-black/5 dark:hover:bg-white/5"
-          >
-            Try Another Recording
-          </button>
-        </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
-          ✨ Get early access and special perks when we launch!
-        </p>
-      </div>
-    </div>
-    )
-  }
+  
 
   return (
     <section
@@ -529,7 +467,7 @@ export default function Recording() {
       />
       <article itemScope itemType="https://schema.org/HowTo">
 
-        <Header />
+        <RecordingHeader />
  
  
 
@@ -572,7 +510,7 @@ export default function Recording() {
           )}
           {/* Call to Action */}
           {!isProcessing && (aiResponse || detailedAiResponse) && (
-            <CallToAction />
+            <RecordingCallToAction onWaitlistClick={onWaitlistClick} onResetRecordingClick={onResetRecordingClick} />
           )}
         </div>
       </article>
