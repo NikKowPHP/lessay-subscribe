@@ -65,7 +65,8 @@ class RecordingService {
           aiResponse, 
           recordingTime, 
           responseTime, 
-          recordingSize
+          recordingSize,
+          detectedTargetLanguage
         )
       );
 
