@@ -80,6 +80,13 @@ class RecordingService {
       throw error;
     }
   }
+
+
+  private async detectTargetLanguage(fileUri: string): Promise<LanguageDetectionResponse> {
+    const { userPrompt, systemPrompt } = this.messageGenerator.generateTargetLanguageDetectionPrompt();
+    const response = await this.aiService.generateContent(fileUri, userPrompt, systemPrompt);
+    return response as unknown as LanguageDetectionResponse;
+  }
 }
 
 export default RecordingService;
