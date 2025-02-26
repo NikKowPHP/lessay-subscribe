@@ -407,7 +407,71 @@ export default function Recording() {
   
 
  
+const MetaScript = () => {
+  return (
+    <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'HowTo',
+        name: 'Analyze Your Accent with AI',
+        description:
+          'Get instant AI-powered feedback on your pronunciation, fluency, and accent characteristics in any language',
+        estimatedCost: {
+          '@type': 'MonetaryAmount',
+          currency: 'USD',
+          value: '0',
+        },
+        tool: [
+          {
+            '@type': 'HowToTool',
+            name: 'Microphone',
+          },
+        ],
+        step: [
+          {
+            '@type': 'HowToStep',
+            name: 'Allow Microphone Access',
+            text: 'Grant microphone permissions when prompted to enable voice recording',
+            url: 'https://yourdomain.com#recording',
+          },
+          {
+            '@type': 'HowToStep',
+            name: 'Start Recording',
+            text: 'Click the start button and speak clearly in any language',
+            url: 'https://yourdomain.com#recording',
+          },
+          {
+            '@type': 'HowToStep',
+            name: 'Complete Recording',
+            text: 'Click stop when finished to submit your recording',
+            url: 'https://yourdomain.com#recording',
+          },
+          {
+            '@type': 'HowToStep',
+            name: 'Get Analysis',
+            text: 'Receive detailed AI analysis of your pronunciation and accent characteristics',
+            url: 'https://yourdomain.com#analysis',
+          },
+        ],
+        totalTime: 'PT2M',
+      }),
+    }}
+  />
+  )
+}
 
+const DeepAnalysisMessage = () => {
+  return (
+    <div className="mt-2">
+    <p className="text-sm text-gray-600 dark:text-gray-400">
+      Please provide a minimum 1 minute of recording for deep
+      analysis.
+    </p>
+  </div>
+  )
+}
   
 
   return (
@@ -415,56 +479,8 @@ export default function Recording() {
       aria-label="Voice Recording and Accent Analysis"
       className="w-full max-w-4xl bg-white/80 dark:bg-black/80 backdrop-blur-sm p-6 rounded-xl border border-black/[.08] dark:border-white/[.145]"
     >
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'HowTo',
-            name: 'Analyze Your Accent with AI',
-            description:
-              'Get instant AI-powered feedback on your pronunciation, fluency, and accent characteristics in any language',
-            estimatedCost: {
-              '@type': 'MonetaryAmount',
-              currency: 'USD',
-              value: '0',
-            },
-            tool: [
-              {
-                '@type': 'HowToTool',
-                name: 'Microphone',
-              },
-            ],
-            step: [
-              {
-                '@type': 'HowToStep',
-                name: 'Allow Microphone Access',
-                text: 'Grant microphone permissions when prompted to enable voice recording',
-                url: 'https://yourdomain.com#recording',
-              },
-              {
-                '@type': 'HowToStep',
-                name: 'Start Recording',
-                text: 'Click the start button and speak clearly in any language',
-                url: 'https://yourdomain.com#recording',
-              },
-              {
-                '@type': 'HowToStep',
-                name: 'Complete Recording',
-                text: 'Click stop when finished to submit your recording',
-                url: 'https://yourdomain.com#recording',
-              },
-              {
-                '@type': 'HowToStep',
-                name: 'Get Analysis',
-                text: 'Receive detailed AI analysis of your pronunciation and accent characteristics',
-                url: 'https://yourdomain.com#analysis',
-              },
-            ],
-            totalTime: 'PT2M',
-          }),
-        }}
-      />
+      <MetaScript />
+
       <article itemScope itemType="https://schema.org/HowTo">
 
         <RecordingHeader />
@@ -479,12 +495,7 @@ export default function Recording() {
 
           {/* Conditional message for Deep Analysis */}
           {isDeepAnalysis && (
-            <div className="mt-2">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Please provide a minimum 1 minute of recording for deep
-                analysis.
-              </p>
-            </div>
+           <DeepAnalysisMessage />
           )}
 
           {/* Audio Player */}
