@@ -1,4 +1,3 @@
-
 export interface PhonemeAnalysis {
   phoneme: string;
   example: string;
@@ -28,82 +27,92 @@ export interface AIResponse {
 
 // Define a new interface for the detailed deep analysis response
 export interface DetailedAIResponse {
-  primary_analysis: {
-    identified_language: string;
-    confidence_score: number;
+  accent_analysis: {
+    language_analyzed: string;
     accent_classification: {
-      primary_accent: string;
-      regional_influences: string[];
+      accent_type: string;
+      specific_accent: string;
       confidence_level: number;
+      accent_strength: string;
     };
-    native_language_assessment: {
-      probable_l1: string;
+    speaker_background: {
+      probable_native_language: string;
+      probable_region: string;
       confidence_level: number;
-      supporting_features: string[];
+      supporting_evidence: string[];
     };
   };
   phonetic_analysis: {
     vowel_production: Array<{
       phoneme: string;
-      target_realization: string;
+      standard_realization: string;
       observed_realization: string;
       example_word: string;
       timestamp: number;
       analysis: string;
+      accent_marker: boolean;
     }>;
     consonant_production: Array<{
       phoneme: string;
-      target_realization: string;
+      standard_realization: string;
       observed_realization: string;
       example_word: string;
       timestamp: number;
       analysis: string;
+      accent_marker: boolean;
     }>;
   };
   prosodic_features: {
     rhythm_patterns: {
       description: string;
-      notable_features: string[];
-      impact_on_intelligibility: string;
+      standard_pattern: string;
+      observed_pattern: string;
+      accent_association: string;
     };
     stress_patterns: {
-      word_level: string[];
-      sentence_level: string[];
-      deviations: string[];
+      word_level: {
+        description: string;
+        accent_association: string;
+      };
+      sentence_level: {
+        description: string;
+        accent_association: string;
+      };
     };
     intonation: {
       patterns: string[];
-      notable_features: string[];
-      l1_influence: string;
+      accent_association: string;
     };
   };
-  diagnostic_markers: Array<{
+  diagnostic_accent_markers: Array<{
     feature: string;
     description: string;
-    impact: string;
-    frequency: "rare" | "occasional" | "frequent";
+    example: string;
+    timestamp: number;
+    accent_association: string;
+    frequency: string;
   }>;
   proficiency_assessment: {
-    cefr_level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
     intelligibility_score: number;
     fluency_rating: number;
-    accent_strength: number;
-    detailed_evaluation: string;
+    comprehensibility: number;
+    CEFR_pronunciation_level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+    accent_impact_assessment: string;
   };
   improvement_plan: {
     priority_areas: Array<{
       focus: string;
-      importance: "high" | "medium" | "low";
+      importance: string;
       exercises: string[];
       expected_timeline: string;
     }>;
     recommended_resources: string[];
     practice_strategies: string[];
   };
-  summary: {
-    key_strengths: string[];
-    primary_challenges: string[];
-    overall_assessment: string;
+  linguistic_background_insights: {
+    probable_l1_transfer_effects: string[];
+    cultural_speech_patterns: string[];
+    multilingual_influences: string[];
   };
 }
 
