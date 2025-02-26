@@ -1032,6 +1032,60 @@ export default function Recording() {
     )
   }
 
+  const LoadingAnimation = () => {
+    return (
+      <div className="flex flex-col items-center space-y-4 my-8">
+        <div className="relative w-16 h-16">
+          <div className="absolute top-0 left-0 w-full h-full">
+            <div className="w-16 h-16 border-4 border-gray-200 dark:border-gray-700 border-solid rounded-full animate-spin border-t-blue-600 dark:border-t-blue-400"></div>
+          </div>
+          <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-white dark:bg-black rounded-full"></div>
+          </div>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 animate-pulse">
+          Analyzing your accent...
+        </p>
+    </div>
+    )
+  }
+
+  const CallToAction = () => {
+    return (
+      <div className="p-6 bg-gradient-to-r from-black/5 to-black/10 dark:from-white/5 dark:to-white/10 rounded-lg w-full">
+      <div className="max-w-2xl mx-auto text-center space-y-4">
+        <h3 className="text-xl font-semibold">
+          Ready to Improve Your Pronunciation And Accent?
+        </h3>
+        <p className="text-gray-700 dark:text-gray-300">
+          Join our waitlist to start speaking like a native.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <button
+            onClick={onWaitlistClick}
+            className="px-6 py-2 rounded-lg font-medium transition-all duration-200 
+                     bg-black text-white dark:bg-white dark:text-black 
+                     hover:opacity-90 hover:scale-105"
+          >
+            Join Waitlist
+          </button>
+          <button
+            onClick={onResetRecordingClick}
+            className="px-6 py-2 rounded-lg font-medium transition-all duration-200 
+                     border border-black/10 dark:border-white/10
+                     hover:bg-black/5 dark:hover:bg-white/5"
+          >
+            Try Another Recording
+          </button>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
+          ✨ Get early access and special perks when we launch!
+        </p>
+      </div>
+    </div>
+    )
+  }
+
   return (
     <section
       aria-label="Voice Recording and Accent Analysis"
@@ -1118,19 +1172,7 @@ export default function Recording() {
 
           {/* Loading Animation */}
           {isProcessing && (
-            <div className="flex flex-col items-center space-y-4 my-8">
-              <div className="relative w-16 h-16">
-                <div className="absolute top-0 left-0 w-full h-full">
-                  <div className="w-16 h-16 border-4 border-gray-200 dark:border-gray-700 border-solid rounded-full animate-spin border-t-blue-600 dark:border-t-blue-400"></div>
-                </div>
-                <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-                  <div className="w-8 h-8 bg-white dark:bg-black rounded-full"></div>
-                </div>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 animate-pulse">
-                Analyzing your accent...
-              </p>
-            </div>
+            <LoadingAnimation />
           )}
 
           {/* AI Response */}
@@ -1142,39 +1184,9 @@ export default function Recording() {
           {!isProcessing && detailedAiResponse && (
               <DetailedAiResopnse detailedAiResponse={detailedAiResponse} />
           )}
-          {/* Enhanced Call to Action */}
+          {/* Call to Action */}
           {!isProcessing && (aiResponse || detailedAiResponse) && (
-               <div className="p-6 bg-gradient-to-r from-black/5 to-black/10 dark:from-white/5 dark:to-white/10 rounded-lg w-full">
-                <div className="max-w-2xl mx-auto text-center space-y-4">
-                  <h3 className="text-xl font-semibold">
-                    Ready to Improve Your Pronunciation And Accent?
-                  </h3>
-                  <p className="text-gray-700 dark:text-gray-300">
-                    Join our waitlist to start speaking like a native.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <button
-                      onClick={onWaitlistClick}
-                      className="px-6 py-2 rounded-lg font-medium transition-all duration-200 
-                               bg-black text-white dark:bg-white dark:text-black 
-                               hover:opacity-90 hover:scale-105"
-                    >
-                      Join Waitlist
-                    </button>
-                    <button
-                      onClick={onResetRecordingClick}
-                      className="px-6 py-2 rounded-lg font-medium transition-all duration-200 
-                               border border-black/10 dark:border-white/10
-                               hover:bg-black/5 dark:hover:bg-white/5"
-                    >
-                      Try Another Recording
-                    </button>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
-                    ✨ Get early access and special perks when we launch!
-                  </p>
-                </div>
-              </div>
+            <CallToAction />
           )}
         </div>
       </article>
