@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mic, GraduationCap, Lightbulb } from "lucide-react";
+import { Mic  } from "lucide-react";
 
 interface FeatureCardProps {
   title: string;
@@ -35,17 +35,17 @@ export default function FeaturesDropdown() {
         "Our AI uses Automatic Speech Recognition (ASR) and advanced acoustic modeling to analyze your speech. Leveraging a massive language model, it evaluates phonetic features, prosodic elements, directly from the audio, providing a comprehensive pronunciation assessment.",
         icon: <Mic className="w-5 h-5" />,
     },
-    {
-      title: "Adaptive Learning",
-      description:
-        "Our algorithms tailor lessons to your current level and learning style.",
-        icon: <GraduationCap className="w-5 h-5" />,
-    },
-    {
-      title: "Smart Progress",
-      description: "Focus on what matters - skip what you already know.",
-      icon: <Lightbulb className="w-5 h-5" />,
-    }
+    // {
+    //   title: "Adaptive Learning",
+    //   description:
+    //     "Our algorithms tailor lessons to your current level and learning style.",
+    //     icon: <GraduationCap className="w-5 h-5" />,
+    // },
+    // {
+    //   title: "Smart Progress",
+    //   description: "Focus on what matters - skip what you already know.",
+    //   icon: <Lightbulb className="w-5 h-5" />,
+    // }
   ];
 
   return (
