@@ -4,7 +4,7 @@ import { supabase } from "@/repositories/supabase/supabase";
 class MetricsService {
   constructor() {}
 
-  async collectInteractionData(userIP: string, recording: string, aiResponse: Record<string, unknown>, recordingTime: number, responseTime: number, recordingSize: number): Promise<void> {
+  async collectInteractionData(userIP: string, recording: string, aiResponse: Record<string, unknown>, recordingTime: number, responseTime: number, recordingSize: number, languageDetection: LanguageDetectionResponse): Promise<void> {
     try {
       // Collect relevant data
       const timestamp = new Date();
@@ -20,10 +20,13 @@ class MetricsService {
         recording_time: recordingTime,
         ai_response: aiResponse,
         recording: recording.length,
+        language_detection: languageDetection,
       };
 
       // Store the data in Supabase
-      await this.storeInteractionData(interactionData);
+      if (process.env.MOCK_AI_RESPONSE !== 'true' && process.env.NODE_ENV === 'production') {
+        await this.storeInteractionData(interactionData);
+      }
 
       logger.log("Interaction data collected and stored:", interactionData);
     } catch (error) {
