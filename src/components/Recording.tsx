@@ -471,6 +471,21 @@ const DeepAnalysisMessage = () => {
   </div>
   )
 }
+const WordsDisclaimer = () => {
+  return (
+    <div className="mt-2">
+      <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+        To ensure unbiased analysis, please avoid using terms related to specific
+        demographics such as race, religion, gender, or nationality. Focus on
+        using neutral and objective language. Additionally, to ensure broad
+        applicability and understanding, avoid using country-specific terms,
+        proper names, or other language that may be regionally exclusive. Aim
+        for precise definitions and clear, detailed analysis using generic and
+        widely understood language.
+      </p>
+    </div>
+  );
+};
   
 
   return (
@@ -496,6 +511,8 @@ const DeepAnalysisMessage = () => {
           {isDeepAnalysis && (
            <DeepAnalysisMessage />
           )}
+
+          <WordsDisclaimer />
 
           {/* Audio Player */}
           {audioURL && (
