@@ -1,6 +1,6 @@
 
 
-interface LanguageDetectionResponse {
+export interface LanguageDetectionResponse {
   language: string;
   confidence: number;
   possible_alternatives: string[];
