@@ -66,6 +66,12 @@ export async function GET(req: Request) {
     req.headers.get("x-real-ip") ||
     "";
 
+  if (process.env.MOCK_AI_RESPONSE === 'true') {
+    return NextResponse.json(
+      { message: "Subscription successful", isSubscribed: true },
+      { status: 200 }
+    );
+  }
   const { data, error } = await supabase.from('waitlist').select('*').eq('ip_address', ip_address);
   if (error) {
     return NextResponse.json(
