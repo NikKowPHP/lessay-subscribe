@@ -1,5 +1,5 @@
 import logger from '@/utils/logger';
-import AIService from './ai.service';
+import AIService, { models } from './ai.service';
 import MessageGenerator from './generators/messageGenerator';
 import MetricsService from './metrics.service';
 import { retryOperation } from '@/utils/retryWithOperation';
@@ -51,7 +51,7 @@ class RecordingService {
       logger.log("Personalized Prompts:", personalizedPrompts);
 
       const aiResponse = await retryOperation(() =>
-        this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt)
+        this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_pro_exp)
       );
       logger.log("AI Response:", aiResponse);
 
@@ -81,7 +81,7 @@ class RecordingService {
 
   private async detectTargetLanguage(fileUri: string): Promise<LanguageDetectionResponse> {
     const { userPrompt, systemPrompt } = this.messageGenerator.generateTargetLanguageDetectionPrompt();
-    const response = await this.aiService.generateContent(fileUri, userPrompt, systemPrompt);
+    const response = await this.aiService.generateContent(fileUri, userPrompt, systemPrompt, models.gemini_2_0_flash);
     return response as unknown as LanguageDetectionResponse;
   }
 }
