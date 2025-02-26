@@ -150,134 +150,73 @@ export interface DetailedAIResponse {
 
 
 
-export const mockResponse = 
-  {
-    language_identification: "German",
-    confidence_level: "99.9%",
-    user_native_language_guess: "Russian",
-    native_language_influence_analysis: "The speaker's native language appears to be of Slavic origin.",
-    language_specific_phonological_assessment: [
-      {
-        phoneme: "/r/",
-        example: "andere",
-        analysis: "The speaker uses an alveolar trill instead of the standard uvular fricative.",
-        IPA_target: "ʁ",
-        IPA_observed: "[r]"
-      }
-    ],
-    suprasegmental_features_analysis: [],
-    cross_linguistic_influence_note: "N/A",
-    CEFR_aligned_proficiency_indicators: "B1-B2",
-    personalized_learning_pathway_suggestions: [
-      "Practice minimal pairs for /r/ articulation."
-    ],
-    call_to_action: "Please provide a clear speech sample for analysis.",
-    detailed_accent_analysis: {
-      primary_analysis: {
-        identified_language: "German",
-        confidence_score: 99,
-        accent_classification: {
-          primary_accent: "Central European",
-          regional_influences: ["Slavic"],
-          confidence_level: 95
-        },
-        native_language_assessment: {
-          probable_l1: "Russian",
-          confidence_level: 90,
-          supporting_features: ["trilled /r/ substitution"]
-        }
-      },
-      phonetic_analysis: {
-        vowel_production: [
-          {
-            phoneme: "iː",
-            target_realization: "iː",
-            observed_realization: "ɪ",
-            example_word: "viele",
-            timestamp: 12,
-            analysis: "Shortened vowel duration detected."
-          }
-        ],
-        consonant_production: [
-          {
-            phoneme: "ʁ",
-            target_realization: "ʁ",
-            observed_realization: "r",
-            example_word: "anders",
-            timestamp: 5,
-            analysis: "Region-specific variant."
-          }
-        ]
-      },
-      prosodic_features: {
-        rhythm_patterns: {
-          description: "Stress-timed rhythm typical of German.",
-          notable_features: ["irregular stress patterns"],
-          impact_on_intelligibility: "Mild reduction in clarity."
-        },
-        stress_patterns: {
-          word_level: ["unstressed in multi-syllabic words"],
-          sentence_level: ["inconsistent stress distribution"],
-          deviations: ["overgeneralized stress default"]
-        },
-        intonation: {
-          patterns: ["falling intonation at sentence end"],
-          notable_features: ["rising pitch mid-sentence"],
-          l1_influence: "Subtle Slavic interference"
-        }
-      },
-      diagnostic_markers: [
-        {
-          feature: "Vowel reduction",
-          description: "Inconsistent vowel length and quality.",
-          impact: "Affects clarity",
-          frequency: "frequent"
-        }
-      ],
-      proficiency_assessment: {
-        cefr_level: "B1",
-        intelligibility_score: 85,
-        fluency_rating: 80,
-        accent_strength: 75,
-        detailed_evaluation: "Overall, the speaker demonstrates non-native features with room for improvement."
-      },
-      improvement_plan: {
-        priority_areas: [
-          {
-            focus: "Vowel duration",
-            importance: "high",
-            exercises: ["minimal pairs", "prosody training"],
-            expected_timeline: "4-6 weeks"
-          }
-        ],
-        recommended_resources: ["Accent reduction workshops"],
-        practice_strategies: ["shadowing native speakers"]
-      },
-      summary: {
-        key_strengths: ["Good intonation control"],
-        primary_challenges: ["Vowel reduction", "Consonant substitution"],
-        overall_assessment: "Encouraging, with focused areas for improvement."
-      }
-    }
-  };
-
+export const mockResponse = {
+  language_analyzed: "German",
+  accent_identification: {
+    accent_type: "Non-native accent",
+    specific_accent: "Slavic-influenced German",
+    confidence_level: "95%",
+    accent_strength: "Moderate",
+  },
+  speaker_background: {
+    probable_native_language: "Russian",
+    probable_region: "Eastern Europe",
+    confidence: "90%",
+    supporting_evidence: ["trilled /r/ substitution"],
+  },
+  language_specific_phonological_assessment: [
+    {
+      phoneme: "/r/",
+      example: "andere",
+      analysis: "The speaker uses an alveolar trill instead of the standard uvular fricative.",
+      IPA_target: "ʁ",
+      IPA_observed: "[r]",
+    },
+  ],
+  suprasegmental_features_analysis: [
+    {
+      feature: "Rhythm/Intonation/Stress",
+      observation: "Slightly syllable-timed rhythm with less variation in intonation.",
+      comparison: "Deviates from the stress-timed rhythm of standard German.",
+    },
+  ],
+  diagnostic_accent_markers: [
+    {
+      feature: "Alveolar trill for /r/",
+      description: "Use of [r] instead of the uvular fricative [ʁ].",
+      association: "Common in Slavic languages.",
+    },
+  ],
+  proficiency_assessment: {
+    intelligibility: "80%",
+    fluency: "75%",
+    CEFR_level: "B1",
+  },
+  improvement_suggestions: [
+    {
+      focus_area: "Pronunciation of /r/",
+      importance: "High",
+      exercises: ["Practice uvular fricative [ʁ] using minimal pairs."],
+    },
+  ],
+};
 
 export const mockDetailedResponse = {
-  primary_analysis: {
-    identified_language: "English",
-    confidence_score: 98,
+  accent_analysis: {
+    language_analyzed: "English",
     accent_classification: {
-      primary_accent: "Non-Native English",
-      regional_influences: [],
-      confidence_level: 85,
+      accent_type: "Non-native accent",
+      specific_accent: "Eastern European-influenced English",
+      confidence_level: 90,
+      accent_strength: "Moderate",
     },
-    native_language_assessment: {
-      probable_l1: "Eastern European Language (likely Polish or Russian)",
-      confidence_level: 75,
-      supporting_features: [
+    speaker_background: {
+      probable_native_language: "Polish",
+      probable_region: "Eastern Europe",
+      confidence_level: 85,
+      supporting_evidence: [
         "Devoicing of voiced consonants in certain contexts",
         "Monophthongization of certain diphthongs",
-        "Possible dentalization of alveolar consonants",
       ],
     },
   },
@@ -285,59 +224,65 @@ export const mockDetailedResponse = {
     vowel_production: [
       {
         phoneme: "/æ/",
-        target_realization: "/æ/ (as in 'cat')",
+        standard_realization: "/æ/ (as in 'cat')",
         observed_realization: "/ɛ/ (closer to 'bet')",
         example_word: "platform",
         timestamp: 0.9,
         analysis:
           "The speaker tends to raise and front the /æ/ vowel, resulting in a sound closer to /ɛ/. This is a common feature in speakers whose native languages have a different vowel inventory.",
+        accent_marker: true,
       },
       {
         phoneme: "/ʌ/",
-        target_realization: "/ʌ/ (as in 'cut')",
+        standard_realization: "/ʌ/ (as in 'cut')",
         observed_realization: "/a/ (more open and back)",
         example_word: "understanding",
         timestamp: 25.2,
         analysis:
           "The /ʌ/ vowel is often produced as a more open /a/ sound, influenced by vowel systems where these distinctions are less pronounced.",
+        accent_marker: true,
       },
       {
         phoneme: "/ɪ/",
-        target_realization: "/ɪ/ (as in 'bit')",
+        standard_realization: "/ɪ/ (as in 'bit')",
         observed_realization: "/i/ (closer to 'beet')",
         example_word: "rigid",
         timestamp: 0.18,
         analysis:
           "Tendency to raise /ɪ/ towards /i/, reducing the distinction between these two vowels. This is also common for native speakers of some European languages",
+        accent_marker: true,
       },
     ],
     consonant_production: [
       {
         phoneme: "/θ/",
-        target_realization: "/θ/ (as in 'think')",
+        standard_realization: "/θ/ (as in 'think')",
         observed_realization: "/t/ or /s/",
         example_word: "through",
         timestamp: 4.4,
         analysis:
           "The dental fricative /θ/ is often replaced with /t/, a common substitution influenced by the phonological systems of many languages that do not have this sound.",
+        accent_marker: true,
       },
       {
         phoneme: "/ð/",
-        target_realization: "/ð/ (as in 'this')",
+        standard_realization: "/ð/ (as in 'this')",
         observed_realization: "/d/ or /z/",
         example_word: "this",
         timestamp: 9.1,
         analysis:
           "Similar to /θ/, the /ð/ sound is frequently replaced with /d/ due to the absence of this voiced dental fricative in many languages. Sometimes realized as /z/.",
+        accent_marker: true,
       },
       {
         phoneme: "/v/",
-        target_realization: "/v/ (as in 'very')",
+        standard_realization: "/v/ (as in 'very')",
         observed_realization: "/w/",
         example_word: "various",
         timestamp: 29.1,
         analysis:
           "The /v/ is sometimes realized as /w/, indicating influence from languages with a similar but distinct sound. Common in some dialects of Slavic languages.",
+        accent_marker: true,
       },
     ],
   },
@@ -345,66 +290,58 @@ export const mockDetailedResponse = {
     rhythm_patterns: {
       description:
         "The speaker exhibits a tendency towards syllable-timed rhythm rather than the stress-timed rhythm characteristic of native English speech.",
-      notable_features: [
-        "More equal duration of syllables",
-        "Less reduction of unstressed syllables",
-        "Pauses occurring more frequently at syllable or word boundaries rather than within phrases",
-      ],
-      impact_on_intelligibility:
-        "This can slightly reduce intelligibility for native English speakers, who are accustomed to hearing variations in syllable duration based on stress.",
+      standard_pattern: "Stress-timed rhythm",
+      observed_pattern: "Syllable-timed rhythm",
+      accent_association: "Eastern European languages",
     },
     stress_patterns: {
-      word_level: [
-        "Occasional misplacement of stress within words (e.g., stressing the first syllable of 'exercises' instead of the second)",
-      ],
-      sentence_level: [
-        "Less emphasis on content words compared to function words, leading to a somewhat monotone delivery",
-      ],
-      deviations: [
-        "Inconsistent stress placement affects the natural flow of speech and can occasionally obscure meaning.",
-      ],
+      word_level: {
+        description: "Occasional misplacement of stress within words",
+        accent_association: "L1 interference",
+      },
+      sentence_level: {
+        description: "Less emphasis on content words compared to function words",
+        accent_association: "Monotone delivery",
+      },
     },
     intonation: {
-      patterns: [
-        "Limited pitch range compared to native English speakers",
-        "Less variation in intonation contours, resulting in a flatter overall prosody",
-      ],
-      notable_features: [
-        "Tendency to use rising intonation even at the end of declarative sentences",
-      ],
-      l1_influence:
-        "The relatively flat intonation and terminal rises may be influenced by the intonational patterns of the speaker's native language.",
+      patterns: ["Limited pitch range compared to native English speakers"],
+      accent_association: "Eastern European languages",
     },
   },
-  diagnostic_markers: [
+  diagnostic_accent_markers: [
     {
       feature: "Substitution of /θ/ and /ð/",
       description: "Replacing dental fricatives with alveolar stops or fricatives.",
-      impact:
-        "Can occasionally lead to misinterpretation (e.g., 'think' sounding like 'tink').",
+      example: "'think' sounding like 'tink'",
+      timestamp: 4.4,
+      accent_association: "Common in many languages",
       frequency: "Frequent",
     },
     {
       feature: "Vowel raising/fronting",
       description: "Raising and fronting of low vowels, particularly /æ/ and /ʌ/.",
-      impact: "Affects the perceived quality of words, making the accent noticeable.",
+      example: "'cat' sounding like 'ket'",
+      timestamp: 0.9,
+      accent_association: "Eastern European languages",
       frequency: "Occasional",
     },
     {
       feature: "Syllable-timed rhythm",
       description: "Equalizing syllable durations.",
-      impact:
-        "Reduces the natural emphasis and flow of English speech, potentially affecting ease of comprehension.",
+      example: "Speech sounds more monotone",
+      timestamp: 29.1,
+      accent_association: "Slavic languages",
       frequency: "Frequent",
     },
   ],
   proficiency_assessment: {
-    cefr_level: "B2",
     intelligibility_score: 80,
     fluency_rating: 75,
-    accent_strength: 65,
-    detailed_evaluation:
-      "The speaker demonstrates good overall proficiency in English, capable of expressing complex ideas clearly. Intelligibility is generally high, though the non-native accent is noticeable and can occasionally require listeners to pay closer attention. Fluency is slightly impacted by occasional pauses and self-corrections.",
+    comprehensibility: 85,
+    CEFR_pronunciation_level: "B2",
+    accent_impact_assessment:
+      "The speaker demonstrates good overall proficiency in English, but the non-native accent is noticeable and can occasionally require listeners to pay closer attention.",
   },
   improvement_plan: {
     priority_areas: [
@@ -451,18 +388,12 @@ export const mockDetailedResponse = {
       "Using a recording device to monitor progress",
     ],
   },
-  summary: {
-    key_strengths: [
-      "Good vocabulary and grammar",
-      "Clear articulation of most sounds",
-      "Ability to express complex ideas",
+  linguistic_background_insights: {
+    probable_l1_transfer_effects: [
+      "Devoicing of voiced consonants",
+      "Monophthongization of diphthongs",
     ],
-    primary_challenges: [
-      "Inconsistent pronunciation of specific sounds (/θ/, /ð/, /æ/, /ʌ/)",
-      "Slightly monotone prosody and syllable-timed rhythm",
-      "Occasional misplacement of word stress",
-    ],
-    overall_assessment:
-      "The speaker is a proficient English user with a noticeable non-native accent. Targeted practice on specific sounds and prosodic features can significantly improve their intelligibility and communication effectiveness.",
+    cultural_speech_patterns: ["Direct communication style"],
+    multilingual_influences: [],
   },
 };
