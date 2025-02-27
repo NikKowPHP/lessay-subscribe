@@ -4,42 +4,58 @@ export class PollyService {
   private polly: AWS.Polly;
 
   constructor() {
-    this.setPollyConfig();
+    this.initializePolly();
   }
-  public generateAudio(text: string, language: string, voice: string) {
-    return this.polly.synthesizeSpeech(this.defineAudioConfig(text, language, voice), (err: AWS.Polly.PollyError, data: AWS.Polly.SynthesizeSpeechOutput) => {
-      if (err) logger.log(err);
-      else logger.log(data);
-    });
+  public async synthesizeSpeech(text: string, language: string, voice: string): Promise<Buffer> {
+    try {
+      const params = this.createSynthesisParams(text, language, voice);
+      const response = await this.polly.synthesizeSpeech(params).promise();
+      
+      if (!response.AudioStream) {
+        throw new Error('No audio stream received from Polly');
+      }
+      
+      return Buffer.from(response.AudioStream as Uint8Array);
+    } catch (error) {
+      logger.error('Polly synthesis error:', error);
+      throw new Error('Failed to synthesize speech');
+    }
   }
-  private setPollyConfig() {
-    this.checkEnviroment();
-    this.setPollyEnviroment();
+  private initializePolly(): void {
+    this.validateEnvironment();
+    this.configureAWS();
+    this.polly = new AWS.Polly();
   }
 
-  private defineAudioConfig(text: string, language: string, voice: string) {
+  private createSynthesisParams(text: string, language: string, voice: string): AWS.Polly.SynthesizeSpeechInput {
     return {
       Text: text,
       LanguageCode: language,
       VoiceId: voice,
       OutputFormat: 'mp3',
-      Engine: 'neural'
-    }
+      Engine: 'neural',
+      TextType: 'text'
+    };
   }
 
-  private setPollyEnviroment() {
+
+  private configureAWS(): void {
     AWS.config.update({
       accessKeyId: process.env.AWS_POLLY_ACCESS_KEY,
       secretAccessKey: process.env.AWS_POLLY_SECRET_KEY,
       region: process.env.AWS_POLLY_REGION
     });
-    this.polly = new AWS.Polly();
   }
+  private validateEnvironment(): void {
+    const requiredVars = [
+      'AWS_POLLY_ACCESS_KEY',
+      'AWS_POLLY_SECRET_KEY',
+      'AWS_POLLY_REGION'
+    ];
 
-  private checkEnviroment() {
-
-    if (!process.env.AWS_POLLY_ACCESS_KEY || !process.env.AWS_POLLY_SECRET_KEY || !process.env.AWS_POLLY_REGION) {
-      throw new Error('AWS_POLLY_ACCESS_KEY, AWS_POLLY_SECRET_KEY, and AWS_POLLY_REGION must be set');
+    const missingVars = requiredVars.filter(v => !process.env[v]);
+    if (missingVars.length > 0) {
+      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
     }
   }
 }
