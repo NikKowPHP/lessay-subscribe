@@ -1,6 +1,7 @@
 import logger from '@/utils/logger';
 import AWS from 'aws-sdk';
-export class PollyService {
+import { ITTS } from '@/interfaces/tts.interface';
+export class PollyService implements ITTS {
   private polly!: AWS.Polly;
 
   constructor() {
