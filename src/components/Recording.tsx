@@ -1,367 +1,48 @@
 'use client';
 
-import { AIResponse, DetailedAIResponse  } from '@/models/AiResponse.model';
-import logger from '@/utils/logger';
-import { useState, useRef, useEffect } from 'react';
-import { useError } from '@/hooks/useError';
-import { useSubscription } from '@/context/subscription-context';
-import posthog from 'posthog-js';
 import { DetailedAnalysis } from './DetailedAnalysis';
 import { BasicAnalysis } from './BasicAnalysis';
 import { RecordingCallToAction } from './RecordingCallToAction';
 import { LoadingAnimation } from './LoadingAnimation';
 import { RecordingHeader } from './RecordingHeader';
+import { getButtonConfig } from './RecordingButtonConfig';
+import { useRecordingContext } from '@/context/recording-context';
+import { MetaScript } from './RecordingMetaScript';
 
 
-
-
-
-const MAX_RECORDING_TIME_MS = 600000; // 10 minutes
-
-const ATTEMPTS_RESET_TIME_MS = 3600000; // 1 hour
 
 export default function Recording() {
+
   const {
-    isSubscribed,
-    isSubscribedBannerShowed,
-    setIsSubscribedBannerShowed,
-  } = useSubscription();
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioURL, setAudioURL] = useState<string | null>(null);
-  const mediaRecorder = useRef<MediaRecorder | null>(null);
-  const audioChunks = useRef<Blob[]>([]);
-  const [isProcessed, setIsProcessed] = useState(false);
-  const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
-  const [detailedAiResponse, setDetailedAiResponse] = useState<DetailedAIResponse | null>(null);
-  const startTimeRef = useRef<number>(0);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const recordingTimerInterval = useRef<NodeJS.Timeout | null>(null); // Ref to hold timer interval ID
+    audioURL,
+    aiResponse,
+    detailedAiResponse,
+    isProcessing,
+    resetRecording,
+    isDeepAnalysis,
+    setIsDeepAnalysis,
+    posthogCapture,
+  } = useRecordingContext();
 
-  const [maxRecordingAttempts, setMaxRecordingAttempts] =
-    useState<number>(2);
-  const [recordingAttempts, setRecordingAttempts] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0; // SSR
-    const storedAttempts = localStorage.getItem('recordingAttempts');
-    const storedTimestamp = localStorage.getItem('attemptsTimestamp');
+  
 
-    if (storedAttempts && storedTimestamp) {
-      const attempts = parseInt(storedAttempts, 10);
-      const timestamp = parseInt(storedTimestamp, 10);
-      const now = Date.now();
 
-      if (now - timestamp < ATTEMPTS_RESET_TIME_MS) {
-        return attempts;
-      }
-    }
-    return 0;
-  });
 
-  const [isDeepAnalysis, setIsDeepAnalysis] = useState<boolean>(false); // New state variable
-
-  const { showError } = useError();
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return; // SSR
-    localStorage.setItem('recordingAttempts', recordingAttempts.toString());
-    if (recordingAttempts === 0) {
-      localStorage.setItem('attemptsTimestamp', Date.now().toString());
-    }
-  }, [recordingAttempts]);
-
-  useEffect(() => {
-    if (isSubscribed) {
-      setMaxRecordingAttempts(1000);
-      if (!isSubscribedBannerShowed) {
-        showError(
-          'You are subscribed to the waitlist. You can now record unlimited times.',
-          'success'
-        );
-        setIsSubscribedBannerShowed(true);
-      }
-    }
-  }, [isSubscribed]);
-
-  const startRecording = async () => {
-    const isDev = process.env.NEXT_PUBLIC_ENVIRONMENT === 'development';
-    
-    if ((recordingAttempts >= maxRecordingAttempts) && !isDev) {
-      showError(
-        `You have reached the maximum number of recording attempts (${maxRecordingAttempts}) in the last hour. Subscribe to our waitlist to get unlimited analyses.`,
-        'warning'
-      );
-      return;
-    }
-
-    try {
-      // Reset states before starting
-      setIsProcessed(false);
-      setAiResponse(null);
-      setDetailedAiResponse(null);
-      setAudioURL(null);
-
-      // Check if mediaDevices API is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Media devices API not supported in this browser');
-      }
-
-      // Check if any audio input devices are available
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioDevices = devices.filter(
-        (device) => device.kind === 'audioinput'
-      );
-
-      if (audioDevices.length === 0) {
-        throw new Error('No audio input devices found');
-      }
-
-      // Request microphone permission with constraints
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-        video: false,
-      });
-
-      // Only proceed if we got the stream successfully
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : 'audio/mp4';
-
-      mediaRecorder.current = new MediaRecorder(stream, {
-        mimeType: mimeType,
-      });
-
-      audioChunks.current = [];
-      startTimeRef.current = Date.now();
-
-      mediaRecorder.current.ondataavailable = (event) => {
-        audioChunks.current.push(event.data);
-      };
-
-      mediaRecorder.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunks.current, { type: mimeType });
-        const url = URL.createObjectURL(audioBlob);
-        setAudioURL(url);
-
-        const endTime = Date.now();
-        const timeDiff = endTime - startTimeRef.current;
-        const blobSize = audioBlob.size;
-
-        // Create File object for upload
-        const audioFile = new File([audioBlob], 'recording.aac', {
-          type: 'audio/aac-adts',
-        });
-
-        await handleSend(audioFile, timeDiff, blobSize);
-        setIsProcessed(true);
-
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      // Start recording only after all handlers are set
-      mediaRecorder.current.start();
-      setIsRecording(true);
-      startTimeRef.current = Date.now();
-
-      // Increment recording attempts
-      setRecordingAttempts((prevAttempts) => prevAttempts + 1);
-
-      // Set up timer to stop recording after MAX_RECORDING_TIME_MS
-      recordingTimerInterval.current = setInterval(() => {
-        if (isRecording) {
-          // Check if still recording to avoid issues if stopped quickly
-          const elapsedTime = Date.now() - startTimeRef.current;
-          if (elapsedTime >= MAX_RECORDING_TIME_MS) {
-            stopRecording();
-            showError(
-              'Maximum recording time reached (1 minute). Recording stopped.',
-              'warning'
-            );
-            clearInterval(recordingTimerInterval.current!); // Clear interval after stopping
-            recordingTimerInterval.current = null;
-          }
-        } else {
-          clearInterval(recordingTimerInterval.current!); // Clear interval if recording is manually stopped
-          recordingTimerInterval.current = null;
-        }
-      }, 1000); // Check every 1 second
-    } catch (error: unknown) {
-      setIsRecording(false);
-      logger.error('Error starting recording:', error);
-      clearInterval(recordingTimerInterval.current!); // Clear interval in case of error
-      recordingTimerInterval.current = null;
-
-      if (error instanceof Error) {
-        switch (error.name) {
-          case 'NotAllowedError':
-            showError(
-              'Microphone access denied. Please allow microphone access and try again.',
-              'error'
-            );
-            break;
-          case 'NotFoundError':
-            showError(
-              'No microphone found. Please connect a microphone and try again.',
-              'error'
-            );
-            break;
-          case 'NotReadableError':
-            showError(
-              'Microphone is already in use. Please close other applications using the microphone.',
-              'error'
-            );
-            break;
-          default:
-            if (
-              error.message ===
-              'Media devices API not supported in this browser'
-            ) {
-              showError(
-                'Your browser does not support audio recording. Please try a modern browser like Chrome or Firefox.',
-                'error'
-              );
-            } else if (error.message === 'No audio input devices found') {
-              showError(
-                'No microphone detected. Please connect a microphone and try again.',
-                'error'
-              );
-            } else {
-              showError(
-                'Could not start recording. Please check your microphone connection.',
-                'error'
-              );
-            }
-        }
-      }
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
-      mediaRecorder.current.stop();
-      setIsRecording(false);
-      clearInterval(recordingTimerInterval.current!); // Clear interval when manually stopped
-      recordingTimerInterval.current = null;
-      posthogCapture('stop_recording_clicked');
-    }
-  };
-
-  // Updated handleSend to use File instead of base64
-  const handleSend = async (
-    audioFile: File,
-    recTime: number,
-    recSize: number
-  ) => {
-    if (!audioFile || !recTime || !recSize) {
-      showError('No audio recorded. Please try again.', 'warning');
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      const formData = new FormData();
-      formData.append('audio', audioFile);
-      formData.append('recordingTime', recTime.toString());
-      formData.append('recordingSize', recSize.toString());
-      if (isDeepAnalysis) {
-        formData.append('isDeepAnalysis', 'true');
-      }
-
-      const response = await fetch('/api/recording', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
-      const data = await response.json();
-
-      if (isDeepAnalysis) {
-        const detailedResponse = data.aiResponse as DetailedAIResponse;
-        setDetailedAiResponse(detailedResponse);
-      } else {
-        const standardResponse = data.aiResponse as AIResponse;
-        setAiResponse(standardResponse);
-      }
-    } catch (error) {
-      logger.error('Error sending recording:', error);
-      showError('Failed to process recording. Please try again.', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Smooth scroll to subscription/waitlist section
+ 
   const onWaitlistClick = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     posthogCapture('join_waitlist_clicked');
   };
 
-  const posthogCapture = (event: string) => {
-    if(process.env.NEXT_PUBLIC_ENVIRONMENT === 'production') {
-      posthog?.capture(event);
-    }
-  }
 
-  // Reset the recording state to allow a new recording.
   const onResetRecordingClick = () => {
     posthogCapture('try_another_recording_clicked');
     resetRecording();
   };
 
-  const resetRecording = () => {
-    setAudioURL(null);
-    setAiResponse(null);
-    setIsProcessed(false);
-  };
-
   const onDeepAnalysisClick = () => {
     setIsDeepAnalysis(!isDeepAnalysis);
     posthogCapture('deep_analysis_toggled');
-  };
-
-  // Helper function to get button text and action
-  const getButtonConfig = () => {
-    if (isProcessing) {
-      return {
-        text: 'Processing...',
-        action: () => {},
-        disabled: true,
-        className: 'opacity-50 cursor-not-allowed',
-      };
-    }
-    if (isRecording) {
-      return {
-        text: (
-          <span className="flex items-center">
-            <span className="animate-pulse mr-2 text-red-500">●</span> Stop
-            Recording
-          </span>
-        ),
-        action: stopRecording,
-        disabled: false,
-        className:
-          'bg-black text-white dark:bg-white dark:text-black hover:opacity-90',
-      };
-    }
-    if (isProcessed) {
-      return {
-        text: 'Record Again',
-        action: resetRecording,
-        disabled: false,
-        className:
-          'hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black',
-      };
-    }
-    return {
-      text: 'Start Recording',
-      action: startRecording,
-      disabled: false,
-      className:
-        'hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black',
-    };
   };
 
 
@@ -403,63 +84,8 @@ export default function Recording() {
 
   
 
-  
-
  
-const MetaScript = () => {
-  return (
-    <script
-    type="application/ld+json"
-    dangerouslySetInnerHTML={{
-      __html: JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'HowTo',
-        name: 'Analyze Your Accent with AI',
-        description:
-          'Get instant AI-powered feedback on your pronunciation, fluency, and accent characteristics in any language',
-        estimatedCost: {
-          '@type': 'MonetaryAmount',
-          currency: 'USD',
-          value: '0',
-        },
-        tool: [
-          {
-            '@type': 'HowToTool',
-            name: 'Microphone',
-          },
-        ],
-        step: [
-          {
-            '@type': 'HowToStep',
-            name: 'Allow Microphone Access',
-            text: 'Grant microphone permissions when prompted to enable voice recording',
-            url: 'https://yourdomain.com#recording',
-          },
-          {
-            '@type': 'HowToStep',
-            name: 'Start Recording',
-            text: 'Click the start button and speak clearly in any language',
-            url: 'https://yourdomain.com#recording',
-          },
-          {
-            '@type': 'HowToStep',
-            name: 'Complete Recording',
-            text: 'Click stop when finished to submit your recording',
-            url: 'https://yourdomain.com#recording',
-          },
-          {
-            '@type': 'HowToStep',
-            name: 'Get Analysis',
-            text: 'Receive detailed AI analysis of your pronunciation and accent characteristics',
-            url: 'https://yourdomain.com#analysis',
-          },
-        ],
-        totalTime: 'PT2M',
-      }),
-    }}
-  />
-  )
-}
+
 
 const DeepAnalysisMessage = () => {
   return (

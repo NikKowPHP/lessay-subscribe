@@ -2,11 +2,25 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Recording from '@/components/Recording';
 import { useSubscription } from '@/context/subscription-context';
-
+import React from 'react';
 // Mock dependencies
 jest.mock('@/context/subscription-context');
 jest.mock('posthog-js');
-jest.mock('@/utils/logger');
+jest.mock('@/utils/logger', () => ({
+  __esModule: true,
+  default: {
+    error: jest.fn(),
+    log: jest.fn(),
+  },
+}));
+
+// Add this to your existing mock setup
+jest.mock('@/repositories/supabase/supabase', () => ({
+  supabase: {
+    from: jest.fn().mockReturnThis(),
+    insert: jest.fn().mockResolvedValue({}),
+  },
+}));
 
 const mockUseSubscription = useSubscription as jest.MockedFunction<typeof useSubscription>;
 
@@ -38,7 +52,7 @@ afterEach(() => {
 });
 
 describe('Recording Component', () => {
-  test('renders initial recording state', () => {
+  test.only('renders initial recording state', () => {
     render(<Recording />);
     expect(screen.getByText('Start Recording')).toBeInTheDocument();
     expect(screen.getByText('Deep Analysis')).toBeInTheDocument();

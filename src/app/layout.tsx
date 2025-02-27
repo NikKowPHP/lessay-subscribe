@@ -24,6 +24,7 @@ const geistMono = Geist_Mono({
 
 import { siteMetadata } from '@/utils/metadata';
 import { SubscriptionProvider } from "@/context/subscription-context";
+import { RecordingProvider } from "@/context/recording-context";
 export const metadata = siteMetadata;
 
 export default function RootLayout({
@@ -47,7 +48,9 @@ export default function RootLayout({
         <ErrorProvider>
           <PostHogProvider>
             <SubscriptionProvider>
-              {children}
+              <RecordingProvider>
+                {children}
+              </RecordingProvider>
             </SubscriptionProvider>
           </PostHogProvider>
         </ErrorProvider>
