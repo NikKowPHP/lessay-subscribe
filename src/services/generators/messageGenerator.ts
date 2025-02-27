@@ -117,6 +117,7 @@ class MessageGenerator {
       \`\`\`json
         {
           "language_analyzed": "${analysisLanguage}",
+          "analyzed_language_code": "BCP-47 code (e.g. en-US, de-DE, zh-CN) of ${analysisLanguage}",
           "accent_identification": {
             "accent_type": "Regional or Non-native accent classification",
             "specific_accent": "Detailed accent identification (e.g., Indian English, Mexican Spanish)",
@@ -241,6 +242,7 @@ class MessageGenerator {
       {
         "accent_analysis": {
           "language_analyzed": "${analysisLanguage}",
+          "analyzed_language_code": "BCP-47 code (e.g. en-US, de-DE, zh-CN) of ${analysisLanguage}",
           "accent_classification": {
             "accent_type": "Regional/Non-native accent",
             "specific_accent": "Detailed accent identification",
