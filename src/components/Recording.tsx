@@ -285,11 +285,31 @@ export default function Recording() {
         const standardResponse = data.aiResponse as AIResponse;
         setAiResponse(standardResponse);
       }
+
+      fetchYoutubeVideos(data);
     } catch (error) {
       logger.error('Error sending recording:', error);
       showError('Failed to process recording. Please try again.', 'error');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const fetchYouTubeVideos = async (data) => {
+    try {
+      const response = await fetch(`/api/youtube`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch YouTube videos: ${response.status}`);
+      }
+      const data = await response.json();
+      // Handle the YouTube video data here (e.g., store in state)
+      console.log('YouTube Videos:', data);
+    } catch (error) {
+      logger.error('Error fetching YouTube videos:', error);
+      showError('Failed to fetch YouTube videos. Please try again.', 'error');
     }
   };
 
