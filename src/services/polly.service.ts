@@ -1,7 +1,7 @@
 import logger from '@/utils/logger';
 import AWS from 'aws-sdk';
 export class PollyService {
-  private polly: AWS.Polly;
+  private polly!: AWS.Polly;
 
   constructor() {
     this.initializePolly();
