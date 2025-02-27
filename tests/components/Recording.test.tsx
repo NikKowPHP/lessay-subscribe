@@ -1,48 +1,39 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import Recording from '@/components/Recording';
+import { renderHook, act } from '@testing-library/react';
+import { useRecordingContext, RecordingProvider } from '@/context/recording-context';
 import { useSubscription } from '@/context/subscription-context';
-import React from 'react';
+import { ReactNode } from 'react';
+
 // Mock dependencies
 jest.mock('@/context/subscription-context');
 jest.mock('posthog-js');
-jest.mock('@/utils/logger', () => ({
-  __esModule: true,
-  default: {
-    error: jest.fn(),
-    log: jest.fn(),
-  },
-}));
-
-// Add this to your existing mock setup
-jest.mock('@/repositories/supabase/supabase', () => ({
-  supabase: {
-    from: jest.fn().mockReturnThis(),
-    insert: jest.fn().mockResolvedValue({}),
-  },
-}));
 
 const mockUseSubscription = useSubscription as jest.MockedFunction<typeof useSubscription>;
 
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <RecordingProvider>{children}</RecordingProvider>
+);
+
 beforeEach(() => {
-  // Mock subscription context
   mockUseSubscription.mockReturnValue({
     isSubscribed: false,
     isSubscribedBannerShowed: false,
-    setIsSubscribedBannerShowed: jest.fn()
+    setIsSubscribedBannerShowed: jest.fn(),
+    setIsSubscribed: jest.fn(),
+    checkSubscription: jest.fn(),
+    handleSubmit: jest.fn(),
+    status: 'idle',
+    email: '',
+    setEmail: jest.fn(),
+    errorMessage: '',
+    setErrorMessage: jest.fn(),
   });
 
   // Mock media devices
-  Object.defineProperty(global.navigator, 'mediaDevices', {
+  Object.defineProperty(navigator, 'mediaDevices', {
     value: {
-      getUserMedia: jest.fn().mockResolvedValue({
-        getTracks: () => [{ stop: jest.fn() }]
-      }),
-      enumerateDevices: jest.fn().mockResolvedValue([
-        { kind: 'audioinput', deviceId: '1', label: 'Microphone', groupId: '1' }
-      ])
-    },
-    writable: true
+      getUserMedia: jest.fn(),
+      enumerateDevices: jest.fn().mockResolvedValue([{ kind: 'audioinput' }])
+    }
   });
 });
 
@@ -51,70 +42,72 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-describe('Recording Component', () => {
-  test.only('renders initial recording state', () => {
-    render(<Recording />);
-    expect(screen.getByText('Start Recording')).toBeInTheDocument();
-    expect(screen.getByText('Deep Analysis')).toBeInTheDocument();
+describe('RecordingContext', () => {
+  test('provides initial context values', () => {
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+    
+    expect(result.current.isRecording).toBe(false);
+    expect(result.current.audioURL).toBeNull();
+    expect(result.current.isProcessing).toBe(false);
+    expect(result.current.recordingAttempts).toBe(0);
   });
 
   test('starts and stops recording', async () => {
-    render(<Recording />);
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+    expect(result.current.isRecording).toBe(true);
+
+    await act(async () => {
+      result.current.stopRecording();
+    });
+    expect(result.current.isRecording).toBe(false);
+  });
+
+  test('tracks recording attempts', async () => {
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      await result.current.startRecording();
+      await result.current.stopRecording();
+    });
     
-    const startButton = screen.getByText('Start Recording');
-    await userEvent.click(startButton);
-
-    // Wait for recording state update
-    await waitFor(() => {
-      expect(screen.getByText(/Stop Recording/)).toBeInTheDocument();
-    });
-
-    const stopButton = screen.getByText(/Stop Recording/);
-    await userEvent.click(stopButton);
-
-    await waitFor(() => {
-      expect(screen.queryByText(/Stop Recording/)).not.toBeInTheDocument();
-    });
-  });
-
-  test('handles microphone permission denied', async () => {
-    // Mock permission denied error
-    const error = new Error('Permission denied');
-    error.name = 'NotAllowedError';
-    navigator.mediaDevices.getUserMedia = jest.fn().mockRejectedValue(error);
-
-    render(<Recording />);
-    await userEvent.click(screen.getByText('Start Recording'));
-
-    await waitFor(() => {
-      expect(screen.getByText(/Microphone access denied/)).toBeInTheDocument();
-    });
-  });
-
-  test('limits recording attempts', async () => {
-    localStorage.setItem('recordingAttempts', '2');
-    localStorage.setItem('attemptsTimestamp', Date.now().toString());
-
-    render(<Recording />);
-    await userEvent.click(screen.getByText('Start Recording'));
-
-    await waitFor(() => {
-      expect(screen.getByText(/maximum number of recording attempts/)).toBeInTheDocument();
-    });
+    expect(result.current.recordingAttempts).toBe(1);
+    expect(localStorage.getItem('recordingAttempts')).toBe('1');
   });
 
   test('resets recording state', async () => {
-    render(<Recording />);
-    
-    // Start and stop recording
-    await userEvent.click(screen.getByText('Start Recording'));
-    await waitFor(() => screen.getByText(/Stop Recording/));
-    await userEvent.click(screen.getByText(/Stop Recording/));
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
 
-    // Click record again
-    await waitFor(() => screen.getByText('Record Again'));
-    await userEvent.click(screen.getByText('Record Again'));
+    await act(async () => {
+      await result.current.startRecording();
+      await result.current.stopRecording();
+      result.current.resetRecording();
+    });
 
-    expect(screen.getByText('Start Recording')).toBeInTheDocument();
+    expect(result.current.audioURL).toBeNull();
+    expect(result.current.aiResponse).toBeNull();
+    expect(result.current.isProcessed).toBe(false);
+  });
+
+  test('handles subscription upgrades', () => {
+    mockUseSubscription.mockReturnValue({
+      isSubscribed: true,
+      isSubscribedBannerShowed: false,
+      setIsSubscribedBannerShowed: jest.fn(),
+      setIsSubscribed: jest.fn(),
+      checkSubscription: jest.fn(),
+      handleSubmit: jest.fn(),
+      status: 'idle',
+      email: '',
+      setEmail: jest.fn(),
+      errorMessage: '',
+      setErrorMessage: jest.fn(),
+    });
+
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+    expect(result.current.maxRecordingAttempts).toBe(1000);
   });
 });

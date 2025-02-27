@@ -1,6 +1,5 @@
 'use client';
 import { createContext, useContext, ReactNode, useState, useRef, useEffect } from 'react';
-import { useRecording } from '@/hooks/useRecording';
 import { useError } from '@/hooks/useError';
 import { useSubscription } from './subscription-context';
 import { AIResponse, DetailedAIResponse } from '@/models/AiResponse.model';
