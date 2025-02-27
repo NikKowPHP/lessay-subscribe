@@ -15,7 +15,6 @@ export const fetchPollyAudio = async (ipa: string, language: string) => {
     if (!response.ok) throw new Error('Failed to fetch audio');
     
     const audioBlob = await response.blob();
-    debugger
     return URL.createObjectURL(audioBlob);
   } catch (error) {
     logger.error('Polly audio fetch error:', error);

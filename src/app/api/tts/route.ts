@@ -1,16 +1,10 @@
 // 'use server'
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/utils/logger';
-import { ITTS } from '@/interfaces/tts.interface';
 import { TTS } from '@/services/tts.service';
 import { PollyService } from '@/services/polly.service';
 
-const mockTtsEngine: ITTS = {
-  synthesizeSpeech: async (text: string, language: string, voice: string) => {
-    console.warn('Replace this with actual TTS engine implementation');
-    return Buffer.from(`Generated audio for: ${text} (${language}, ${voice})`);
-  }
-};
+
 
 
 export async function POST(req: NextRequest) {
@@ -19,7 +13,7 @@ export async function POST(req: NextRequest) {
 
     if (!text || !language) {
       return NextResponse.json(
-        { message: "Missing required fields: text, language, or voice" },
+        { message: "Missing required fields: text, language " },
         { status: 400 }
       );
     }
