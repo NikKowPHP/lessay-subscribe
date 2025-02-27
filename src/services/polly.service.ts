@@ -35,7 +35,7 @@ export class PollyService implements ITTS {
       VoiceId: voice,
       OutputFormat: 'mp3',
       Engine: 'neural',
-      TextType: 'text'
+      TextType: 'ssml'
     };
   }
 

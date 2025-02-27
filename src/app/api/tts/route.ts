@@ -1,12 +1,6 @@
 // 'use server'
 import { NextRequest, NextResponse } from 'next/server';
-import RecordingService from '@/services/recording.service';
 import logger from '@/utils/logger';
-import { mockDetailedResponse, mockResponse } from '@/models/AiResponse.model';
-import formidable, { IncomingForm, Fields, File } from 'formidable';
-import { readFile } from 'fs/promises';
-import { Readable } from 'stream';
-import { IncomingMessage } from 'http';
 import { ITTS } from '@/interfaces/tts.interface';
 import { TTS } from '@/services/tts.service';
 
@@ -20,9 +14,9 @@ const mockTtsEngine: ITTS = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { text, language, voice } = await req.json();
+    const { text, language } = await req.json();
 
-    if (!text || !language || !voice) {
+    if (!text || !language) {
       return NextResponse.json(
         { message: "Missing required fields: text, language, or voice" },
         { status: 400 }
@@ -30,7 +24,7 @@ export async function POST(req: NextRequest) {
     }
 
     const ttsService = new TTS(mockTtsEngine);
-    const audioBuffer = await ttsService.generateAudio(text, language, voice);
+    const audioBuffer = await ttsService.generateAudio(text, language);
 
     return new NextResponse(audioBuffer, {
       status: 200,
