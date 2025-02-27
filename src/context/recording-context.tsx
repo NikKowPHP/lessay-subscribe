@@ -3,6 +3,7 @@ import { createContext, useContext, ReactNode, useState, useRef, useEffect } fro
 import { useError } from '@/hooks/useError';
 import { useSubscription } from './subscription-context';
 import { AIResponse, DetailedAIResponse } from '@/models/AiResponse.model';
+import React from 'react';
 
 import posthog from 'posthog-js';
 import logger from '@/utils/logger';
