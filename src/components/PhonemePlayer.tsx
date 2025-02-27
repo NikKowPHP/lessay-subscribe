@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import logger from '@/utils/logger';
 import { fetchPollyAudio } from '@/utils/phoneme-audio.handler.util';
+import { cacheAudio, getCachedAudio, getCacheKey } from '@/utils/phoneme-audio.cacher.util';
 
 interface PhonemePlayerProps {
   ipa: string;
@@ -20,12 +21,7 @@ const PhonemePlayer: React.FC<PhonemePlayerProps> = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const saveAudioInLocalStorage = async (audioUrl: string) => {
-    const audioBlob = await fetch(audioUrl).then(res => res.blob());
-    const audioFile = new File([audioBlob], 'audio.mp3', { type: 'audio/mpeg' });
-    return audioFile;
-  }
-  
+
   const playPhoneme = async () => {
     if (isPlaying || isLoading) return;
     
@@ -33,8 +29,18 @@ const PhonemePlayer: React.FC<PhonemePlayerProps> = ({
     
     try {
 
-      const audioUrl = await fetchPollyAudio(ipa, language);
+      const cleanIpa = ipa.replace(/[\[\]\/]/g, '');
+      const cachedAudio = getCachedAudio(cleanIpa, language);
+
+      let audioUrl: string;
       
+      if (cachedAudio) {
+        audioUrl = `data:audio/mpeg;base64,${cachedAudio}`;
+      } else {
+        audioUrl = await fetchPollyAudio(ipa, language);
+        await cacheAudio(cleanIpa, language, audioUrl);
+      }
+
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
