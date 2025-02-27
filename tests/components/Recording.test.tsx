@@ -1,16 +1,25 @@
 import { renderHook, act } from '@testing-library/react';
 import { useRecordingContext, RecordingProvider } from '@/context/recording-context';
-import { useSubscription } from '@/context/subscription-context';
+import { SubscriptionProvider, useSubscription } from '@/context/subscription-context';
 import { ReactNode } from 'react';
+import { ErrorProvider } from '@/hooks/useError';
 
 // Mock dependencies
 jest.mock('@/context/subscription-context');
+jest.mock('@/context/recording-context');
+jest.mock('@/hooks/useError');
 jest.mock('posthog-js');
 
 const mockUseSubscription = useSubscription as jest.MockedFunction<typeof useSubscription>;
 
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <RecordingProvider>{children}</RecordingProvider>
+  <ErrorProvider>
+    <RecordingProvider>
+      <SubscriptionProvider>
+        {children}
+      </SubscriptionProvider>
+    </RecordingProvider>
+  </ErrorProvider>
 );
 
 beforeEach(() => {
@@ -78,7 +87,7 @@ describe('RecordingContext', () => {
     expect(localStorage.getItem('recordingAttempts')).toBe('1');
   });
 
-  test('resets recording state', async () => {
+  test.only('resets recording state', async () => {
     const { result } = renderHook(() => useRecordingContext(), { wrapper });
 
     await act(async () => {

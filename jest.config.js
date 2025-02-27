@@ -1,14 +1,14 @@
 module.exports = {
-  testEnvironment: 'jsdom',
+  preset: 'ts-jest',
+  testEnvironment: 'jest-environment-jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testMatch: ['**/tests/**/*.test.(ts|tsx)'],
   transform: {
-    '^.+\\.(ts|tsx)?$': 'ts-jest',
+    '^.+\\.(ts|tsx|js|jsx)$': 'babel-jest'
   },
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/(.*)$': '<rootDir>/$1'
   },
   transformIgnorePatterns: [
-    '/node_modules/(?!(your-module-to-transform|other-modules)/)'
+    '/node_modules/(?!(posthog-js)/)'
   ]
 };
