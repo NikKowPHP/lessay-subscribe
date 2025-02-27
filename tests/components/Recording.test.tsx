@@ -3,14 +3,30 @@ import { useRecordingContext, RecordingProvider } from '@/context/recording-cont
 import { SubscriptionProvider, useSubscription } from '@/context/subscription-context';
 import { ReactNode } from 'react';
 import { ErrorProvider } from '@/hooks/useError';
+import { createClient } from '@supabase/supabase-js';
+import React from 'react';
 
 // Mock dependencies
 jest.mock('@/context/subscription-context');
 jest.mock('@/context/recording-context');
 jest.mock('@/hooks/useError');
 jest.mock('posthog-js');
+jest.mock('@supabase/supabase-js');
 
 const mockUseSubscription = useSubscription as jest.MockedFunction<typeof useSubscription>;
+
+// Add this mock implementation above your beforeEach blocks
+const mockAuth = {
+  signInWithPassword: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+  signOut: jest.fn().mockResolvedValue({ error: null }),
+};
+
+const mockSupabase = {
+  auth: mockAuth,
+  // Add other Supabase services as needed
+};
+
+require('@supabase/supabase-js').createClient = jest.fn(() => mockSupabase);
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <ErrorProvider>
