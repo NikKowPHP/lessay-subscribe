@@ -10,19 +10,34 @@ import {
 import { Readable } from 'stream';
 import logger from '@/utils/logger';
 import { ITTS } from '@/interfaces/tts.interface';
+import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
+import { ProxyAgent } from 'proxy-agent';
 
 export class PollyService implements ITTS {
-  private pollyClient: PollyClient;
+  private pollyClient!: PollyClient;
 
   constructor() {
+    this.initializePolly();
+  }
+
+  private initializePolly(): void {
     this.validateEnvironment();
-    this.pollyClient = new PollyClient({
+    
+    const config = {
       region: process.env.AWS_POLLY_REGION,
       credentials: {
         accessKeyId: process.env.AWS_POLLY_ACCESS_KEY!,
         secretAccessKey: process.env.AWS_POLLY_SECRET_KEY!
-      }
-    });
+      },
+      requestHandler: process.env.HTTPS_PROXY 
+        ? new NodeHttpHandler({
+            httpAgent: new ProxyAgent(),
+            httpsAgent: new ProxyAgent()
+          })
+        : undefined
+    };
+
+    this.pollyClient = new PollyClient(config);
   }
 
   public async synthesizeSpeech(text: string, language: string, voice: string): Promise<Buffer> {
