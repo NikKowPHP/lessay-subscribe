@@ -114,7 +114,7 @@ export const DetailedAnalysis = ({detailedAiResponse}: {detailedAiResponse: Deta
                     <span className="font-bold">Standard: {vowel.standard_realization}</span>
                     <PhonemePlayer 
                       ipa={vowel.phoneme} 
-                      language={detailedAiResponse.accent_analysis.language_analyzed} 
+                      language={detailedAiResponse.accent_analysis.analyzed_language_code} 
                       size="sm" 
                     />
                   </div>
@@ -122,7 +122,7 @@ export const DetailedAnalysis = ({detailedAiResponse}: {detailedAiResponse: Deta
                     <span className="font-bold">Observed: {vowel.observed_realization}</span>
                     <PhonemePlayer 
                       ipa={vowel.observed_realization.split(' ')[0]} 
-                      language={detailedAiResponse.accent_analysis.language_analyzed} 
+                      language={detailedAiResponse.accent_analysis.analyzed_language_code} 
                       size="sm" 
                     />
                   </div>
@@ -164,7 +164,7 @@ export const DetailedAnalysis = ({detailedAiResponse}: {detailedAiResponse: Deta
                     <span className="font-bold">Standard: {consonant.standard_realization}</span>
                     <PhonemePlayer 
                       ipa={consonant.phoneme} 
-                      language={detailedAiResponse.accent_analysis.language_analyzed} 
+                      language={detailedAiResponse.accent_analysis.analyzed_language_code} 
                       size="sm" 
                     />
                   </div>
@@ -172,7 +172,7 @@ export const DetailedAnalysis = ({detailedAiResponse}: {detailedAiResponse: Deta
                     <span className="font-bold">Observed: {consonant.observed_realization}</span>
                     <PhonemePlayer 
                       ipa={consonant.observed_realization.split(' ')[0]} 
-                      language={detailedAiResponse.accent_analysis.language_analyzed} 
+                      language={detailedAiResponse.accent_analysis.analyzed_language_code} 
                       size="sm" 
                     />
                   </div>
