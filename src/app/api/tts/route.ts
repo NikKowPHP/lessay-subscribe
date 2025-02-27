@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/utils/logger';
 import { ITTS } from '@/interfaces/tts.interface';
 import { TTS } from '@/services/tts.service';
+import { PollyService } from '@/services/polly.service';
 
 const mockTtsEngine: ITTS = {
   synthesizeSpeech: async (text: string, language: string, voice: string) => {
@@ -23,8 +24,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const ttsService = new TTS(mockTtsEngine);
+    const ttsService = new TTS(new PollyService());
     const audioBuffer = await ttsService.generateAudio(text, language);
+    console.log('audioBuffer', audioBuffer.length.toString());
 
     return new NextResponse(audioBuffer, {
       status: 200,

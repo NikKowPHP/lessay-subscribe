@@ -49,6 +49,7 @@ export class PollyService implements ITTS {
       if (!response.AudioStream) {
         throw new Error('No audio stream received from Polly');
       }
+      console.log('audio generated successfully', response.AudioStream);
 
       return await this.streamToBuffer(response.AudioStream as Readable);
     } catch (error) {
