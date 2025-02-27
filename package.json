@@ -14,6 +14,7 @@
     "@types/formidable": "^3.4.5",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.1.0",
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.7.9",
     "formidable": "^3.5.2",
     "https-proxy-agent": "^7.0.6",
