@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import logger from '@/utils/logger';
 import { fetchPollyAudio } from '@/utils/phoneme-audio.handler.util';
-import { cacheAudio, getCachedAudio, getCacheKey } from '@/utils/phoneme-audio.cacher.util';
+import { cacheAudio, getCachedAudio } from '@/utils/phoneme-audio.cacher.util';
 
 interface PhonemePlayerProps {
   ipa: string;
