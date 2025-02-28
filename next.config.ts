@@ -10,11 +10,10 @@ const nextConfig: NextConfig = {
   experimental: {
     // Performance optimizations
     turbo: {
-      loaders: {
-        // Add loaders for better asset optimization
-        '.png': ['file-loader'],
-        '.jpg': ['file-loader'],
-        '.svg': ['file-loader'],
+      rules: {
+        "*.png": ["file-loader"],
+        "*.jpg": ["file-loader"],
+        "*.svg": ["file-loader"],
       },
       resolveAlias: {
         // Add module aliases for better tree-shaking
@@ -26,36 +25,8 @@ const nextConfig: NextConfig = {
     // Enable next-sitemap integration
     nextScriptWorkers: true,
   },
-  // Add sitemap and robots.txt configuration
-  sitemap: {
-    hostname: process.env.NEXT_PUBLIC_BASE_URL,
-    exclude: ['/api/*'],
-    routes: async () => {
-      const pages = [
-        { url: '/', lastModified: new Date() },
-        { url: '/about', lastModified: new Date() },
-        { url: '/privacy', lastModified: new Date() },
-        { url: '/terms', lastModified: new Date() },
-      ];
-      return pages;
-    },
-  },
-  robotsTxt: {
-    policies: [
-      {
-        userAgent: '*',
-        allow: '/',
-        disallow: ['/api/'],
-      },
-    ],
-    additionalSitemaps: [
-      `${process.env.NEXT_PUBLIC_BASE_URL}/sitemap.xml`,
-    ],
-  },
-  // Core optimizations
-  swcMinify: true,      // Use SWC for minification
+ 
   reactStrictMode: true,
-  optimizeFonts: true,   // Optimize fonts automatically
   compress: true,        // Enable compression
   poweredByHeader: false, // Remove X-Powered-By header
   generateEtags: true,   // Generate ETags for caching

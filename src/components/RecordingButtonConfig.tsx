@@ -1,6 +1,6 @@
 import { useRecordingContext } from '@/context/recording-context';
 
-export const getButtonConfig = () => {
+export const ButtonConfig = () => {
   const { isProcessing, isRecording, isProcessed, startRecording, stopRecording, resetRecording } = useRecordingContext();
 
   if (isProcessing) {

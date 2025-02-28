@@ -5,7 +5,7 @@ import { BasicAnalysis } from './BasicAnalysis';
 import { RecordingCallToAction } from './RecordingCallToAction';
 import { LoadingAnimation } from './LoadingAnimation';
 import { RecordingHeader } from './RecordingHeader';
-import { getButtonConfig } from './RecordingButtonConfig';
+import { ButtonConfig } from './RecordingButtonConfig';
 import { useRecordingContext } from '@/context/recording-context';
 import { MetaScript } from './RecordingMetaScript';
 
@@ -51,7 +51,7 @@ export default function Recording() {
     return (
       <div className="flex items-center gap-4">
       {(() => {
-        const { text, action, disabled, className } = getButtonConfig();
+        const { text, action, disabled, className } = ButtonConfig();
         return (
           <button
             onClick={action}
