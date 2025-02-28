@@ -167,7 +167,7 @@ describe('Subscription API', () => {
     expect(data.message).toBe('Email already exists');
   });
 
-  test.only('should return 200 for successful subscription', async () => {
+  test('should return 200 for successful subscription', async () => {
       // Get the mocked supabase.
       const { supabase } = require('@/repositories/supabase/supabase');
       // Simulate no existing email.
@@ -191,9 +191,9 @@ describe('Subscription API', () => {
 
   test('should return 500 for Supabase insertion error', async () => {
     // Mock Supabase to simulate an insertion error
-    const mockSupabase = require('@/repositories/supabase/supabase').supabase;
-    mockSupabase.select.mockResolvedValue({ data: [] }); // No existing email
-    mockSupabase.insert.mockResolvedValue({ error: new Error('Supabase error') });
+    const { supabase } = require('@/repositories/supabase/supabase');
+    supabase.__queryBuilder.eq.mockResolvedValue({ data: [] }); // No existing email
+    supabase.__queryBuilder.insert.mockResolvedValue({ error: new Error('Supabase error') });
 
     const req = new NextRequest('http://localhost/api/subscribe', {
       method: 'POST',
