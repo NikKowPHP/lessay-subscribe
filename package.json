@@ -2,6 +2,7 @@
   "name": "lessay-subscribe",
   "version": "0.2.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -22,6 +23,7 @@
     "https-proxy-agent": "^7.0.6",
     "lucide-react": "^0.475.0",
     "next": "15.1.6",
+   
     "posthog-js": "^1.223.4",
     "proxy-agent": "^6.5.0",
     "react": "^19.0.0",
@@ -53,6 +55,7 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.2.6",
+    "node-fetch": "^3.3.2",
     "typescript": "^5"
   }
 }
