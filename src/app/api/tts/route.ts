@@ -4,16 +4,13 @@ import logger from '@/utils/logger';
 import { TTS } from '@/services/tts.service';
 import { PollyService } from '@/services/polly.service';
 
-
-
-
 export async function POST(req: NextRequest) {
   try {
     const { text, language } = await req.json();
 
     if (!text || !language) {
       return NextResponse.json(
-        { message: "Missing required fields: text, language " },
+        { message: "Missing required fields: text, language" },
         { status: 400 }
       );
     }
@@ -37,5 +34,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-
 }

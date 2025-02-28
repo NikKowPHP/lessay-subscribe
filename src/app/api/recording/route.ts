@@ -38,7 +38,6 @@ async function parseForm(
   }
 
   // Create a "fake" request by merging the stream with the headers.
-  // Formidable will use `req.headers` (and specifically content-length) when parsing.
   const fakeReq = Object.assign(stream, { headers: headersObj });
 
   return new Promise((resolve, reject) => {
@@ -65,8 +64,22 @@ async function parseForm(
 }
 
 export async function POST(req: NextRequest) {
+  let formData;
   try {
-    const { fields, files } = await parseForm(req);
+    // Try to parse the form; if it fails, it's due to invalid form data.
+    formData = await parseForm(req);
+  } catch (parseError: unknown) {
+    const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parse error';
+    logger.error("Form parsing error:", errorMessage);
+    // Return 400 for invalid form data instead of 500.
+    return NextResponse.json(
+      { message: "Missing required fields", error: errorMessage },
+      { status: 400 }
+    );
+  }
+  
+  try {
+    const { fields, files } = formData;
 
     const audioFile = files.audio?.[0];
     const recordingTime = fields.recordingTime?.[0];
