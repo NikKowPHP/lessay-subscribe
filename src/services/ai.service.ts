@@ -3,6 +3,7 @@ import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import FormData from 'form-data';
 import ApiKeyGenerator from './generators/apiKeyGenerator';
+import { IUploadableAIService } from '@/interfaces/ai-service.interface';
 
   export const models = {
     gemini_2_pro_exp: "gemini-2.0-pro-exp-02-05",
@@ -11,7 +12,7 @@ import ApiKeyGenerator from './generators/apiKeyGenerator';
     gemini_2_0_flash: "gemini-2.0-flash",
     gemini_2_0_flash_lite: "gemini-2.0-flash-lite-preview-02-05",
   }
-interface GeminiResponse {
+interface GeminiResponse  {
   candidates: {
     content: {
       parts: {
@@ -45,7 +46,7 @@ declare global {
   }
 }
 
-class AIService {
+class AIService implements  IUploadableAIService{
   private apiKey: string;
   private proxyAgent: unknown | undefined;
 

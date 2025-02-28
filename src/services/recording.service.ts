@@ -4,9 +4,10 @@ import MessageGenerator from './generators/messageGenerator';
 import MetricsService from './metrics.service';
 import { retryOperation } from '@/utils/retryWithOperation';
 import { LanguageDetectionResponse } from '@/models/Language-detection.model';
+import { IUploadableAIService } from '@/interfaces/ai-service.interface';
 
 class RecordingService {
-  private aiService: AIService;
+  private aiService: IUploadableAIService;
   private messageGenerator: MessageGenerator;
   private metricsService: MetricsService;
 
@@ -16,10 +17,7 @@ class RecordingService {
     this.metricsService = new MetricsService();
   }
 
-  /**
-   * A generic helper function to retry an async operation.
-   */
-  
+ 
 
   async uploadFile(
     audioBuffer: Buffer,
