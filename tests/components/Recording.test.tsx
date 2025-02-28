@@ -175,5 +175,42 @@ describe('RecordingContext', () => {
     process.env.NEXT_PUBLIC_ENVIRONMENT = originalEnv;
   });
 
+  test('allows unlimited attempts for subscribed users', async () => {
+    // Mock subscription to return true
+    mockUseSubscription.mockReturnValue({
+      ...mockUseSubscription(),
+      isSubscribed: true,
+    });
+
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    // Set attempts to high number
+    act(() => {
+      result.current.setRecordingAttempts(999);
+    });
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    expect(result.current.isRecording).toBe(true);
+  });
+
+  test('auto-stops recording after max time', async () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(600000 + 10000); // 10 minutes + buffer
+    });
+
+    expect(result.current.isRecording).toBe(false);
+    jest.useRealTimers();
+  });
+
 
 });
