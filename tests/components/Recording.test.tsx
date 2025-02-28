@@ -95,6 +95,8 @@ Object.defineProperty(navigator, 'mediaDevices', {
   },
 });
 
+const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
+
 // Set up the subscription hook mock
 const mockUseSubscription = useSubscription as jest.MockedFunction<
   typeof useSubscription
@@ -131,7 +133,10 @@ beforeEach(() => {
 });
 
 describe('RecordingContext', () => {
- 
+  afterEach(() => {
+    // restore the original getUserMedia to avoid affecting other tests
+    navigator.mediaDevices.getUserMedia = originalGetUserMedia;
+  });
 
 
   test('provides a valid recording context', () => {
