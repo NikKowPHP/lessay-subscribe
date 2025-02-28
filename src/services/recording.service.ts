@@ -50,7 +50,7 @@ class RecordingService {
 
       logger.log("Personalized Prompts:", personalizedPrompts);
 
-      let aiResponse: any;
+      let aiResponse: Record<string, unknown>;
       try {
 
       aiResponse = await retryOperation(() =>

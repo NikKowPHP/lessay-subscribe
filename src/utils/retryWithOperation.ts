@@ -1,5 +1,7 @@
 
 import logger from '@/utils/logger';
+import axios from 'axios';
+
 export const retryOperation = async <T>(operation: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> => {
   let lastError: unknown;
   for (let attempt = 0; attempt < attempts; attempt++) {
@@ -8,7 +10,7 @@ export const retryOperation = async <T>(operation: () => Promise<T>, attempts = 
       } catch (error) {
 
           // If it's a 429 error, propagate immediately.
-      if ((error as any)?.response?.data?.error?.code === 429) {
+      if (axios.isAxiosError(error) && error?.response?.data?.error?.code === 429) {
         throw error;
       }
         
