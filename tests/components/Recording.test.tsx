@@ -134,4 +134,18 @@ describe('RecordingContext', () => {
     });
     expect(result.current.isRecording).toBe(false);
   });
+  test('resets recording state correctly', async () => {
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      await result.current.startRecording();
+      await result.current.stopRecording();
+      result.current.resetRecording();
+    });
+
+    expect(result.current.audioURL).toBeNull();
+    expect(result.current.aiResponse).toBeNull();
+    expect(result.current.detailedAiResponse).toBeNull();
+    expect(result.current.isProcessed).toBe(false);
+  });
 });
