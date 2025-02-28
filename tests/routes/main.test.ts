@@ -26,10 +26,14 @@ describe('TTS API POST route', () => {
     jest.clearAllMocks();
   });
 
-  test.only('should return 400 for missing required fields', async () => {
+  test('should return 400 for missing required fields', async () => {
     // Missing the "language" field.
-    const req = new NextRequest('http://localhost/api/tts', {
+    const req = new NextRequest('http://localhost:3000/api/tts', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', // Add this header
+        duplex: 'half',
+    },
       body: JSON.stringify({ text: 'Hello' })
     });
     
@@ -42,6 +46,10 @@ describe('TTS API POST route', () => {
   test('should return an audio buffer when valid input is provided', async () => {
     const req = new NextRequest('http://localhost/api/tts', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', // Add this header
+        duplex: 'half',
+    },
       body: JSON.stringify({ text: 'Hello', language: 'en' })
     });
     
@@ -62,6 +70,10 @@ describe('TTS API POST route', () => {
 
     const req = new NextRequest('http://localhost/api/tts', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', // Add this header
+        duplex: 'half',
+    },
       body: JSON.stringify({ text: 'Hello', language: 'en' })
     });
     
