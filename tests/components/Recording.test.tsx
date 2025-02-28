@@ -2,7 +2,7 @@ import React, { act } from 'react';
 import { renderHook } from '@testing-library/react';
 import { useRecordingContext, RecordingProvider } from '@/context/recording-context';
 import { SubscriptionProvider, useSubscription } from '@/context/subscription-context';
-import { ErrorProvider } from '@/hooks/useError';
+import { ErrorProvider, useError } from '@/hooks/useError';
 import { ReactNode } from 'react';
 
 // Mock dependencies
@@ -11,12 +11,15 @@ jest.mock('@/context/subscription-context', () => ({
   SubscriptionProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
+// At the top of the file, define a global mock function for showError
+const mockShowError = jest.fn();
+
 jest.mock('@/hooks/useError', () => ({
   useError: () => ({
-    showError: jest.fn()
+    showError: mockShowError,
   }),
   // A simple pass-through ErrorProvider:
-  ErrorProvider: ({ children }: { children: React.ReactNode }) => children
+  ErrorProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 jest.mock('posthog-js');
 jest.mock('@supabase/supabase-js');
@@ -78,6 +81,7 @@ Object.defineProperty(navigator, 'mediaDevices', {
 
 // Set up the subscription hook mock
 const mockUseSubscription = useSubscription as jest.MockedFunction<typeof useSubscription>;
+const mockUseError = useError as jest.MockedFunction<typeof useError>;
 
 // Wrap your hook with all providers
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -106,6 +110,7 @@ beforeEach(() => {
   });
   localStorage.clear();
   jest.clearAllMocks();
+  process.env.NEXT_PUBLIC_ENVIRONMENT = 'test';
 });
 
 describe('RecordingContext', () => {
@@ -148,4 +153,27 @@ describe('RecordingContext', () => {
     expect(result.current.detailedAiResponse).toBeNull();
     expect(result.current.isProcessed).toBe(false);
   });
+  test('prevents recording when exceeding max attempts', async () => {
+    const originalEnv = process.env.NEXT_PUBLIC_ENVIRONMENT;
+    process.env.NEXT_PUBLIC_ENVIRONMENT = 'production';
+
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+    // Set attempts to max allowed + 1
+    await act(async () => {
+      result.current.setRecordingAttempts(result.current.maxRecordingAttempts + 1);
+    });
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    expect(result.current.isRecording).toBe(false);
+    expect(mockShowError).toHaveBeenCalledWith(
+      expect.stringContaining('maximum number of recording attempts'),
+      'warning'
+    );
+    process.env.NEXT_PUBLIC_ENVIRONMENT = originalEnv;
+  });
+
+
 });
