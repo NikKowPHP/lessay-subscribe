@@ -197,21 +197,35 @@ describe('RecordingContext', () => {
   });
 
   test.only('auto-stops recording after max time', async () => {
-    jest.useFakeTimers();
+    // Use modern fake timers and set the initial system time to 0.
+    jest.useFakeTimers('modern' as any);
+    jest.setSystemTime(0);
+    
     const { result } = renderHook(() => useRecordingContext(), { wrapper });
-
+    
+    // Start the recording.
     await act(async () => {
       await result.current.startRecording();
     });
-
+    
+    // (Optional) Verify that recording has started.
+    expect(result.current.isRecording).toBe(true);
+    
+    // Advance timers by 10 minutes plus 10 seconds.
     await act(async () => {
-      jest.advanceTimersByTime(600000 + 10000); // 10 minutes + buffer
+      jest.advanceTimersByTime(600000 + 10000);
+      // Run any pending timer callbacks.
+      jest.runOnlyPendingTimers();
+      // Flush pending microtasks.
+      await Promise.resolve();
     });
-
+    
+    // The auto-stop logic should have been triggered, setting isRecording to false.
     expect(result.current.isRecording).toBe(false);
+    
+    // Restore real timers.
     jest.useRealTimers();
   });
-
 
   test('handles microphone permission denied error', async () => {
     // Mock getUserMedia to throw permission error

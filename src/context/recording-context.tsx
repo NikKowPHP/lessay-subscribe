@@ -44,6 +44,11 @@ const { showError } = useError();
   const { isSubscribed, isSubscribedBannerShowed, setIsSubscribedBannerShowed } = useSubscription();
   
   const [isRecording, setIsRecording] = useState(false);
+  const isRecordingRef = useRef(isRecording);
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
   const [audioURL, setAudioURL] = useState<string | null>(null);
   const [isProcessed, setIsProcessed] = useState(false);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
@@ -182,6 +187,7 @@ const { showError } = useError();
       // Start recording only after all handlers are set
       mediaRecorder.current.start();
       setIsRecording(true);
+      isRecordingRef.current = true;
       startTimeRef.current = Date.now();
 
       // Increment recording attempts
@@ -189,7 +195,7 @@ const { showError } = useError();
 
       // Set up timer to stop recording after MAX_RECORDING_TIME_MS
       recordingTimerInterval.current = setInterval(() => {
-        if (isRecording) {
+        if (isRecordingRef.current) {
           // Check if still recording to avoid issues if stopped quickly
           const elapsedTime = Date.now() - startTimeRef.current;
           if (elapsedTime >= MAX_RECORDING_TIME_MS) {
@@ -261,6 +267,7 @@ const { showError } = useError();
     if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
       mediaRecorder.current.stop();
       setIsRecording(false);
+      isRecordingRef.current = false;
       clearInterval(recordingTimerInterval.current!); // Clear interval when manually stopped
       recordingTimerInterval.current = null;
       posthogCapture('stop_recording_clicked');
