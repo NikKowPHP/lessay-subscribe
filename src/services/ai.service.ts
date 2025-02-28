@@ -97,6 +97,14 @@ class AIService {
     }
     throw lastError;
   }
+  // {
+  //   "error": {
+  //     "code": 429,
+  //     "message": "Resource has been exhausted (e.g. check quota).",
+  //     "status": "RESOURCE_EXHAUSTED"
+  //   }
+  // }
+  
 
   /**
    * Upload file using a single multipart/related request.

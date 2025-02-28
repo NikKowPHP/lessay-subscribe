@@ -50,10 +50,17 @@ class RecordingService {
 
       logger.log("Personalized Prompts:", personalizedPrompts);
 
-      const aiResponse = await retryOperation(() =>
+      let aiResponse: any;
+      try {
+
+      aiResponse = await retryOperation(() =>
         this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_pro_exp)
       );
       logger.log("AI Response:", aiResponse);
+      } catch (error) {
+        logger.error("Error generating content with the error:", error);
+        aiResponse = await retryOperation(() => this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_0_flash));
+      }
 
       const endTime = Date.now();
       const responseTime = endTime - startTime;
