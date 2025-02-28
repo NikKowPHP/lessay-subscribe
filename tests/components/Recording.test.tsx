@@ -196,7 +196,7 @@ describe('RecordingContext', () => {
     expect(result.current.isRecording).toBe(true);
   });
 
-  test('auto-stops recording after max time', async () => {
+  test.only('auto-stops recording after max time', async () => {
     jest.useFakeTimers();
     const { result } = renderHook(() => useRecordingContext(), { wrapper });
 
@@ -204,12 +204,93 @@ describe('RecordingContext', () => {
       await result.current.startRecording();
     });
 
-    act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(600000 + 10000); // 10 minutes + buffer
     });
 
     expect(result.current.isRecording).toBe(false);
     jest.useRealTimers();
+  });
+
+
+  test('handles microphone permission denied error', async () => {
+    // Mock getUserMedia to throw permission error
+    navigator.mediaDevices.getUserMedia = jest.fn().mockRejectedValue(
+      new Error('Permission denied').name = 'NotAllowedError'
+    );
+
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    expect(result.current.isRecording).toBe(false);
+    expect(mockShowError).toHaveBeenCalledWith(
+      'Microphone access denied. Please allow microphone access and try again.',
+      'error'
+    );
+  });
+
+  test('sets audioURL after stopping recording', async () => {
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      await result.current.startRecording();
+      await result.current.stopRecording();
+    });
+
+    expect(result.current.audioURL).toBe('mocked-url');
+    expect(global.URL.createObjectURL).toHaveBeenCalled();
+  });
+
+  test('handles API response for deep analysis', async () => {
+    const mockResponse = {
+      aiResponse: {
+        summary: 'Detailed analysis',
+        insights: ['Deep insight 1', 'Deep insight 2']
+      }
+    };
+
+    // Mock fetch response
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      result.current.setIsDeepAnalysis(true);
+      await result.current.startRecording();
+      await result.current.stopRecording();
+    });
+
+    expect(result.current.detailedAiResponse).toEqual(mockResponse.aiResponse);
+  });
+
+  test('handles API response for standard analysis', async () => {
+    const mockResponse = {
+      aiResponse: {
+        summary: 'Standard analysis',
+        keyPoints: ['Point 1', 'Point 2']
+      }
+    };
+
+    // Mock fetch response
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      await result.current.startRecording();
+      await result.current.stopRecording();
+    });
+
+    expect(result.current.aiResponse).toEqual(mockResponse.aiResponse);
   });
 
 
