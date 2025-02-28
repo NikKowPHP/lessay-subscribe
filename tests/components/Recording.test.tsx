@@ -1,10 +1,16 @@
 import React, { act } from 'react';
 import { renderHook } from '@testing-library/react';
-import { useRecordingContext, RecordingProvider } from '@/context/recording-context';
-import { SubscriptionProvider, useSubscription } from '@/context/subscription-context';
+import {
+  useRecordingContext,
+  RecordingProvider,
+} from '@/context/recording-context';
+import {
+  SubscriptionProvider,
+  useSubscription,
+} from '@/context/subscription-context';
 import { ErrorProvider, useError } from '@/hooks/useError';
 import { ReactNode } from 'react';
-import { mockDetailedResponse } from '@/models/AiResponse.model';
+import { mockDetailedResponse, mockResponse } from '@/models/AiResponse.model';
 
 // Mock dependencies
 jest.mock('@/context/subscription-context', () => ({
@@ -27,7 +33,9 @@ jest.mock('@supabase/supabase-js');
 
 // Add this mock implementation above your beforeEach blocks
 const mockAuth = {
-  signInWithPassword: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+  signInWithPassword: jest
+    .fn()
+    .mockResolvedValue({ data: { user: null }, error: null }),
   signOut: jest.fn().mockResolvedValue({ error: null }),
 };
 
@@ -56,10 +64,10 @@ if (!global.MediaRecorder) {
       // Optionally: you could add a timeout to simulate data coming in.
     }
     stop() {
-      // Simulate dispatching nonempty audio data so that recSize > 0.
+      // Simulate returning nonempty audio data (thus blob size will be nonzero)
       if (this.ondataavailable) {
         this.ondataavailable({
-          data: new Blob(['dummyData'], { type: 'audio/webm' })
+          data: new Blob(['dummyData'], { type: 'audio/webm' }),
         });
       }
       this.state = 'inactive';
@@ -70,33 +78,34 @@ if (!global.MediaRecorder) {
   } as any;
 }
 if (typeof MediaRecorder.isTypeSupported !== 'function') {
-  MediaRecorder.isTypeSupported = (mimeType: string) => mimeType === 'audio/webm';
+  MediaRecorder.isTypeSupported = (mimeType: string) =>
+    mimeType === 'audio/webm';
 }
 
 // ★ Stub out navigator.mediaDevices
 const fakeStream = {
-  getTracks: () => [{ stop: jest.fn() }]
+  getTracks: () => [{ stop: jest.fn() }],
 };
 Object.defineProperty(navigator, 'mediaDevices', {
   configurable: true,
   writable: true,
   value: {
     getUserMedia: jest.fn().mockResolvedValue(fakeStream),
-    enumerateDevices: jest.fn().mockResolvedValue([{ kind: 'audioinput' }])
-  }
+    enumerateDevices: jest.fn().mockResolvedValue([{ kind: 'audioinput' }]),
+  },
 });
 
 // Set up the subscription hook mock
-const mockUseSubscription = useSubscription as jest.MockedFunction<typeof useSubscription>;
+const mockUseSubscription = useSubscription as jest.MockedFunction<
+  typeof useSubscription
+>;
 const mockUseError = useError as jest.MockedFunction<typeof useError>;
 
 // Wrap your hook with all providers
 const wrapper = ({ children }: { children: ReactNode }) => (
   <ErrorProvider>
     <RecordingProvider>
-      <SubscriptionProvider>
-        {children}
-      </SubscriptionProvider>
+      <SubscriptionProvider>{children}</SubscriptionProvider>
     </RecordingProvider>
   </ErrorProvider>
 );
@@ -117,10 +126,14 @@ beforeEach(() => {
   });
   localStorage.clear();
   jest.clearAllMocks();
+
   process.env.NEXT_PUBLIC_ENVIRONMENT = 'test';
 });
 
 describe('RecordingContext', () => {
+ 
+
+
   test('provides a valid recording context', () => {
     const { result } = renderHook(() => useRecordingContext(), { wrapper });
     expect(result.current).not.toBeNull();
@@ -167,7 +180,9 @@ describe('RecordingContext', () => {
     const { result } = renderHook(() => useRecordingContext(), { wrapper });
     // Set attempts to max allowed + 1
     await act(async () => {
-      result.current.setRecordingAttempts(result.current.maxRecordingAttempts + 1);
+      result.current.setRecordingAttempts(
+        result.current.maxRecordingAttempts + 1
+      );
     });
 
     await act(async () => {
@@ -207,17 +222,17 @@ describe('RecordingContext', () => {
     // Use modern fake timers and set the initial system time to 0.
     jest.useFakeTimers('modern' as any);
     jest.setSystemTime(0);
-    
+
     const { result } = renderHook(() => useRecordingContext(), { wrapper });
-    
+
     // Start the recording.
     await act(async () => {
       await result.current.startRecording();
     });
-    
+
     // (Optional) Verify that recording has started.
     expect(result.current.isRecording).toBe(true);
-    
+
     // Advance timers by 10 minutes plus 10 seconds.
     await act(async () => {
       jest.advanceTimersByTime(600000 + 10000);
@@ -226,10 +241,10 @@ describe('RecordingContext', () => {
       // Flush pending microtasks.
       await Promise.resolve();
     });
-    
+
     // The auto-stop logic should have been triggered, setting isRecording to false.
     expect(result.current.isRecording).toBe(false);
-    
+
     // Restore real timers.
     jest.useRealTimers();
   });
@@ -237,12 +252,13 @@ describe('RecordingContext', () => {
   test('handles microphone permission denied error', async () => {
     // Mock getUserMedia to throw permission error
 
-    const permissionError = new Error('Permission denied');
-permissionError.name = 'NotAllowedError';
-    navigator.mediaDevices.getUserMedia = jest.fn().mockRejectedValue(permissionError);
-
-
     const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    const permissionError = new Error('Permission denied');
+    permissionError.name = 'NotAllowedError';
+    navigator.mediaDevices.getUserMedia = jest
+      .fn()
+      .mockRejectedValue(permissionError);
 
     await act(async () => {
       await result.current.startRecording();
@@ -254,70 +270,99 @@ permissionError.name = 'NotAllowedError';
       'error'
     );
   });
+});
+
+describe('fetching the ai response', () => {
+  let hookResult: any;
+
+  beforeEach(() => {
+    // Clear all mocks and storage
+    jest.clearAllMocks();
+    localStorage.clear();
+
+    // Single hook render
+    const renderedHook = renderHook(() => useRecordingContext(), { wrapper });
+    hookResult = renderedHook.result as any;
+
+    // Reset to known state
+    act(() => {
+      hookResult.current.resetRecording();
+      hookResult.current.setRecordingAttempts(0);
+    });
+  });
+
+  afterEach(() => {
+    // Clean up any intervals
+    if (hookResult.current) {
+      act(() => {
+        hookResult.current.stopRecording();
+      });
+    }
+    jest.clearAllTimers();
+  });
 
   test('sets audioURL after stopping recording', async () => {
-    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+    // const { result } = renderHook(() => useRecordingContext(), { wrapper });
 
     await act(async () => {
-      await result.current.startRecording();
-      await result.current.stopRecording();
+      await (hookResult.current as any).startRecording();
+      await (hookResult.current as any).stopRecording();
     });
 
-    expect(result.current.audioURL).toBe('mocked-url');
+    expect((hookResult.current as any).audioURL).toBe('mocked-url');
     expect(global.URL.createObjectURL).toHaveBeenCalled();
   });
 
-  test.only('handles API response for deep analysis', async () => {
+  test('handles API response for deep analysis', async () => {
     const mockResponse = { aiResponse: mockDetailedResponse };
-  
+
     // Mock fetch response
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockResponse),
     });
-  
-    const { result } = renderHook(() => useRecordingContext(), { wrapper });
-  
+
+    // const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
     // First, update deep analysis flag and allow state update to flush
     await act(async () => {
-      result.current.setIsDeepAnalysis(true);
+      (hookResult.current as any).setIsDeepAnalysis(true);
     });
-  
+
     // Then start/stop the recording
     await act(async () => {
-      await result.current.startRecording();
-      await result.current.stopRecording();
+      await hookResult.current.startRecording();
+      await hookResult.current.stopRecording();
     });
-  
-    console.log(result.current.detailedAiResponse);
-    expect(result.current.isDeepAnalysis).toBe(true);
-    expect(result.current.detailedAiResponse).not.toBeNull();
-    // expect(result.current.detailedAiResponse).toEqual(mockResponse);
+
+    expect(hookResult.current.isDeepAnalysis).toBe(true);
+    expect(hookResult.current.detailedAiResponse).not.toBeNull();
+    expect(hookResult.current.detailedAiResponse).toEqual(
+      mockResponse.aiResponse
+    );
   });
 
   test('handles API response for standard analysis', async () => {
-    const mockResponse = {
-      aiResponse: {
-        summary: 'Standard analysis',
-        keyPoints: ['Point 1', 'Point 2']
-      }
-    };
+    process.env.NEXT_PUBLIC_ENVIRONMENT = 'testing';
+
+    const mockBaseResponse = { aiResponse: mockResponse };
 
     // Mock fetch response
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve(mockResponse),
+      json: () => Promise.resolve(mockBaseResponse),
     });
 
-    const { result } = renderHook(() => useRecordingContext(), { wrapper });
-
+    // Then start/stop the recording and flush pending updates
     await act(async () => {
-      await result.current.startRecording();
-      await result.current.stopRecording();
+      await hookResult.current.startRecording();
+      await hookResult.current.stopRecording();
+      // Let any async state updates finish
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(result.current.aiResponse).toEqual(mockResponse.aiResponse);
+    // Now assert that aiResponse is populated
+    expect(hookResult.current.aiResponse).not.toBeNull();
+    expect(hookResult.current.aiResponse).toEqual(mockBaseResponse.aiResponse);
   });
-
-
 });

@@ -117,6 +117,7 @@ const { showError } = useError();
 
   const startRecording = async () => {
     const isDev = process.env.NEXT_PUBLIC_ENVIRONMENT === 'development';
+    logger.log('startRecording', isDev, recordingAttempts, maxRecordingAttempts);
     
     if ((recordingAttempts >= maxRecordingAttempts) && !isDev) {
       showError(
@@ -138,6 +139,7 @@ const { showError } = useError();
         throw new Error('Media devices API not supported in this browser');
       }
 
+      logger.log('startRecording', isDev, recordingAttempts, maxRecordingAttempts);
       // Check if any audio input devices are available
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioDevices = devices.filter(
@@ -174,10 +176,12 @@ const { showError } = useError();
         audioChunks.current.push(event.data);
       };
 
+
       mediaRecorder.current.onstop = async () => {
         const audioBlob = new Blob(audioChunks.current, { type: mimeType });
         const url = URL.createObjectURL(audioBlob);
         setAudioURL(url);
+        logger.log('audioURL', url);
 
         const endTime = Date.now();
         const timeDiff = endTime - startTimeRef.current;
