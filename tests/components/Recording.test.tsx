@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { act } from 'react';
 import { renderHook } from '@testing-library/react';
 import { useRecordingContext, RecordingProvider } from '@/context/recording-context';
 import { SubscriptionProvider, useSubscription } from '@/context/subscription-context';
@@ -53,6 +53,9 @@ if (!global.MediaRecorder) {
     }
   } as any;
 }
+if (typeof MediaRecorder.isTypeSupported !== 'function') {
+  MediaRecorder.isTypeSupported = (mimeType: string) => mimeType === 'audio/webm';
+}
 
 // ★ Stub out navigator.mediaDevices
 const fakeStream = {
@@ -103,5 +106,14 @@ describe('RecordingContext', () => {
   test('provides a valid recording context', () => {
     const { result } = renderHook(() => useRecordingContext(), { wrapper });
     expect(result.current).not.toBeNull();
+  });
+  test('should start recording and update isRecording', async () => {
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      result.current.startRecording();
+    });
+    expect(result.current).not.toBeNull();
+    expect(result.current.isRecording).toBe(true);
   });
 });
