@@ -34,6 +34,12 @@ const mockSupabase = {
 
 require('@supabase/supabase-js').createClient = jest.fn(() => mockSupabase);
 
+beforeAll(() => {
+  // jest.clearAllMocks();
+  global.URL.createObjectURL = jest.fn().mockReturnValue('mocked-url');
+  global.URL.revokeObjectURL = jest.fn();
+});
+
 // ★ Stub out MediaRecorder if not already defined in the test environment
 if (!global.MediaRecorder) {
   global.MediaRecorder = class {
@@ -115,5 +121,17 @@ describe('RecordingContext', () => {
     });
     expect(result.current).not.toBeNull();
     expect(result.current.isRecording).toBe(true);
+  });
+  test('should stop recording and update isRecording', async () => {
+    const { result } = renderHook(() => useRecordingContext(), { wrapper });
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+    expect(result.current.isRecording).toBe(true);
+    await act(async () => {
+      await result.current.stopRecording();
+    });
+    expect(result.current.isRecording).toBe(false);
   });
 });
