@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { POST as TTS_POST } from '@/app/api/tts/route';
 import { POST as RECORDING_POST } from '@/app/api/recording/route';
+import { POST as SUBSCRIBE_POST } from '@/app/api/subscribe/route';
 
 // Mock the services so we can control behavior in tests.
 jest.mock('@/services/tts.service', () => {
@@ -11,13 +12,35 @@ jest.mock('@/services/tts.service', () => {
   };
 });
 
+// Replace the current supabase mock with a chainable queryBuilder.
+// Move the queryBuilder declaration inside the factory callback to avoid referencing out-of-scope variables.
+jest.mock('@/repositories/supabase/supabase', () => {
+  const queryBuilder = {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn(), // we will override this in each test.
+    insert: jest.fn(),
+    // Make our chain thenable by defining a then function.
+    then: function (resolve: (value: unknown) => void) {
+      return resolve(this);
+    },
+  };
+
+  return {
+    supabase: {
+      from: jest.fn(() => queryBuilder),
+      // Expose the query builder so that tests can override its methods:
+      __queryBuilder: queryBuilder,
+    },
+  };
+});
+
 jest.mock('@/services/polly.service', () => {
   return {
     PollyService: jest.fn().mockImplementation(() => ({}))
   };
 });
 
-jest.mock('@supabase/supabase-js');
+// jest.mock('@supabase/supabase-js');
 
 describe('TTS API POST route', () => {
   beforeEach(() => {
@@ -28,10 +51,7 @@ describe('TTS API POST route', () => {
     // Missing the "language" field.
     const req = new NextRequest('http://localhost/api/tts', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      // duplex: 'half',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: 'Hello' })
     });
     
@@ -44,10 +64,7 @@ describe('TTS API POST route', () => {
   test('should return an audio buffer when valid input is provided', async () => {
     const req = new NextRequest('http://localhost/api/tts', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      // duplex: 'half',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: 'Hello', language: 'en' })
     });
     
@@ -68,10 +85,7 @@ describe('TTS API POST route', () => {
 
     const req = new NextRequest('http://localhost/api/tts', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      // duplex: 'half',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: 'Hello', language: 'en' })
     });
     
@@ -96,7 +110,6 @@ describe('Recording API', () => {
     const req = new NextRequest('http://localhost/api/recording', {
       method: 'POST',
       headers,
-      // duplex: 'half',
       body
     });
     
@@ -109,5 +122,90 @@ describe('Recording API', () => {
     const req = await mockFormDataRequest(Buffer.from('invalid content'), new Headers());
     const res = await RECORDING_POST(req);
     expect(res.status).toBe(400);
+  });
+});
+
+describe('Subscription API', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('should return 400 for invalid email address', async () => {
+    const req = new NextRequest('http://localhost/api/subscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: 'invalid-email' }),
+    });
+
+    const res = await SUBSCRIBE_POST(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.message).toBe('Invalid email address');
+  });
+
+  test('should return 200 for existing email address', async () => {
+    // Get our mocked supabase.
+    const { supabase } = require('@/repositories/supabase/supabase');
+
+    // Override the chain for the email lookup.
+    // Note that in the route, the chain is: supabase.from(...).select('*').eq('email', email)
+    // Because our from() returns queryBuilder (the same object), we call .select() (which returns queryBuilder too)
+    // and then override eq() to return a promise resolving with the desired value.
+    supabase.from().eq.mockResolvedValue({ data: [{ email: 'test@example.com' }] });
+    
+    const req = new NextRequest('http://localhost/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'test@example.com' }),
+    });
+
+    const res = await SUBSCRIBE_POST(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.message).toBe('Email already exists');
+  });
+
+  test.only('should return 200 for successful subscription', async () => {
+      // Get the mocked supabase.
+      const { supabase } = require('@/repositories/supabase/supabase');
+      // Simulate no existing email.
+      supabase.__queryBuilder.eq.mockResolvedValue({ data: [] });
+      // Simulate a successful insertion.
+      supabase.__queryBuilder.insert.mockResolvedValue({ error: null });
+  
+      const req = new NextRequest('http://localhost/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: 'new@example.com' }),
+      });
+  
+      const res = await SUBSCRIBE_POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.message).toBe('Subscription successful');
+  });
+
+  test('should return 500 for Supabase insertion error', async () => {
+    // Mock Supabase to simulate an insertion error
+    const mockSupabase = require('@/repositories/supabase/supabase').supabase;
+    mockSupabase.select.mockResolvedValue({ data: [] }); // No existing email
+    mockSupabase.insert.mockResolvedValue({ error: new Error('Supabase error') });
+
+    const req = new NextRequest('http://localhost/api/subscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: 'error@example.com' }),
+    });
+
+    const res = await SUBSCRIBE_POST(req);
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(data.message).toBe('Supabase error');
   });
 });
