@@ -78,6 +78,16 @@ const { showError } = useError();
   const startTimeRef = useRef<number>(0);
   const recordingTimerInterval = useRef<NodeJS.Timeout | null>(null);
 
+  const isDeepAnalysisRef = useRef(isDeepAnalysis);
+  useEffect(() => {
+    isDeepAnalysisRef.current = isDeepAnalysis;
+  }, [isDeepAnalysis]);
+  
+  const updateIsDeepAnalysis = (value: boolean) => {
+    setIsDeepAnalysis(value);
+    isDeepAnalysisRef.current = value;
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return; // SSR
     localStorage.setItem('recordingAttempts', recordingAttempts.toString());
@@ -178,7 +188,7 @@ const { showError } = useError();
           type: 'audio/aac-adts',
         });
 
-        await handleSend(audioFile, timeDiff, blobSize);
+        await handleSend(audioFile, timeDiff, blobSize, isDeepAnalysisRef.current);
         setIsProcessed(true);
 
         stream.getTracks().forEach((track) => track.stop());
@@ -277,7 +287,8 @@ const { showError } = useError();
 const handleSend = async (
     audioFile: File,
     recTime: number,
-    recSize: number
+    recSize: number,
+    deepAnalysis: boolean
   ) => {
     if (!audioFile || !recTime || !recSize) {
       showError('No audio recorded. Please try again.', 'warning');
@@ -290,7 +301,7 @@ const handleSend = async (
       formData.append('audio', audioFile);
       formData.append('recordingTime', recTime.toString());
       formData.append('recordingSize', recSize.toString());
-      if (isDeepAnalysis) {
+      if (deepAnalysis) {
         formData.append('isDeepAnalysis', 'true');
       }
 
@@ -304,7 +315,7 @@ const handleSend = async (
       const data = await response.json();
       console.log('API Response:', data);
 
-      if (isDeepAnalysis) {
+      if (deepAnalysis) {
         const detailedResponse = data.aiResponse as DetailedAIResponse;
         setDetailedAiResponse(detailedResponse);
         console.log('Detailed AI Response:', detailedResponse);
@@ -344,7 +355,7 @@ const handleSend = async (
     maxRecordingAttempts,
     recordingAttempts,
     isDeepAnalysis,
-    setIsDeepAnalysis,
+    setIsDeepAnalysis: updateIsDeepAnalysis,
     startRecording,
     stopRecording,
     resetRecording,
