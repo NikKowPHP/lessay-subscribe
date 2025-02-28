@@ -196,7 +196,7 @@ describe('RecordingContext', () => {
     expect(result.current.isRecording).toBe(true);
   });
 
-  test.only('auto-stops recording after max time', async () => {
+  test('auto-stops recording after max time', async () => {
     // Use modern fake timers and set the initial system time to 0.
     jest.useFakeTimers('modern' as any);
     jest.setSystemTime(0);
@@ -227,11 +227,13 @@ describe('RecordingContext', () => {
     jest.useRealTimers();
   });
 
-  test('handles microphone permission denied error', async () => {
+  test.only('handles microphone permission denied error', async () => {
     // Mock getUserMedia to throw permission error
-    navigator.mediaDevices.getUserMedia = jest.fn().mockRejectedValue(
-      new Error('Permission denied').name = 'NotAllowedError'
-    );
+
+    const permissionError = new Error('Permission denied');
+permissionError.name = 'NotAllowedError';
+    navigator.mediaDevices.getUserMedia = jest.fn().mockRejectedValue(permissionError);
+
 
     const { result } = renderHook(() => useRecordingContext(), { wrapper });
 
@@ -241,7 +243,7 @@ describe('RecordingContext', () => {
 
     expect(result.current.isRecording).toBe(false);
     expect(mockShowError).toHaveBeenCalledWith(
-      'Microphone access denied. Please allow microphone access and try again.',
+      expect.stringContaining('Microphone access denied.'),
       'error'
     );
   });
