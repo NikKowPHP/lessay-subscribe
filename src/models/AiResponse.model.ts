@@ -1,3 +1,5 @@
+import { YoutubeVideo } from "./YoutubeVideo.model";
+
 export interface PhonemeAnalysis {
   phoneme: string;
   example: string;
@@ -54,6 +56,8 @@ export interface AIResponse {
     focus_area: string;
     importance: "High" | "Medium" | "Low";
     exercises: string[];
+    youtube_search_prompt: string;
+    youtubeVideos?: YoutubeVideo[];
   }[];
 }
 
@@ -141,6 +145,8 @@ export interface DetailedAIResponse {
       importance: "High" | "Medium" | "Low";
       exercises: string[];
       expected_timeline: string;
+      youtube_search_prompt: string;
+      youtubeVideos?: YoutubeVideo[];
     }>;
     recommended_resources: string[];
     practice_strategies: string[];
@@ -362,7 +368,8 @@ export const mockDetailedResponse = {
           "Reading aloud with conscious attention to these sounds",
         ],
         expected_timeline: "6-8 weeks",
-        youtube_search_prompt: "/θ/ and /ð/ English pronunciation"
+        youtube_search_prompt: "/θ/ and /ð/ English pronunciation",
+        youtubeVideos: [],
       },
       {
         focus: "Vowel Quality (especially /æ/ and /ʌ/)",
@@ -373,7 +380,8 @@ export const mockDetailedResponse = {
           "Recording and comparing own pronunciation with native speakers",
         ],
         expected_timeline: "4-6 weeks",
-        youtube_search_prompt: "/æ/ and /ʌ/ English pronunciation"
+        youtube_search_prompt: "/æ/ and /ʌ/ English pronunciation",
+        youtubeVideos: [],
       },
       {
         focus: "Prosody and Rhythm",
@@ -384,7 +392,8 @@ export const mockDetailedResponse = {
           "Marking stressed syllables in written text and practicing aloud",
         ],
         expected_timeline: "8-10 weeks",
-        youtube_search_prompt: " Prosody and Rhythm English pronunciation"
+        youtube_search_prompt: " Prosody and Rhythm English pronunciation",
+        youtubeVideos: [],
       },
     ],
     recommended_resources: [
