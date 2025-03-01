@@ -328,6 +328,10 @@ const handleSend = async (
         setAiResponse(standardResponse);
         console.log('Standard AI Response:', standardResponse);
       }
+
+      const youtubeSearchPrompts = getYoutubePrompts(data.aiResponse);
+      const youtubeVideos = await handleYoutubeVideosFetch(youtubeSearchPrompts);
+
     } catch (error) {
       logger.error('Error sending recording:', error);
       showError('Failed to process recording. Please try again.', 'error');
@@ -335,6 +339,25 @@ const handleSend = async (
       setIsProcessing(false);
     }
   };
+
+
+      const getYoutubePrompts = (aiResponse: AIResponse | DetailedAIResponse) => {
+        if (isDeepAnalysisRef.current) {
+          return (aiResponse as DetailedAIResponse).improvement_plan.priority_areas.map((area) => area.youtube_search_prompt);
+        } else {
+          return (aiResponse as AIResponse).improvement_suggestions.map((area) => area.youtube_search_prompt);
+        }
+      };
+
+
+      const handleYoutubeVideosFetch = async (youtubeSearchPrompts: string[]) => {
+        const youtubeVideosResponse = await fetch('/api/youtube', {
+          method: 'POST',
+          body: JSON.stringify(youtubeSearchPrompts),
+        });
+        const youtubeVideos = await youtubeVideosResponse.json();
+        return youtubeVideos;
+      };
 
   const resetRecording = () => {
     setAudioURL(null);
