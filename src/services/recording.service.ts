@@ -1,12 +1,13 @@
 import logger from '@/utils/logger';
-import AIService from './ai.service';
+import AIService, { models } from './ai.service';
 import MessageGenerator from './generators/messageGenerator';
 import MetricsService from './metrics.service';
 import { retryOperation } from '@/utils/retryWithOperation';
 import { LanguageDetectionResponse } from '@/models/Language-detection.model';
+import { IUploadableAIService } from '@/interfaces/ai-service.interface';
 
 class RecordingService {
-  private aiService: AIService;
+  private aiService: IUploadableAIService;
   private messageGenerator: MessageGenerator;
   private metricsService: MetricsService;
 
@@ -16,10 +17,7 @@ class RecordingService {
     this.metricsService = new MetricsService();
   }
 
-  /**
-   * A generic helper function to retry an async operation.
-   */
-  
+ 
 
   async uploadFile(
     audioBuffer: Buffer,
@@ -50,10 +48,17 @@ class RecordingService {
 
       logger.log("Personalized Prompts:", personalizedPrompts);
 
-      const aiResponse = await retryOperation(() =>
-        this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt)
+      let aiResponse: Record<string, unknown>;
+      try {
+
+      aiResponse = await retryOperation(() =>
+        this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_pro_exp)
       );
       logger.log("AI Response:", aiResponse);
+      } catch (error) {
+        logger.error("Error generating content with the error:", error);
+        aiResponse = await retryOperation(() => this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_0_flash));
+      }
 
       const endTime = Date.now();
       const responseTime = endTime - startTime;
@@ -81,7 +86,7 @@ class RecordingService {
 
   private async detectTargetLanguage(fileUri: string): Promise<LanguageDetectionResponse> {
     const { userPrompt, systemPrompt } = this.messageGenerator.generateTargetLanguageDetectionPrompt();
-    const response = await this.aiService.generateContent(fileUri, userPrompt, systemPrompt);
+    const response = await this.aiService.generateContent(fileUri, userPrompt, systemPrompt, models.gemini_2_0_flash);
     return response as unknown as LanguageDetectionResponse;
   }
 }

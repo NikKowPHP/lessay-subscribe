@@ -3,8 +3,16 @@ import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import FormData from 'form-data';
 import ApiKeyGenerator from './generators/apiKeyGenerator';
+import { IUploadableAIService } from '@/interfaces/ai-service.interface';
 
-interface GeminiResponse {
+  export const models = {
+    gemini_2_pro_exp: "gemini-2.0-pro-exp-02-05",
+    gemini_2_flash_exp: "gemini-2.0-flash-exp",
+    gemini_2_0_thinking_exp: "gemini-2.0-flash-thinking-exp-01-21",
+    gemini_2_0_flash: "gemini-2.0-flash",
+    gemini_2_0_flash_lite: "gemini-2.0-flash-lite-preview-02-05",
+  }
+interface GeminiResponse  {
   candidates: {
     content: {
       parts: {
@@ -38,7 +46,7 @@ declare global {
   }
 }
 
-class AIService {
+class AIService implements  IUploadableAIService{
   private apiKey: string;
   private proxyAgent: unknown | undefined;
 
@@ -47,13 +55,6 @@ class AIService {
     this.proxyAgent = this.createProxyAgent();
   }
 
-  static models = {
-    gemini_2_pro_exp: "gemini-2.0-pro-exp-02-05",
-    gemini_2_flash_exp: "gemini-2.0-flash-exp",
-    gemini_2_0_thinking_exp: "gemini-2.0-flash-thinking-exp-01-21",
-    gemini_2_0_flash: "gemini-2.0-flash",
-    gemini_2_0_flash_lite: "gemini-2.0-flash-lite-preview-02-05",
-  }
 
   /**
    * Create and return a proxy agent if proxy environment variables are defined.
@@ -97,6 +98,14 @@ class AIService {
     }
     throw lastError;
   }
+  // {
+  //   "error": {
+  //     "code": 429,
+  //     "message": "Resource has been exhausted (e.g. check quota).",
+  //     "status": "RESOURCE_EXHAUSTED"
+  //   }
+  // }
+  
 
   /**
    * Upload file using a single multipart/related request.
@@ -156,8 +165,8 @@ class AIService {
     });
   }
 
-  async generateContent(fileUri: string, userMessage: string, systemMessage: string): Promise<Record<string, unknown>> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AIService.models.gemini_2_flash_exp}:generateContent?key=${this.apiKey}`;
+  async generateContent(fileUri: string, userMessage: string, systemMessage: string, model: string): Promise<Record<string, unknown>> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
     
     const data = {
       contents: [{
@@ -177,8 +186,8 @@ class AIService {
         parts: [{ text: systemMessage }]
       },
       generationConfig: {
-        temperature: 1,
-        topK: 64,
+        temperature: 0.3,
+        // topK: 64,
         topP: 0.95,
         maxOutputTokens: 8192,
         responseMimeType: "application/json"

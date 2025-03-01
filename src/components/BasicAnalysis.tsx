@@ -85,7 +85,7 @@ export const BasicAnalysis = ({aiResponse}: {aiResponse: AIResponse}) => {
                   <span>Target: {assessment.IPA_target}</span>
                   <PhonemePlayer 
                     ipa={assessment.IPA_target} 
-                    language={aiResponse.language_analyzed} 
+                    language={aiResponse.analyzed_language_code} 
                     size="sm" 
                   />
                 </div>
@@ -93,7 +93,7 @@ export const BasicAnalysis = ({aiResponse}: {aiResponse: AIResponse}) => {
                   <span>Observed: {assessment.IPA_observed}</span>
                   <PhonemePlayer 
                     ipa={assessment.IPA_observed} 
-                    language={aiResponse.language_analyzed} 
+                    language={aiResponse.analyzed_language_code} 
                     size="sm" 
                   />
                 </div>

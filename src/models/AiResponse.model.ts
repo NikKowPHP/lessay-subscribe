@@ -13,6 +13,7 @@ export interface SuprasegmentalFeatureAnalysis {
 
 export interface AIResponse {
   language_analyzed: string;
+  analyzed_language_code: string;
   accent_identification: {
     accent_type: string;
     specific_accent: string;
@@ -62,7 +63,8 @@ export interface AIResponse {
 // Define a new interface for the detailed deep analysis response
 export interface DetailedAIResponse {
   accent_analysis: {
-    language_analyzed: string;
+    language_analyzed: string; 
+    analyzed_language_code: string;
     accent_classification: {
       accent_type: string;
       specific_accent: string;
@@ -154,6 +156,7 @@ export interface DetailedAIResponse {
 
 export const mockResponse = {
   language_analyzed: "German",
+  analyzed_language_code: "de-DE",
   accent_identification: {
     accent_type: "Non-native accent",
     specific_accent: "Slavic-influenced German",
@@ -206,6 +209,7 @@ export const mockResponse = {
 export const mockDetailedResponse = {
   accent_analysis: {
     language_analyzed: "English",
+    analyzed_language_code: "en-US",
     accent_classification: {
       accent_type: "Non-native accent",
       specific_accent: "Eastern European-influenced English",

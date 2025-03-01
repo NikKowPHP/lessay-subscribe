@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import logger from '@/utils/logger';
-import { ipaToSpeechMap } from '@/utils/phonemeMapper';
+import { fetchPollyAudio } from '@/utils/phoneme-audio.handler.util';
+import { cacheAudio, getCachedAudio } from '@/utils/phoneme-audio.cacher.util';
 
 interface PhonemePlayerProps {
   ipa: string;
   language?: string;
-  label?: string;
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -15,67 +15,62 @@ interface PhonemePlayerProps {
 const PhonemePlayer: React.FC<PhonemePlayerProps> = ({ 
   ipa, 
   language = 'en-US',
-  label = 'Play',
   size = 'md'
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const synthRef = useRef<SpeechSynthesis | null>(null);
-  
-  useEffect(() => {
-    // Initialize speech synthesis
-    if (typeof window !== 'undefined') {
-      synthRef.current = window.speechSynthesis;
-    }
-    logger.log('label', label)
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+
+  const playPhoneme = async () => {
+    if (isPlaying || isLoading) return;
     
-    // Cleanup
-    return () => {
-      if (synthRef.current && synthRef.current.speaking) {
-        synthRef.current.cancel();
+    setIsLoading(true);
+    
+    try {
+
+      const cleanIpa = ipa.replace(/[\[\]\/]/g, '');
+      const cachedAudio = getCachedAudio(cleanIpa, language);
+
+      let audioUrl: string;
+      
+      if (cachedAudio) {
+        audioUrl = `data:audio/mpeg;base64,${cachedAudio}`;
+      } else {
+        audioUrl = await fetchPollyAudio(ipa, language);
+        await cacheAudio(cleanIpa, language, audioUrl);
       }
-    };
-  }, []);
-  
-  const playPhoneme = () => {
-    if (!synthRef.current) {
-      logger.error("Speech synthesis not available");
-      return;
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      audio.addEventListener('play', () => {
+        setIsPlaying(true);
+        setIsLoading(false);
+      });
+
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false);
+        audioRef.current = null;
+      });
+
+      audio.addEventListener('error', () => {
+        setIsPlaying(false);
+        setIsLoading(false);
+        audioRef.current = null;
+        logger.error("Audio playback failed");
+      });
+
+      await audio.play();
+    } catch (error) {
+      setIsLoading(false);
+      logger.error("Playback error:", error);
     }
-    
-    // If already speaking, cancel it
-    if (synthRef.current.speaking) {
-      synthRef.current.cancel();
-    }
-    
-    setIsPlaying(true);
-    
-    // Try to find a mapping for the IPA symbol
-    let textToSpeak = ipa;
-    let langToUse = language;
-    
-    // Remove brackets if present
-    const cleanIpa = ipa.replace(/[\[\]\/]/g, '');
-    
-    // Check if we have a mapping for this IPA symbol
-    if (ipaToSpeechMap[cleanIpa]) {
-      textToSpeak = ipaToSpeechMap[cleanIpa].text;
-      langToUse = ipaToSpeechMap[cleanIpa].lang;
-    }
-    
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = langToUse;
-    utterance.rate = 0.8; // Slightly slower rate for clarity
-    
-    utterance.onend = () => {
-      setIsPlaying(false);
-    };
-    
-    utterance.onerror = (event) => {
-      logger.error("Speech synthesis error", event);
-      setIsPlaying(false);
-    };
-    
-    synthRef.current.speak(utterance);
   };
 
   const sizeClasses = {
@@ -87,7 +82,7 @@ const PhonemePlayer: React.FC<PhonemePlayerProps> = ({
   return (
     <button
       onClick={playPhoneme}
-      disabled={isPlaying}
+      disabled={isLoading || isPlaying}
       aria-label={`Play ${ipa} pronunciation`}
       className={`
         ${sizeClasses[size]} 
@@ -98,10 +93,12 @@ const PhonemePlayer: React.FC<PhonemePlayerProps> = ({
         text-blue-600 dark:text-blue-300
         focus:outline-none focus:ring-2 focus:ring-blue-500
         transition-colors
-        ${isPlaying ? 'opacity-60' : ''}
+        ${(isLoading || isPlaying) ? 'opacity-60' : ''}
       `}
     >
-      {isPlaying ? (
+      {isLoading ? (
+        <span className="animate-spin">⏳</span>
+      ) : isPlaying ? (
         <span className="animate-pulse">◼</span>
       ) : (
         <span>▶</span>
