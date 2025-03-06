@@ -1,5 +1,7 @@
-module.exports = {
-  siteUrl: process.env.NEXT_PUBLIC_BASE_URL || 'https://lessay-app.vercel.app',
+const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://lessay-app.vercel.app';
+
+const config = {
+  siteUrl: siteUrl,
   generateRobotsTxt: true,
   exclude: ['/api/*', '/404'],
   robotsTxtOptions: {
@@ -11,7 +13,7 @@ module.exports = {
       },
     ],
     additionalSitemaps: [
-      `${process.env.NEXT_PUBLIC_BASE_URL}/server-sitemap.xml`,
+      `${siteUrl}/server-sitemap.xml`,
     ],
   },
   transform: async (config, path) => {
@@ -20,6 +22,8 @@ module.exports = {
       changefreq: 'daily',
       priority: config.priority,
       lastmod: new Date().toISOString(),
-    }
+    };
   },
 };
+
+export default config;
