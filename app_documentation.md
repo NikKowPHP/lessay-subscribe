@@ -1,10 +1,12 @@
 # App Architecture Documentation
 
-This document outlines the high-level architecture for an AI-driven voice lesson app. In this app, users log in and, if they are first-time users, complete an initial evaluation that includes a prompt for their learning purposes. AI processes this assessment offline and generates a structured, predefined, sequential lesson package. **Each lesson is structured in a fixed format.** For example, a lesson might be:
+This document outlines the high-level architecture for an AI-driven voice lesson app. In this app, users log in and, if they are first-time users, complete an initial evaluation that includes a prompt for their learning purposes. AI processes this assessment offline and generates a structured, predefined, sequential lesson package. **Each lesson follows a fixed format—identical to the process used by the Natulang app.** For example, a lesson might be:
 - **Prompt:** "How do you say: 'I would like to order?'"
 - **Expected Response (Model Answer):** "I would like to order a croissant"
 
-During lessons, the browser's inbuilt voice recognition captures the user's voice response and compares it against the preset correct answer. User recordings are stored for offline analysis (acoustics, accent, pronunciation) which are later used for adaptive learning—enabling the AI to refine future lesson sequences based on detailed vocal performance.
+During lessons, the browser's inbuilt voice recognition captures the user's voice response and compares it against the preset correct answer. **It is critical to note that the prompts are expecting the user to say exactly what is defined—no additional words or variations are accepted.** User recordings are stored for offline analysis (acoustics, accent, pronunciation) which are later used for adaptive learning—enabling the AI to refine future lesson sequences based on detailed vocal performance.
+
+> **Note:** For this implementation, our lesson flow is **exactly the same as the Natulang app**. This means that every lesson is structured to follow the same step-by-step process as defined below.
 
 ---
 
@@ -18,7 +20,7 @@ For first-time users:
   - Conduct an evaluation to determine the user's language proficiency.
   - **Prompt the user for their learning purposes** (e.g., travel, business, cultural exchange) using the browser's inbuilt voice recognition.
   - Submit the voice responses along with learning purpose data.
-  - AI processes this information offline and generates a **predefined, sequential lesson package** tailored to the user's profile.
+  - AI processes this information offline and generates a **predefined, sequential lesson package** (in the exact same fixed structure as in the Natulang app) tailored to the user's profile.
   - The proficiency profile and generated lesson sequence are stored in the backend.
 
 For returning users:
@@ -43,7 +45,7 @@ sequenceDiagram
         U->>A: Submit voice responses with learning purposes
         A->>B: Store proficiency profile and learning purposes
         A->>AI: Request lesson sequence generation (offline)
-        AI->>B: Store generated lesson sequence (predefined, sequential)
+        AI->>B: Store generated lesson sequence (predefined, sequential, Natulang-style)
     else Returning User
         B->>A: Retrieve stored lesson sequence and progress
     end
@@ -92,6 +94,7 @@ The core of the app is its voice lesson engine. AI is used **pre-session** to ge
 
 2. **Pre-Session Lesson Generation:**  
    - AI creates a fixed, sequential sequence of lessons based on the evaluation data.
+   - **Important:** The lesson flow is implemented **exactly as in the Natulang app**. This means that every lesson is generated with the same predefined, sequential structure.
    - **Example Lesson Structure:**  
      - *Prompt:* "How do you say: 'I would like to order?'"  
      - *Model Answer:* "I would like to order a croissant"
@@ -100,15 +103,16 @@ The core of the app is its voice lesson engine. AI is used **pre-session** to ge
 3. **During-Lesson Operation:**  
    - **Voice Response Capture:**  
      - The browser's built-in voice recognition captures the user's spoken response.
-     - The system compares the input with the predefined correct answer.
+     - **Important:** The prompt expects the user to say exactly the predefined answer with no extra words or variations. The system strictly compares the input to the expected response.
    - **Recording Storage:**  
-     - User responses are stored for offline acoustic, accent, and pronunciation analysis to support adaptive learning.
+     - User responses are stored locally and, after the session, aggregated for offline analysis.
+     - Offline analysis results help adjust future lessons through adaptive learning.
 
 ---
 
 ## AI Content Generation Workflow
 
-This flowchart illustrates how AI utilizes the user's profile data (including learning purposes) to generate a sequential lesson package with the fixed lesson structure:
+This flowchart illustrates how AI utilizes the user's profile data (including learning purposes) to generate a sequential lesson package with the fixed lesson structure (as seen in the Natulang app):
 
 ```mermaid
 flowchart TD
@@ -148,12 +152,12 @@ graph LR
    - **Multi-model pipeline:**  
      - **Speech-to-text conversion:** Utilizes the browser's inbuilt voice recognition (Web Speech API).
      - **Natural Language Processing:** Analyzes grammar, vocabulary, and pronunciation.
-     - **Pre-session Lesson Generation:** AI creates a predefined, sequential lesson package with a fixed format (e.g., "How do you say: 'I would like to order?'" and "I would like to order a croissant").
+     - **Pre-session Lesson Generation:** AI creates a predefined, sequential lesson package with a fixed structure – **identical to the Natulang app flow** (e.g., "How do you say: 'I would like to order?'" followed by "I would like to order a croissant").
      - **Offline Analysis for Adaptive Learning:** User recordings are analyzed for acoustics, accent, and pronunciation. The feedback from this analysis informs adjustments in future lesson packages.
 
 2. **Lesson Structure & Content Management**
    - **Predefined Lesson Package:**  
-     Lessons are generated as a sequential package with a fixed structure. The content is stored in JSON format and includes:
+     Lessons are generated as a sequential package with a fixed structure. For this release, we are adopting the **Natulang-style lesson flow**. The content is stored in JSON format and includes:
      - An introduction prompt (e.g., "How do you say: 'I would like to order?'").
      - A model answer (e.g., "I would like to order a croissant").
      - Additional practice or challenge components as needed.
@@ -246,7 +250,7 @@ graph LR
        {
          "step": 17,
          "type": "prompt",
-         "content": "how to say 'dont make a noise beacuse I am working'"
+         "content": "how to say 'dont make a noise because I am working'"
        },
        {
          "step": 18,
@@ -256,11 +260,12 @@ graph LR
      ]
    }
    ```
+   **Note:** Each prompt expects the user to say exactly what is specified. Any deviation or additional words will result in a mismatch with the expected answer.
 
 3. **Lesson Session Operation**
    - **Voice Recognition:**  
      - Uses the browser's inbuilt voice recognition solely for capturing voice responses.
-     - Compares the user's input to the pre-established correct answer (which, for example, would be "I would like to order a croissant").
+     - Compares the user's input to the pre-established correct answer (which, for example, would be "I would like to order a croissant"). The matching is strict—only an exact match is accepted.
    - **Recording Collection:**  
      - User responses are stored locally and, after the session, aggregated for offline analysis.
      - Offline analysis results help adjust future lessons through adaptive learning.
@@ -274,12 +279,16 @@ graph LR
        - Accent characteristics
        - Pronunciation accuracy
    - **Content & Adaptive Lesson Generation:**  
-     Fine-tuned language models generate the fixed, sequential lessons. Offline analysis feedback guides adaptive learning by influencing subsequent lesson content.
+     Fine-tuned language models generate the fixed, sequential lessons following the Natulang approach. Offline analysis feedback guides adaptive learning by influencing subsequent lesson content.
    - **Progress Tracking & Adaptive Feedback:**  
      Updates the user's progress profile and refines future lessons based on the results of offline recording analysis.
 
 ---
 
-This high-level documentation now clearly explains that each lesson follows a fixed structure (e.g., using a prompt and its model answer such as "How do you say: 'I would like to order?'" followed by "I would like to order a croissant"), and that while real-time AI is not invoked during the lesson, user recordings are used offline for adaptive learning.
+This high-level documentation now clearly explains that each lesson will:
+- Follow a fixed, sequential structure identical to the Natulang app.
+- Use a JSON-defined flow incorporating prompts, user responses, vocabulary introductions, and model answers.
+- Leverage offline AI analysis of voice recordings to support adaptive learning for future sessions.
+- **Enforce exact matching for user responses, ensuring that the spoken input is exactly what is expected, without any deviations.**
 
-*For additional details (e.g., API specifications, data privacy/security considerations, or enhanced progress tracking strategies), feel free to request further sections.*
+*For additional details (e.g., API specifications, data privacy/security considerations, or enhanced progress tracking strategies), please refer to subsequent documentation sections as needed.*
