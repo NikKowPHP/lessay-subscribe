@@ -1,6 +1,6 @@
 # App Architecture Documentation
 
-This document outlines the high-level architecture for an AI-driven voice lesson app where the user logs in, completes an initial evaluation (if new), and then engages in a series of voice-based lessons. AI is leveraged both for generating evaluation questions and for creating dynamic, personalized lesson content.
+This document outlines the high-level architecture for an AI-driven voice lesson app. In this app, the user logs in and, if they are a first-time user, completes an initial evaluation that includes a prompt for their learning purposes. AI leverages this information to generate a structured, predefined sequence of lessons. Users then progress through these lessons step-by-step. Real-time voice recognition (via the browser's inbuilt capabilities) is used solely to capture voice responses, not to interact with AI during the session.
 
 ---
 
@@ -9,11 +9,16 @@ This document outlines the high-level architecture for an AI-driven voice lesson
 ### Authentication & Initial Evaluation
 
 For first-time users:
-- **Login:** The app verifies if the user exists.
-- **Evaluation:** If new, an AI service is invoked to generate an initial assessment. The user responds with voice input which is analyzed (e.g., for pronunciation and vocabulary), and then a proficiency profile is stored.
+- **Login:** The app verifies whether the user exists.
+- **Initial Assessment:** If new, the app will:
+  - Conduct an evaluation to determine the user's language proficiency.
+  - **Prompt the user for their learning purposes** (e.g., travel, business, cultural exchange) using the browser's inbuilt voice recognition.
+  - Submit the voice responses along with learning purpose information.
+  - AI processes this data and **generates a predefined, sequential lesson package** tailored to the user's profile.
+  - The proficiency profile and generated lesson sequence are stored in the backend.
 
 For returning users:
-- **Resuming Lessons:** The app retrieves the user’s progress and requests a tailored lesson plan from the AI services.
+- **Resuming Lessons:** The app retrieves the stored lesson sequence and user progress so that the user can continue through the sequential lessons.
 
 #### User Flow Diagram
 
@@ -28,26 +33,21 @@ sequenceDiagram
     A->>B: Check user status
     alt New User
         B-->>A: Flag new user
-        A->>AI: Request initial assessment
-        AI->>A: Generate evaluation questions
-        A->>U: Conduct voice assessment
-        U->>AI: Submit voice responses
-        AI->>B: Store proficiency profile
+        A->>AI: Request initial assessment & learning purpose prompt
+        AI->>A: Return evaluation questions and learning purpose prompt
+        A->>U: Conduct voice assessment (using inbuilt browser voice recognition)
+        U->>AI: Submit voice responses with learning purposes
+        AI->>B: Store proficiency profile and learning purposes
+        A->>AI: Request lesson sequence generation
+        AI->>B: Store generated lesson sequence (predefined, sequential)
     else Returning User
-        B->>AI: Request lesson plan
-        AI->>A: Deliver personalized lesson
+        B->>A: Retrieve stored lesson sequence and progress
     end
     
-    loop Lesson Session
-        A->>U: Present AI-generated question
-        U->>A: Voice response
-        A->>AI: Analyze pronunciation/grammar
-        AI->>A: Evaluation result
-        alt Correct
-            A->>AI: Generate next challenge
-        else Incorrect
-            A->>AI: Request alternative phrasing
-        end
+    loop Predefined Lesson Sequence
+        A->>U: Present next lesson step (pre-generated)
+        U->>A: Provide voice response (captured via browser)
+        A->>B: Record response for progress tracking
     end
 ```
 
@@ -55,55 +55,59 @@ sequenceDiagram
 
 ## AI-Driven Lesson System Overview
 
-The core of the app is its voice lesson engine which is driven by AI. This engine handles three main tasks:
+The core of the app is its voice lesson engine, which leverages AI to generate a **sequential lesson package** before the lesson session begins. Key functions include:
 
 1. **Assessment Analysis:**  
-   - Converts voice to text.
-   - Scores pronunciation and evaluates responses.
-   - Determines the user’s proficiency level.
+   - Converts voice input (captured via the browser's inbuilt voice recognition) to text.
+   - Evaluates pronunciation and language proficiency.
+   - Integrates learning purpose information provided during the initial assessment.
 
-2. **Dynamic Lesson Generation:**  
-   - Uses the user profile (proficiency level, learning style, error patterns) to generate lessons on the fly.
-   - Introduces new words, phrases, and sentences contextually.
-   - Creates follow-up challenges based on real-time performance.
+2. **Pre-Session Lesson Generation:**  
+   - Using the evaluation data, AI generates a structured, predefined sequence of lessons.
+   - Each lesson is organized as a series of sequential steps, such as:
+     - Introducing a new word or concept.
+     - Presenting practice sentences or questions.
+     - Fixed challenges formulated by AI.
+   - The resulting lesson sequence is stored for later delivery, ensuring a consistent and linear learning experience.
 
-3. **Real-time Speech Evaluation:**  
-   - Provides immediate feedback on voice inputs.
-   - Detects pronunciation errors.
-   - Requests alternative phrasings or additional attempts as needed.
+3. **Voice Response Capture:**  
+   - As the user progresses through the lesson, their voice responses are captured using the browser's inbuilt voice recognition.
+   - Responses are recorded for progress tracking and offline analysis, but no real-time AI interaction occurs during the session.
 
 ### AI Content Generation Workflow
 
-This flowchart illustrates how AI takes into account the user’s profile to generate a customized lesson package:
+This flowchart illustrates how AI leverages user profile data (including learning purposes) to generate a sequential lesson package:
 
 ```mermaid
 flowchart TD
     A[User Profile] --> B[Proficiency Level]
     A --> C[Learning Style]
-    A --> D[Error Patterns]
+    A --> D[Learning Purposes]
+    A --> E[Error Patterns]
     B --> AI[Lesson Generator]
     C --> AI
     D --> AI
-    AI --> E[Target Vocabulary]
-    AI --> F[Contextual Sentences]
-    AI --> G[Practice Scenarios]
-    E --> H[Lesson Package]
-    F --> H
-    G --> H
+    E --> AI
+    AI --> F[Target Vocabulary]
+    AI --> G[Contextual Sentences]
+    AI --> H[Practice Scenarios]
+    F --> I[Sequential Lesson Package]
+    G --> I
+    H --> I
 ```
 
 ### AI Model Pipeline
 
-Below is the high-level view of the AI components and how data flows through them:
+The high-level AI pipeline processes the initial assessment offline to generate the lesson sequence:
 
 ```mermaid
 graph LR
-    A[Voice Input] --> B[Speech-to-Text]
+    A[Voice Input (Browser's Voice Recognition)] --> B[Speech-to-Text]
     B --> C[Language Processor]
     C --> D[Error Detector]
     D --> E[Feedback Generator]
     C --> F[Proficiency Analyzer]
-    F --> G[Lesson Planner]
+    F --> G[Lesson Planner (Generates Sequential Lessons)]
 ```
 
 ---
@@ -111,17 +115,17 @@ graph LR
 ## Technical Considerations
 
 1. **AI Model Architecture**
-   - **Multi-model pipeline:**  
-     - Speech-to-text conversion.
-     - Natural Language Processing for grammar and vocabulary.
-     - Sentiment and error detection for real-time feedback.
-  
+   - **Multi-model pipeline:**
+     - **Speech-to-text conversion:** Utilizes the browser's inbuilt voice recognition (Web Speech API).
+     - **Natural Language Processing:** Analyzes grammar, vocabulary, and pronunciation.
+     - **Pre-session Lesson Generation:** AI generates a predefined lesson sequence based on initial assessment data.
+
 2. **Content Management**
    - **Lesson Structure (AI-generated):**  
-     The AI generates lesson content dynamically represented (e.g., in JSON) with components such as:
-     - Introduction to a target word or phrase.
-     - Variations and practice sentences.
-     - Role-play and situational challenges.
+     Lessons are generated as a sequential package. Each lesson step is represented in a JSON format containing:
+     - An introduction to a target word or concept.
+     - Practice exercises or questions.
+     - A fixed progression to the next lesson step.
    
    ***Example JSON Structure:***
    ```json
@@ -129,51 +133,47 @@ graph LR
      "lesson_id": "AI_GEN_023",
      "focus_area": "food_ordering",
      "target_skills": ["vocabulary", "present_tense"],
-     "components": {
-       "introduction": {
-         "ai_generated": true,
-         "content": "Today we'll learn restaurant phrases..."
+     "sequence": [
+       {
+         "step": 1,
+         "type": "introduction",
+         "content": "Introducing the phrase 'I would like to order'"
        },
-       "target_phrases": [
-         {
-           "base_phrase": "I would like to order",
-           "variations": [
-             "Could I get...",
-             "I'll have..."
-           ]
-         }
-       ],
-       "practice_scenarios": [
-         {
-           "type": "role_play",
-           "context": "Busy cafe with noisy background",
-           "prompt": "Ask for a coffee and croissant"
-         }
-       ]
-     }
+       {
+         "step": 2,
+         "type": "practice",
+         "content": "Practice saying: 'I would like to order a coffee'"
+       },
+       {
+         "step": 3,
+         "type": "challenge",
+         "content": "How do you ask for a croissant in a restaurant?"
+       }
+     ]
    }
    ```
 
 3. **Implementation Strategy**
    - **Phase 1: Baseline AI Models**
-     - Utilize pre-trained speech recognition and language analysis models.
-   - **Phase 2: Custom Model Training**
-     - Train models on domain-specific vocabulary and accent adaptation.
-   - **Phase 3: Adaptive Learning**
-     - Implement real-time content adjustment based on ongoing user performance.
-  
+     - Leverage pre-trained language and speech recognition models using the browser's built-in capabilities.
+   - **Phase 2: Custom AI Training**
+     - Train on domain-specific vocabulary, accent adaptation, and user error patterns.
+   - **Phase 3: Pre-Session Adaptive Learning**
+     - Generate a predefined, sequential lesson sequence using AI analysis of the initial assessment and learning purpose inputs.
+     - Track user progress as they work through the fixed lesson steps.
+
 4. **Key AI Components**
 
-   | Component               | Technology Options              | Description                              |
-   |-------------------------|----------------------------------|------------------------------------------|
-   | Speech Recognition      | Whisper, Google Speech-to-Text   | Real-time voice processing               |
-   | Language Analysis       | BERT, GPT-4                     | Contextual understanding                 |
-   | Pronunciation Scoring   | OpenSmile, Librosa              | Acoustic feature analysis                |
-   | Content Generation      | Fine-tuned LLMs                 | Dynamic lesson content creation          |
-   | Progress Prediction     | TensorFlow/PyTorch              | Modeling user's learning trajectory      |
+   | Component               | Technology Options                      | Description                                   |
+   |-------------------------|------------------------------------------|-----------------------------------------------|
+   | Speech Recognition      | Inbuilt Browser Voice Recognition        | Utilizes the Web Speech API for voice capture  |
+   | Language Analysis       | BERT, GPT-4                              | Provides contextual understanding and analysis |
+   | Proficiency Analyzer    | Custom models/TensorFlow                 | Evaluates user language proficiency            |
+   | Lesson Generation       | Fine-tuned LLMs                          | Generates predefined sequential lessons        |
+   | Progress Tracking       | TensorFlow/PyTorch/Custom algorithms     | Monitors user progress through lesson sequence   |
 
 ---
 
-This high-level documentation provides an overview of the system architecture and AI integration for your voice lesson app. It sets a strong foundation for both the development and future expansion of the app's capabilities.
+This high-level documentation provides an overview of the system architecture focusing on AI-driven pre-generation of a sequential lesson package. The system uses the browser's inbuilt voice recognition for capturing responses while delivering a fixed, structured sequence of lessons without any real-time AI chat.
 
-*For any further expansion (e.g., API specifications, privacy/security details, detailed voice processing pipelines), feel free to request additional sections.*
+*For further expansion (API specifications, error handling scenarios, or privacy/security considerations for voice data), feel free to request additional sections.*
