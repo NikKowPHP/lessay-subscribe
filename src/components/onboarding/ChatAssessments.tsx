@@ -53,27 +53,37 @@ export default function ChatAssessment({
     return process.env.NEXT_PUBLIC_MOCK_USER_RESPONSES === 'true'
   }, [])
 
-  // Initialize chat history with current and previous prompts/responses
+  // Rehydrate the entire UI state
   useEffect(() => {
     if (lessons.length > 0) {
-      // debugger
-      logger.info('lessons:', lessons)
+      // Find the first unanswered question
+      const firstUnansweredIndex = lessons.findIndex(lesson => !lesson.userResponse)
+      const currentIndex = firstUnansweredIndex !== -1 ? firstUnansweredIndex : lessons.length - 1
+      
+      // Set current lesson index
+      setCurrentLessonIndex(currentIndex)
+      
+      // Build chat history
       const history: Array<{type: 'prompt' | 'response', content: string}> = []
       
-      // Add all previous lessons' prompts and responses
-      for (let i = 0; i < lessons.length; i++) {
+      // Add all answered lessons and the next unanswered one
+      for (let i = 0; i <= currentIndex; i++) {
         const lesson = lessons[i]
         history.push({ type: 'prompt', content: lesson.prompt })
         
-        // Add user response if it exists
         if (lesson.userResponse) {
           history.push({ type: 'response', content: lesson.userResponse })
         }
       }
       
       setChatHistory(history)
+      
+      // Start listening if on an unanswered question
+      if (firstUnansweredIndex !== -1 && recognitionRef.current) {
+        startListening()
+      }
     }
-  }, [lessons ])
+  }, [lessons])
 
   // Set up speech recognition
   useEffect(() => {
