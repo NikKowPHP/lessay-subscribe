@@ -1,12 +1,13 @@
-import { PrismaClient, ProficiencyLevel, LessonGenerationStatus } from '@prisma/client'
+import { PrismaClient, ProficiencyLevel } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  // Clear existing data
-  await prisma.assessmentLesson.deleteMany({})
-  await prisma.onboarding.deleteMany({})
-  await prisma.user.deleteMany({})
+  // Clear existing data in the correct order
+  await prisma.lesson.deleteMany({}) // Delete lessons first
+  await prisma.assessmentLesson.deleteMany({}) // Then delete assessment lessons
+  await prisma.onboarding.deleteMany({}) // Then delete onboarding
+  await prisma.user.deleteMany({}) // Finally delete users
   
   // Create test user (matching the mock auth service)
   const user = await prisma.user.create({
@@ -85,6 +86,7 @@ async function main() {
     })
   ])
 
+  // Create regular lessons
   const lessons = await Promise.all([
     prisma.lesson.create({
       data: {
@@ -114,9 +116,10 @@ async function main() {
 
   console.log(`Created user: ${user.email}`)
   console.log(`Created onboarding for user`)
-  console.log(`created onboarding onboarding: ${onboarding.id}`)
+  console.log(`Created onboarding: ${onboarding.id}`)
   console.log(`Created ${assessmentLessons.length} assessment lessons`)
   console.log(`Created ${lessons.length} regular lessons`)
+}
 
 main()
   .catch((e) => {
@@ -126,6 +129,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
-}
-
-main()
