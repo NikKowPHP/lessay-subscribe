@@ -32,13 +32,15 @@ interface ChatAssessmentProps {
   onComplete: () => void
   onLessonComplete: (lessonId: string, userResponse: string) => Promise<void>
   loading: boolean
+  targetLanguage: string  
 }
 
 export default function ChatAssessment({ 
   lessons, 
   onComplete, 
   onLessonComplete, 
-  loading 
+  loading,
+  targetLanguage
 }: ChatAssessmentProps) {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0)
   const [userResponse, setUserResponse] = useState('')
@@ -97,7 +99,7 @@ export default function ChatAssessment({
     recognitionRef.current = new SpeechRecognition()
     
     const recognition = recognitionRef.current
-    recognition.lang = 'en-US'
+    recognition.lang = targetLanguage
     recognition.interimResults = true
     recognition.continuous = true
     
@@ -134,7 +136,7 @@ export default function ChatAssessment({
         recognition.abort()
       }
     }
-  }, [currentLessonIndex, lessons])
+  }, [currentLessonIndex, lessons, targetLanguage])
 
   // Scroll to bottom when chat history changes
   useEffect(() => {

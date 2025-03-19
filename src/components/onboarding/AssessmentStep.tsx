@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { useOnboarding } from '@/context/onboarding-context'
-import { AssessmentLesson } from '@/models/AppAllModels.model'
+import { AssessmentLesson, OnboardingModel } from '@/models/AppAllModels.model'
 import ChatAssessment from '@/components/onboarding/ChatAssessments'
 
 interface AssessmentStepProps {
   onComplete: () => void
   loading: boolean
+  targetLanguage: string
 }
 
-export default function AssessmentStep({ onComplete, loading }: AssessmentStepProps) {
-  const { getAssessmentLessons, completeAssessmentLesson } = useOnboarding()
+export default function AssessmentStep({ onComplete, loading, targetLanguage }: AssessmentStepProps) {
+  const { getAssessmentLessons, completeAssessmentLesson  } = useOnboarding()
   const [lessons, setLessons] = useState<AssessmentLesson[]>([])
   const [usingChat, setUsingChat] = useState(true) // Default to chat interface
 
@@ -65,6 +66,7 @@ export default function AssessmentStep({ onComplete, loading }: AssessmentStepPr
           onComplete={onComplete}
           onLessonComplete={handleLessonComplete}
           loading={loading}
+          targetLanguage={targetLanguage}
         />
       ) : (
         // Original assessment UI code goes here

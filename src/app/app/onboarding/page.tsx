@@ -110,7 +110,7 @@ export default function OnboardingPage() {
           />
         )
       case 'assessment':
-        return <AssessmentStep onComplete={() => router.push('/app/lessons')} loading={loading} />
+        return <AssessmentStep onComplete={() => router.push('/app/lessons')} loading={loading} targetLanguage={formData.targetLanguage} />
       default:
         return <WelcomeStep onNext={() => handleNextStep('welcome')} loading={loading} />
     }
