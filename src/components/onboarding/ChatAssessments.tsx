@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { AssessmentLesson } from '@/models/AppAllModels.model'
 
 // Add this interface at the top of the file
@@ -48,6 +48,10 @@ export default function ChatAssessment({
   
   const recognitionRef = useRef<any>(null)
   
+  const showMockButtons = useMemo(() => {
+    return process.env.NEXT_PUBLIC_MOCK_USER_RESPONSES === 'true'
+  }, [])
+
   // Initialize chat history with first prompt
   useEffect(() => {
     if (lessons.length > 0 && chatHistory.length === 0) {
@@ -165,6 +169,21 @@ export default function ChatAssessment({
     }
   }
 
+  const handleMockResponse = (matchesModel: boolean) => {
+    const currentLesson = lessons[currentLessonIndex]
+    if (!currentLesson) return
+    
+    const response = matchesModel ? 
+      currentLesson.modelAnswer : 
+      'This is a mock response that does not match the model answer'
+    
+    setUserResponse(response)
+    
+    if (matchesModel) {
+      handleCorrectResponse(currentLesson, response)
+    }
+  }
+
   if (lessons.length === 0) {
     return <div className="text-center py-6">Loading assessment...</div>
   }
@@ -223,7 +242,27 @@ export default function ChatAssessment({
         {feedback && (
           <div className="text-sm text-gray-500 mb-2">{feedback}</div>
         )}
-        
+
+        {/* Mock Response Buttons */}
+        {showMockButtons && (
+          <div className="flex space-x-2 mb-4">
+            <button
+              type="button"
+              onClick={() => handleMockResponse(true)}
+              className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              Mock Correct Response
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMockResponse(false)}
+              className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Mock Incorrect Response
+            </button>
+          </div>
+        )}
+
         {/* Controls */}
         <div className="flex space-x-4">
           <button
