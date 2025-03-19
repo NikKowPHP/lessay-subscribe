@@ -14,7 +14,7 @@ import AssessmentStep from '@/components/onboarding/AssessmentStep'
 export default function OnboardingPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { isOnboardingComplete, markStepComplete, loading } = useOnboarding()
+  const { isOnboardingComplete, markStepComplete, loading, getOnboarding } = useOnboarding()
   const [currentStep, setCurrentStep] = useState<string>('welcome')
   const [formData, setFormData] = useState({
     nativeLanguage: '',
@@ -22,6 +22,38 @@ export default function OnboardingPage() {
     learningPurpose: '',
     proficiencyLevel: ''
   })
+
+  // Rehydrate state from onboarding session
+  useEffect(() => {
+    const fetchOnboardingData = async () => {
+      try {
+        const onboarding = await getOnboarding()
+        if (onboarding) {
+          // Update form data
+          setFormData({
+            nativeLanguage: onboarding.nativeLanguage || '',
+            targetLanguage: onboarding.targetLanguage || '',
+            learningPurpose: onboarding.learningPurpose || '',
+            proficiencyLevel: onboarding.proficiencyLevel || ''
+          })
+
+          // Determine current step based on completed steps
+          const steps = ['welcome', 'languages', 'purpose', 'proficiency', 'assessment']
+          const completedSteps = Object.keys(onboarding.steps || {})
+          const lastCompletedStep = completedSteps[completedSteps.length - 1]
+          
+          if (lastCompletedStep) {
+            const nextStep = getNextStep(lastCompletedStep)
+            setCurrentStep(nextStep)
+          }
+        }
+      } catch (error) {
+        logger.error('Error fetching onboarding data:', error)
+      }
+    }
+
+    fetchOnboardingData()
+  }, [getOnboarding])
 
   // Check if onboarding is complete
   useEffect(() => {

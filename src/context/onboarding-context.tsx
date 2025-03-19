@@ -1,9 +1,9 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { createOnboardingAction, updateOnboardingAction, getStatusAction, getAssessmentLessonsAction, completeAssessmentLessonAction } from '@/lib/server-actions/onboarding-actions'
+import { createOnboardingAction, updateOnboardingAction, getStatusAction, getAssessmentLessonsAction, completeAssessmentLessonAction, getOnboardingAction } from '@/lib/server-actions/onboarding-actions'
 import logger from '@/utils/logger'
-import { AssessmentLesson } from '@/models/AppAllModels.model'
+import { AssessmentLesson, OnboardingModel } from '@/models/AppAllModels.model'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 
@@ -14,6 +14,7 @@ interface OnboardingContextType {
   loading: boolean
   error: string | null
   clearError: () => void
+  getOnboarding: () => Promise<OnboardingModel | null>
   getAssessmentLessons: () => Promise<AssessmentLesson[]>
   completeAssessmentLesson: (lessonId: string, userResponse: string) => Promise<AssessmentLesson>
 }
@@ -79,6 +80,12 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     })
   }
 
+  const getOnboarding = async () => {
+    return withLoadingAndErrorHandling(async () => {
+      return await getOnboardingAction()
+    })
+  }
+
   // Check onboarding status on initial load
   useEffect(() => {
     const initializeOnboarding = async () => {
@@ -105,10 +112,11 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     <OnboardingContext.Provider value={{
       isOnboardingComplete,
       checkOnboardingStatus,
-      markStepComplete,
+      markStepComplete, 
       loading,
       error,
       clearError,
+      getOnboarding,
       getAssessmentLessons,
       completeAssessmentLesson
     }}>

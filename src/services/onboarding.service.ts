@@ -1,5 +1,6 @@
 import { OnboardingModel, AssessmentLesson } from "@/models/AppAllModels.model"
 import { IOnboardingRepository } from "@/lib/interfaces/all-interfaces"
+import logger from "@/utils/logger"
 
 
 export default class OnboardingService implements IOnboardingRepository {
@@ -9,7 +10,9 @@ export default class OnboardingService implements IOnboardingRepository {
   }
 
    getOnboarding = async (): Promise<OnboardingModel | null> => {
-    return this.onboardingRepository.getOnboarding()
+    const onboarding = await this.onboardingRepository.getOnboarding()
+    logger.info('Onboarding:', onboarding)
+    return onboarding
   }
 
   createOnboarding = async (): Promise<OnboardingModel> => {
