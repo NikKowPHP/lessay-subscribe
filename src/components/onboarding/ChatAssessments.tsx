@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { AssessmentLesson } from '@/models/AppAllModels.model'
+import logger from '@/utils/logger';
 
 // Add this interface at the top of the file
 interface SpeechRecognitionEvent extends Event {
@@ -52,12 +53,27 @@ export default function ChatAssessment({
     return process.env.NEXT_PUBLIC_MOCK_USER_RESPONSES === 'true'
   }, [])
 
-  // Initialize chat history with first prompt
+  // Initialize chat history with current and previous prompts/responses
   useEffect(() => {
-    if (lessons.length > 0 && chatHistory.length === 0) {
-      setChatHistory([{ type: 'prompt', content: lessons[0].prompt }])
+    if (lessons.length > 0) {
+      // debugger
+      logger.info('lessons:', lessons)
+      const history: Array<{type: 'prompt' | 'response', content: string}> = []
+      
+      // Add all previous lessons' prompts and responses
+      for (let i = 0; i < lessons.length; i++) {
+        const lesson = lessons[i]
+        history.push({ type: 'prompt', content: lesson.prompt })
+        
+        // Add user response if it exists
+        if (lesson.userResponse) {
+          history.push({ type: 'response', content: lesson.userResponse })
+        }
+      }
+      
+      setChatHistory(history)
     }
-  }, [lessons, chatHistory.length])
+  }, [lessons ])
 
   // Set up speech recognition
   useEffect(() => {
