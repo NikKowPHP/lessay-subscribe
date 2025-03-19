@@ -7,6 +7,7 @@ Steps:
 4. Voice Response Capture: Use the browser's voice recognition to capture user responses.
 5. Adaptive Learning: Analyze user performance to refine future lessons.
 ---
+<!--  -->
 2. Set Up the Development Environment
 Goal: Prepare the tools and infrastructure for development.
 Steps:
@@ -14,6 +15,8 @@ Steps:
 2. Set Up Docker: Create Dockerfile and docker-compose.yml for local development.
 3. Initialize the Project: Set up a Next.js project with TypeScript and Tailwind CSS.
 Configure Aliases: Set up module aliases (e.g., @/) for cleaner imports.
+<!--  -->
+## DONE
 ---
 3. Implement User Authentication
 Goal: Allow users to log in and manage their profiles.
