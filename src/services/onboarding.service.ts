@@ -1,6 +1,5 @@
-import { OnboardingModel } from "@/domain/models/models" // todo: create model
+import { OnboardingModel } from "@/models/AppAllModels.model"
 import IOnboardingRepository from "@/lib/interfaces/all-interfaces"
-
 
 
 

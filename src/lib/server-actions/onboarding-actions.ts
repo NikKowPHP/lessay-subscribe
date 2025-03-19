@@ -1,6 +1,5 @@
 'use server'
 import OnboardingService from '@/services/onboarding.service'
-import { OnboardingModel } from '@/models/AppAllModels.model'
 import { OnboardingRepository } from '@/repositories/onboarding.repository'
 import { SupabaseAuthService } from '@/services/supabase-auth.service'
 

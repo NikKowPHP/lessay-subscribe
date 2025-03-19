@@ -1,3 +1,5 @@
+import { OnboardingModel } from "@/models/AppAllModels.model"
+
 export default interface IOnboardingRepository {
   getOnboarding(): Promise<OnboardingModel | null>
   createOnboarding(): Promise<OnboardingModel>
