@@ -1,11 +1,13 @@
 import { LessonModel, LessonStep, OnboardingModel } from "@/models/AppAllModels.model"
-import { ILessonRepository } from "@/lib/interfaces/all-interfaces"
+import { ILessonGeneratorService, ILessonRepository } from "@/lib/interfaces/all-interfaces"
 
 export default class LessonService implements ILessonRepository {
   private lessonRepository: ILessonRepository
+  private lessonGeneratorService: ILessonGeneratorService
 
-  constructor(lessonRepository: ILessonRepository) {
+  constructor(lessonRepository: ILessonRepository, lessonGeneratorService: ILessonGeneratorService) {
     this.lessonRepository = lessonRepository
+    this.lessonGeneratorService = lessonGeneratorService
   }
 
   async getLessons(): Promise<LessonModel[]> {
@@ -44,6 +46,8 @@ export default class LessonService implements ILessonRepository {
   }
 
   async generateInitialLessons(): Promise<LessonModel[]> {
-    return this.lessonRepository.generateInitialLessons()
+     this.lessonGeneratorService.generateLesson('topic', 'targetLanguage', 'difficultyLevel')
+
+     return []
   }
 }

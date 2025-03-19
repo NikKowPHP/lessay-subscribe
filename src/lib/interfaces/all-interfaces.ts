@@ -32,3 +32,6 @@ export interface ILessonRepository {
 }
 
 
+export interface ILessonGeneratorService {
+  generateLesson: (topic: string, targetLanguage: string, difficultyLevel: string) => Promise<Record<string, unknown>>
+}

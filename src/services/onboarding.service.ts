@@ -1,12 +1,15 @@
 import { OnboardingModel, AssessmentLesson } from "@/models/AppAllModels.model"
 import { IOnboardingRepository } from "@/lib/interfaces/all-interfaces"
 import logger from "@/utils/logger"
+import LessonService from "./lesson.service"
 
 
 export default class OnboardingService implements IOnboardingRepository {
   private onboardingRepository: IOnboardingRepository
-  constructor(  onboardingRepository: IOnboardingRepository ) {
+  private lessonService: LessonService
+  constructor(  onboardingRepository: IOnboardingRepository, lessonService: LessonService ) {
     this.onboardingRepository = onboardingRepository
+    this.lessonService = lessonService
   }
 
    getOnboarding = async (): Promise<OnboardingModel | null> => {
@@ -24,7 +27,9 @@ export default class OnboardingService implements IOnboardingRepository {
   }
 
   completeOnboarding = async (): Promise<OnboardingModel> => {
-    return this.onboardingRepository.completeOnboarding()
+    const onboarding = await this.onboardingRepository.completeOnboarding()
+    await this.lessonService.generateInitialLessons()
+    return onboarding
   }
 
   deleteOnboarding = async (): Promise<void> => {
@@ -40,6 +45,7 @@ export default class OnboardingService implements IOnboardingRepository {
   }
 
   async completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson> {
+
     return this.onboardingRepository.completeAssessmentLesson(lessonId, userResponse)
   }
 }

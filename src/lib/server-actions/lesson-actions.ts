@@ -2,13 +2,14 @@
 
 import LessonService from '@/services/lesson.service'
 import { LessonRepository } from '@/repositories/lesson.repository'
-import { SupabaseAuthService } from '@/services/supabase-auth.service'
+import { getAuthServiceBasedOnEnvironment  } from '@/services/supabase-auth.service'
 import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
 import { OnboardingModel } from '@/models/AppAllModels.model'
+import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock'
 
 function createLessonService() {
-  const repository = new LessonRepository(new SupabaseAuthService())
-  return new LessonService(repository)
+  const repository = new LessonRepository(getAuthServiceBasedOnEnvironment())
+  return new LessonService(repository, MockLessonGeneratorService)
 }
 
 export async function getLessonsAction() {
@@ -73,5 +74,5 @@ export async function generateInitialLessonsAction(onboardingData: OnboardingMod
   }
   
   const lessonService = createLessonService()
-  return await lessonService.generateInitialLessons(onboardingData)
+  return await lessonService.generateInitialLessons()
 }

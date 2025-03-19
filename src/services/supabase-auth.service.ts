@@ -1,6 +1,7 @@
 import { IAuthService } from '@/services/auth.service'
 import { supabase } from '@/repositories/supabase/supabase'
 import { AuthChangeEvent, Session } from '@supabase/supabase-js'
+import { MockAuthService } from './mock-auth-service.service'
 
 export class SupabaseAuthService implements IAuthService {
   async login(email: string, password: string) {
@@ -28,3 +29,10 @@ export class SupabaseAuthService implements IAuthService {
     return supabase.auth.onAuthStateChange(callback)
   }
 } 
+
+export function getAuthServiceBasedOnEnvironment() {
+  if (process.env.NODE_ENV === 'development') {
+    return new MockAuthService()
+  }
+  return new SupabaseAuthService()
+}

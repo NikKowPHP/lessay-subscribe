@@ -1,25 +1,23 @@
 'use server'
 import OnboardingService from '@/services/onboarding.service'
 import { OnboardingRepository } from '@/repositories/onboarding.repository'
-import { SupabaseAuthService } from '@/services/supabase-auth.service'
+import { getAuthServiceBasedOnEnvironment, SupabaseAuthService } from '@/services/supabase-auth.service'
 import { getSession } from '@/repositories/supabase/supabase'
 import 'server-only'
 import { MockAuthService } from '@/services/mock-auth-service.service'
 import logger from '@/utils/logger'
 import { generateInitialLessonsAction } from './lesson-actions'
+import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock'
+import LessonService from '@/services/lesson.service'
+import { LessonRepository } from '@/repositories/lesson.repository'
 
-function getAuthServiceBasedOnEnvironment() {
-  if (process.env.NODE_ENV === 'development') {
-    return new MockAuthService()
-  }
-  return new SupabaseAuthService()
-}
+
 
 function createOnboardingService() {
   const repository = new OnboardingRepository(getAuthServiceBasedOnEnvironment())
-  return new OnboardingService(repository)
+  const lessonRepository = new LessonRepository(getAuthServiceBasedOnEnvironment())
+  return new OnboardingService(repository, new LessonService(lessonRepository, MockLessonGeneratorService))
 }
-
 
 export async function createOnboardingAction() {
   const onboardingService = createOnboardingService()
@@ -47,13 +45,6 @@ export async function completeOnboardingAction() {
   const onboardingService = createOnboardingService()
   const completedOnboarding = await onboardingService.completeOnboarding()
   
-  // Generate initial lessons based on completed onboarding
-  try {
-    await generateInitialLessonsAction(completedOnboarding)
-  } catch (error) {
-    logger.error('Error generating initial lessons:', error)
-    // We don't throw here to ensure onboarding completes even if lesson generation fails
-  }
   
   logger.log('completed onboarding:', completedOnboarding)
   return completedOnboarding
