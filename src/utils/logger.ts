@@ -41,6 +41,12 @@ class Logger {
     }
   }
 
+  info(message: string, ...args: unknown[]): void {
+    // if (!this.isProduction) {
+      console.log(message, ...args);
+    // }
+  }
+
   warn(message: string, ...args: unknown[]): void {
     if (!this.isProduction) {
       console.warn(message, ...args);
@@ -51,11 +57,11 @@ class Logger {
   }
 
   log(message: string, ...args: unknown[]): void {
-    if (!this.isProduction) {
+    // if (!this.isProduction) {
       console.log(message, ...args);
-    } else {
+    // } else {
       // In production, standard logs can be suppressed, or adjust as needed.
-    }
+    // }
   }
 }
 
