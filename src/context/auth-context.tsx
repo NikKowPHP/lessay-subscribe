@@ -5,6 +5,7 @@ import { Session, User, AuthError } from '@supabase/supabase-js'
 import { SupabaseAuthService } from '@/services/supabase-auth.service'
 import { useRouter } from 'next/navigation'
 import { MockAuthService } from '@/services/mock-auth-service.service'
+import logger from '@/utils/logger'
 
 interface AuthContextType {
   user: User | null
@@ -20,10 +21,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isMock] = useState(() => process.env.NEXT_PUBLIC_MOCK_REPOSITORIES === 'true')
+  const [isMock] = useState(() => process.env.NEXT_PUBLIC_MOCK_AUTH === 'true')
   const [authService] = useState(() => 
     isMock ? new MockAuthService() : new SupabaseAuthService()
   )
+
+  logger.log('isMock', isMock)
 
 
   const [session, setSession] = useState<Session | null>(null)

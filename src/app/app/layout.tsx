@@ -1,5 +1,5 @@
 import { AuthProvider } from '@/context/auth-context'
-import '@/styles/globals.css'
+import '@/app/globals.css'
 import { Toaster } from '@/components/Toaster'
 export default function AdminLayout({
   children,

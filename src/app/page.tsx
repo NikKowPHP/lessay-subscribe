@@ -4,6 +4,8 @@ import SubscriptionForm from '../components/Form';
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import YouTubeVideoWrapper from '@/components/YoutubeWrapper';
+import { SubscriptionProvider } from '@/context/subscription-context';
+import { RecordingProvider } from '@/context/recording-context';
 
 const FeaturesDropdown = dynamic(() => import('../components/FeaturesDropdown'), {
   loading: () => <div className="animate-pulse h-40 bg-gray-200 rounded-xl" />,
@@ -74,7 +76,10 @@ export default function Home() {
   const videoId = process.env.NEXT_PUBLIC_YOUTUBE_VIDEO_ID;
 
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-2 sm:p-8 pb-20 gap-16  font-[family-name:var(--font-geist-sans)] max-w-4xl mx-auto">
+    <RecordingProvider>
+       
+    <SubscriptionProvider>
+      <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-2 sm:p-8 pb-20 gap-16  font-[family-name:var(--font-geist-sans)] max-w-4xl mx-auto">
       <main className="flex flex-col gap-8 row-start-2 items-center max-w-full sm:max-w-[1000px]">
         <div className="text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-4">
@@ -144,6 +149,10 @@ export default function Home() {
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-    </div>
+      </div>
+   
+     
+      </SubscriptionProvider>
+      </RecordingProvider>
   );
 }
