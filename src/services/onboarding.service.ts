@@ -1,22 +1,13 @@
-import { OnboardingModel } from "@/domain/models/models"
-import { onboardingRepository } from "../repositories/onboarding.repository"
+import { OnboardingModel } from "@/domain/models/models" // todo: create model
+import IOnboardingRepository from "@/lib/interfaces/all-interfaces"
 
-export interface IOnboardingRepository {
-  getOnboarding(): Promise<OnboardingModel | null>
-  createOnboarding(): Promise<OnboardingModel>
-  updateOnboarding(step: string): Promise<OnboardingModel>
-  completeOnboarding(): Promise<OnboardingModel>
-  deleteOnboarding(): Promise<void>
-  getStatus(): Promise<boolean>
-}
 
 
 
 export default class OnboardingService implements IOnboardingRepository {
   private onboardingRepository: IOnboardingRepository
-  constructor( onboardingRepository: IOnboardingRepository ) {
+  constructor(  onboardingRepository: IOnboardingRepository ) {
     this.onboardingRepository = onboardingRepository
- 
   }
 
    getOnboarding = async (): Promise<OnboardingModel | null> => {
@@ -37,5 +28,9 @@ export default class OnboardingService implements IOnboardingRepository {
 
   deleteOnboarding = async (): Promise<void> => {
     return this.onboardingRepository.deleteOnboarding()
+  }
+
+  getStatus = async (): Promise<boolean> => {
+    return this.onboardingRepository.getStatus()
   }
 }

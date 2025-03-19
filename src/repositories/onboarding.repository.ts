@@ -1,18 +1,29 @@
 import { PrismaClient } from '@prisma/client'
-import { OnboardingModel } from '@/domain/models/models'
-import { IOnboardingRepository } from '../services/onboarding.service'
-import logger from '@/lib/logger'
+import { OnboardingModel } from '@/domain/models/models' // todo: create model 
+import IOnboardingRepository from '@/lib/interfaces/all-interfaces'
+import logger from '@/utils/logger'
+import { IAuthService } from '@/services/auth.service'
 
 const prisma = new PrismaClient()
 
 export class OnboardingRepository implements IOnboardingRepository {
+  private authService: IAuthService
+
+  constructor(authService: IAuthService) {
+    this.authService = authService
+  }
+
+  async getSession() {
+    const session = await this.authService.getSession()
+    if (!session?.user?.id) {
+      throw new Error('Unauthorized')
+    }
+    return session
+  }
+
   async getOnboarding(): Promise<OnboardingModel | null> {
     try {
-      const session = await auth()
-      if (!session?.user?.id) {
-        throw new Error('Unauthorized')
-      }
-      
+      const session = await this.getSession()
       return await prisma.onboarding.findUnique({
         where: { userId: session.user.id }
       })
@@ -24,11 +35,7 @@ export class OnboardingRepository implements IOnboardingRepository {
 
   async createOnboarding(): Promise<OnboardingModel> {
     try {
-      const session = await auth()
-      if (!session?.user?.id) {
-        throw new Error('Unauthorized')
-      }
-      
+      const session = await this.getSession()
       return await prisma.onboarding.create({
         data: {
           userId: session.user.id,
@@ -44,11 +51,7 @@ export class OnboardingRepository implements IOnboardingRepository {
 
   async updateOnboarding(step: string): Promise<OnboardingModel> {
     try {
-      const session = await auth()
-      if (!session?.user?.id) {
-        throw new Error('Unauthorized')
-      }
-      
+      const session = await this.getSession()
       return await prisma.onboarding.update({
         where: { userId: session.user.id },
         data: {
@@ -65,11 +68,7 @@ export class OnboardingRepository implements IOnboardingRepository {
 
   async completeOnboarding(): Promise<OnboardingModel> {
     try {
-      const session = await auth()
-      if (!session?.user?.id) {
-        throw new Error('Unauthorized')
-      }
-      
+      const session = await this.getSession()
       return await prisma.onboarding.update({
         where: { userId: session.user.id },
         data: { completed: true }
@@ -82,11 +81,7 @@ export class OnboardingRepository implements IOnboardingRepository {
 
   async deleteOnboarding(): Promise<void> {
     try {
-      const session = await auth()
-      if (!session?.user?.id) {
-        throw new Error('Unauthorized')
-      }
-      
+      const session = await this.getSession()
       await prisma.onboarding.delete({
         where: { userId: session.user.id }
       })
@@ -95,7 +90,9 @@ export class OnboardingRepository implements IOnboardingRepository {
       throw error
     }
   }
-}
 
-// Export singleton
-export const onboardingRepository = new OnboardingRepository()
+  async getStatus(): Promise<boolean> {
+    const onboarding = await this.getOnboarding()
+    return onboarding?.completed ?? false
+  }
+}
