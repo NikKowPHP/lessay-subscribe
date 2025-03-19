@@ -85,11 +85,38 @@ async function main() {
     })
   ])
 
+  const lessons = await Promise.all([
+    prisma.lesson.create({
+      data: {
+        userId: user.id,
+        lessonId: 'lesson-1',
+        focusArea: 'Everyday Conversation',
+        targetSkills: ['Greetings', 'Small Talk'],
+        sequence: [
+          {
+            step: 1,
+            type: 'prompt',
+            content: 'How do you introduce yourself?',
+            translation: 'Wie stellst du dich vor?'
+          },
+          {
+            step: 2,
+            type: 'model_answer',
+            content: 'Hello, my name is...',
+            translation: 'Hallo, ich heiße...'
+          }
+        ],
+        completed: false
+      }
+    }),
+    // Add more lessons as needed
+  ])
+
   console.log(`Created user: ${user.email}`)
   console.log(`Created onboarding for user`)
   console.log(`created onboarding onboarding: ${onboarding.id}`)
   console.log(`Created ${assessmentLessons.length} assessment lessons`)
-}
+  console.log(`Created ${lessons.length} regular lessons`)
 
 main()
   .catch((e) => {
@@ -99,3 +126,6 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
+}
+
+main()

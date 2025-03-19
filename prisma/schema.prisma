@@ -37,6 +37,7 @@ model User {
   createdAt DateTime @default(now())
   onboarding Onboarding?
   assessmentLessons AssessmentLesson[]
+  lessons Lesson[]
 }
 
 enum ProficiencyLevel {
@@ -53,7 +54,7 @@ enum LessonGenerationStatus {
 
 model AssessmentLesson {
   id        String   @id @default(cuid())
-  userId    String   // Changed from Int to String
+  userId    String
   user      User     @relation(fields: [userId], references: [id])
   step      Int
   prompt    String
@@ -64,4 +65,19 @@ model AssessmentLesson {
   updatedAt DateTime @updatedAt
 
   @@map("assessment_lessons")
+}
+model Lesson {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  lessonId            String
+  focusArea           String
+  targetSkills        String[]
+  sequence            Json
+  performanceMetrics  Json?
+  completed           Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("lessons")
 }
