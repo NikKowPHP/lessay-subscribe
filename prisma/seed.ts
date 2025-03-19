@@ -11,7 +11,7 @@ async function main() {
   // Create test user (matching the mock auth service)
   const user = await prisma.user.create({
     data: {
-      id: 1, // We'll use a numeric ID internally that matches Supabase's 'mock-user-id'
+      id: 'mock-user-id', // Use the same ID as in your mock auth service
       email: 'mock@example.com',
       name: 'Mock User',
     },

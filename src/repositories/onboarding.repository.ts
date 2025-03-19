@@ -21,36 +21,13 @@ export class OnboardingRepository implements IOnboardingRepository {
     return session
   }
 
-  private async getUserIdFromSupabase(supabaseId: string): Promise<number> {
-    // For development with the mock service, we'll hardcode this mapping
-    if (supabaseId === 'mock-user-id') {
-      return 1;
-    }
-    
-    // In production, you'd implement a proper mapping here
-    // For example, you might have a separate table that maps Supabase IDs to your user IDs
-    // Or you might query your user table to find the matching user
-    
-    // For now, we'll just use a simple mapping approach for the mock user
-    const user = await prisma.user.findFirst({
-      where: {
-        email: 'mock@example.com'
-      }
-    });
-    
-    if (!user) {
-      throw new Error('User not found');
-    }
-    
-    return user.id;
-  }
+
 
   async getOnboarding(): Promise<OnboardingModel | null> {
     try {
       const session = await this.getSession()
-      const userId = await this.getUserIdFromSupabase(session.user.id)
       return await prisma.onboarding.findUnique({
-        where: { userId }
+        where: { userId: session.user.id }
       })
     } catch (error) {
       logger.error('Error fetching onboarding:', error)
@@ -61,10 +38,9 @@ export class OnboardingRepository implements IOnboardingRepository {
   async createOnboarding(): Promise<OnboardingModel> {
     try {
       const session = await this.getSession()
-      const userId = await this.getUserIdFromSupabase(session.user.id)
       return await prisma.onboarding.create({
         data: {
-          userId,
+          userId: session.user.id,
           steps: {},
           completed: false
         }
@@ -78,9 +54,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   async updateOnboarding(step: string): Promise<OnboardingModel> {
     try {
       const session = await this.getSession()
-      const userId = await this.getUserIdFromSupabase(session.user.id)
       return await prisma.onboarding.update({
-        where: { userId },
+        where: { userId: session.user.id },
         data: {
           steps: {
             [step]: true
@@ -96,9 +71,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   async completeOnboarding(): Promise<OnboardingModel> {
     try {
       const session = await this.getSession()
-      const userId = await this.getUserIdFromSupabase(session.user.id)
       return await prisma.onboarding.update({
-        where: { userId },
+        where: { userId: session.user.id },
         data: { completed: true }
       })
     } catch (error) {
@@ -110,9 +84,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   async deleteOnboarding(): Promise<void> {
     try {
       const session = await this.getSession()
-      const userId = await this.getUserIdFromSupabase(session.user.id)
       await prisma.onboarding.delete({
-        where: { userId }
+        where: { userId: session.user.id }
       })
     } catch (error) {
       logger.error('Error deleting onboarding:', error)
@@ -125,10 +98,11 @@ export class OnboardingRepository implements IOnboardingRepository {
     return onboarding?.completed ?? false
   }
 
-  async getAssessmentLessons(userId: string): Promise<AssessmentLesson[]> {
+  async getAssessmentLessons(): Promise<AssessmentLesson[]> {
     try {
+      const session = await this.getSession()
       return await prisma.assessmentLesson.findMany({
-        where: { userId },
+        where: { userId: session.user.id },
         orderBy: { step: 'asc' }
       })
     } catch (error) {

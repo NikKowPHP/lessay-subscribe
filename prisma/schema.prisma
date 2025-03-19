@@ -15,7 +15,7 @@ datasource db {
 
 model Onboarding {
   id                      String   @id @default(cuid())
-  userId                  Int      @unique
+  userId                  String   @unique
   user                    User     @relation(fields: [userId], references: [id])
   steps                   Json
   completed               Boolean  @default(false)
@@ -31,7 +31,7 @@ model Onboarding {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(cuid())
   email     String   @unique
   name      String?
   createdAt DateTime @default(now())
@@ -53,7 +53,7 @@ enum LessonGenerationStatus {
 
 model AssessmentLesson {
   id        String   @id @default(cuid())
-  userId    Int
+  userId    String   // Changed from Int to String
   user      User     @relation(fields: [userId], references: [id])
   step      Int
   prompt    String
