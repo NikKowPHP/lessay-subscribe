@@ -21,8 +21,6 @@ export class OnboardingRepository implements IOnboardingRepository {
     return session
   }
 
-
-
   async getOnboarding(): Promise<OnboardingModel | null> {
     try {
       const session = await this.getSession()
@@ -54,12 +52,21 @@ export class OnboardingRepository implements IOnboardingRepository {
   async updateOnboarding(step: string): Promise<OnboardingModel> {
     try {
       const session = await this.getSession()
+      const onboarding = await prisma.onboarding.findUnique({
+        where: { userId: session.user.id }
+      })
+      
+      if (!onboarding) {
+        throw new Error('Onboarding not found')
+      }
+
+      const steps = onboarding.steps as { [key: string]: boolean }
+      steps[step] = true
+
       return await prisma.onboarding.update({
         where: { userId: session.user.id },
         data: {
-          steps: {
-            [step]: true
-          }
+          steps: steps
         }
       })
     } catch (error) {

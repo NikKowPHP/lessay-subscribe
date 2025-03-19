@@ -1,14 +1,15 @@
+import { ProficiencyLevel } from '@prisma/client'
+import type { JsonValue } from '@prisma/client/runtime/library'
+
 export interface OnboardingModel {
   id: string;
   userId: string;
-  steps: {
-    [key: string]: boolean;
-  };
+  steps: JsonValue;
   completed: boolean;
-  learningPurpose?: string;
-  nativeLanguage?: string;
-  targetLanguage?: string;
-  proficiencyLevel?: 'beginner' | 'intermediate' | 'advanced';
+  learningPurpose?: string | null;
+  nativeLanguage?: string | null;
+  targetLanguage?: string | null;
+  proficiencyLevel?: ProficiencyLevel | null;
   initialAssessmentCompleted?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -20,7 +21,7 @@ export interface AssessmentLesson {
   step: number;
   prompt: string;
   modelAnswer: string;
-  userResponse?: string;
+  userResponse?: string | null;
   completed: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -44,7 +45,7 @@ export interface LessonModel {
   lessonId: string;
   focusArea: string;
   targetSkills: string[];
-  sequence: LessonStep[];
+  sequence: JsonValue;
   performanceMetrics?: {
     accuracy?: number;
     pronunciationScore?: number;
