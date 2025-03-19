@@ -306,3 +306,78 @@ While we mirror the Natulang app's lesson flow structure, our key differentiator
 
 3. **Targeted Skill Development:** Our AI identifies and focuses on areas where the user needs the most improvement, creating a more efficient learning path than general-purpose lessons.
 
+## Data Collection & Adaptive Learning
+
+### Data Collection
+1. **User Responses:**  
+   - Transcribed text and audio recordings of user voice responses.
+2. **Performance Metrics:**  
+   - Accuracy, pronunciation, and error patterns.
+3. **Lesson Progress:**  
+   - Completed lessons, time taken, and number of attempts.
+4. **Error Patterns:**  
+   - Common mistakes and areas of difficulty.
+
+### Adaptive Learning
+1. **Lesson Generation:**  
+   - AI generates personalized lessons based on user data.
+2. **Progress Adaptation:**  
+   - Adjusts lesson difficulty and focus based on performance metrics.
+3. **Offline Analysis:**  
+   - Analyzes audio recordings for acoustics, accent, and pronunciation.
+
+1. Data Collection
+What Data to Collect
+User Responses:
+Transcribed text of user voice responses.
+Audio recordings of user responses (for offline analysis).
+2. Performance Metrics:
+Accuracy of responses (e.g., exact match with model answers).
+Pronunciation, accent, and acoustic features (analyzed offline).
+3. Lesson Progress:
+Which lessons the user has completed.
+Time taken to complete each lesson.
+Number of attempts per lesson.
+Error Patterns:
+Common mistakes (e.g., mispronunciations, incorrect vocabulary).
+Areas where the user struggles (e.g., specific grammar rules or vocabulary).
+Learning Goals:
+User's stated learning purposes (e.g., travel, business).
+Proficiency level (from initial assessment).
+---
+How to Collect Data
+During Lessons:
+Use the browser's Web Speech API to capture user voice responses.
+Transcribe the responses and compare them to the model answers.
+Store the transcribed text and audio recordings in the database.
+2. Post-Session Analysis:
+Aggregate user recordings and send them to an AI service for offline analysis.
+Analyze acoustics, accent, and pronunciation to identify areas for improvement.
+3. User Progress Tracking:
+Track which lessons the user has completed and their performance metrics.
+Store this data in the database for future reference.
+---
+2. Data Storage
+Where to Store Data
+1. Database (PostgreSQL):
+Store user profiles, lesson progress, and performance metrics.
+Example tables:
+users: User profiles and authentication data.
+lessons: Generated lesson sequences.
+user_responses: Transcribed text and audio recordings.
+performance_metrics: Accuracy, pronunciation, and error patterns.
+2. File Storage (Optional):
+Store audio recordings in a file storage system (e.g., AWS S3, Supabase Storage) if the database is not suitable for large files.
+---
+3. AI-Driven Lesson Adaptation
+How AI Uses the Data
+1. Lesson Generation:
+Use the user's proficiency level, learning goals, and error patterns to generate personalized lesson sequences.
+Example: If a user struggles with pronunciation, generate lessons focused on phonetics.
+Progress Adaptation:
+Analyze performance metrics to adjust the difficulty and focus of future lessons.
+Example: If a user consistently makes mistakes with a specific grammar rule, generate additional practice exercises for that rule.
+3. Offline Analysis:
+Use AI to analyze audio recordings for acoustics, accent, and pronunciation.
+Feed the results back into the lesson generation system to refine future lessons.
+---
