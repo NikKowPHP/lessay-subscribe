@@ -1,5 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { AssessmentLesson } from '@/models/AppAllModels.model'
+
+// Add this interface at the top of the file
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognition extends EventTarget {
+  new (): SpeechRecognition;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+}
+
+declare global {
+  interface Window {
+    webkitSpeechRecognition: SpeechRecognition;
+  }
+}
+
 interface ChatAssessmentProps {
   lessons: AssessmentLesson[]
   onComplete: () => void
@@ -40,7 +66,7 @@ export default function ChatAssessment({
     recognitionRef.current = new SpeechRecognition()
     
     const recognition = recognitionRef.current
-    recognition.lang = 'en-US' // Should be dynamic based on target language
+    recognition.lang = 'en-US'
     recognition.interimResults = true
     recognition.continuous = true
     
@@ -49,24 +75,23 @@ export default function ChatAssessment({
       setFeedback('Listening...')
     }
     
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = Array.from(event.results)
-        .map((result: any) => result[0])
-        .map((result: any) => result.transcript)
+        .map((result) => result[0])
+        .map((result) => result.transcript)
         .join('');
       
       setUserResponse(transcript)
       
-      // Check if user response matches model answer criteria
       const currentLesson = lessons[currentLessonIndex]
       if (currentLesson && isResponseCorrect(transcript, currentLesson.modelAnswer)) {
         handleCorrectResponse(currentLesson, transcript)
       }
     }
     
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: Event) => {
       setIsListening(false)
-      setFeedback(`Error occurred: ${event.error}`)
+      setFeedback(`Error occurred: ${(event as ErrorEvent).error}`)
     }
     
     recognition.onend = () => {
