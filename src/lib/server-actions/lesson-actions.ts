@@ -4,6 +4,7 @@ import LessonService from '@/services/lesson.service'
 import { LessonRepository } from '@/repositories/lesson.repository'
 import { SupabaseAuthService } from '@/services/supabase-auth.service'
 import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
+import { OnboardingModel } from '@/models/AppAllModels.model'
 
 function createLessonService() {
   const repository = new LessonRepository(new SupabaseAuthService())
@@ -64,4 +65,13 @@ export async function deleteLessonAction(lessonId: string) {
   }
   const lessonService = createLessonService()
   return await lessonService.deleteLesson(lessonId)
+}
+
+export async function generateInitialLessonsAction(onboardingData: OnboardingModel) {
+  if (!onboardingData) {
+    throw new Error('Onboarding data is required')
+  }
+  
+  const lessonService = createLessonService()
+  return await lessonService.generateInitialLessons(onboardingData)
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useOnboarding } from '@/context/onboarding-context'
 import { AssessmentLesson, OnboardingModel } from '@/models/AppAllModels.model'
 import ChatAssessment from '@/components/onboarding/ChatAssessments'
+import { toast } from 'react-hot-toast'
 
 interface AssessmentStepProps {
   onComplete: () => void
@@ -10,9 +11,10 @@ interface AssessmentStepProps {
 }
 
 export default function AssessmentStep({ onComplete, loading, targetLanguage }: AssessmentStepProps) {
-  const { getAssessmentLessons, completeAssessmentLesson  } = useOnboarding()
+  const { getAssessmentLessons, completeAssessmentLesson, completeOnboardingWithLessons } = useOnboarding()
   const [lessons, setLessons] = useState<AssessmentLesson[]>([])
   const [usingChat, setUsingChat] = useState(true) // Default to chat interface
+  const [isCompleting, setIsCompleting] = useState(false)
 
   useEffect(() => {
     const fetchLessons = async () => {
@@ -25,6 +27,18 @@ export default function AssessmentStep({ onComplete, loading, targetLanguage }: 
 
   const handleLessonComplete = async (lessonId: string, userResponse: string) => {
     await completeAssessmentLesson(lessonId, userResponse)
+  }
+
+  const handleComplete = async () => {
+    setIsCompleting(true)
+    try {
+      await completeOnboardingWithLessons()
+      onComplete()
+    } catch (error) {
+      toast.error('Something went wrong completing your assessment')
+    } finally {
+      setIsCompleting(false)
+    }
   }
 
   if (lessons.length === 0) {
@@ -63,9 +77,9 @@ export default function AssessmentStep({ onComplete, loading, targetLanguage }: 
       {usingChat ? (
         <ChatAssessment 
           lessons={lessons}
-          onComplete={onComplete}
+          onComplete={handleComplete}
           onLessonComplete={handleLessonComplete}
-          loading={loading}
+          loading={loading || isCompleting}
           targetLanguage={targetLanguage}
         />
       ) : (

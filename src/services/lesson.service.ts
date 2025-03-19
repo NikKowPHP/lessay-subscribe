@@ -1,4 +1,4 @@
-import { LessonModel, LessonStep } from "@/models/AppAllModels.model"
+import { LessonModel, LessonStep, OnboardingModel } from "@/models/AppAllModels.model"
 import { ILessonRepository } from "@/lib/interfaces/all-interfaces"
 
 export default class LessonService implements ILessonRepository {
@@ -41,5 +41,9 @@ export default class LessonService implements ILessonRepository {
 
   async deleteLesson(lessonId: string): Promise<void> {
     return this.lessonRepository.deleteLesson(lessonId)
+  }
+
+  async generateInitialLessons(): Promise<LessonModel[]> {
+    return this.lessonRepository.generateInitialLessons()
   }
 }

@@ -6,6 +6,7 @@ import { getSession } from '@/repositories/supabase/supabase'
 import 'server-only'
 import { MockAuthService } from '@/services/mock-auth-service.service'
 import logger from '@/utils/logger'
+import { generateInitialLessonsAction } from './lesson-actions'
 
 function getAuthServiceBasedOnEnvironment() {
   if (process.env.NODE_ENV === 'development') {
@@ -45,6 +46,15 @@ export async function updateOnboardingAction(step: string) {
 export async function completeOnboardingAction() {
   const onboardingService = createOnboardingService()
   const completedOnboarding = await onboardingService.completeOnboarding()
+  
+  // Generate initial lessons based on completed onboarding
+  try {
+    await generateInitialLessonsAction(completedOnboarding)
+  } catch (error) {
+    logger.error('Error generating initial lessons:', error)
+    // We don't throw here to ensure onboarding completes even if lesson generation fails
+  }
+  
   logger.log('completed onboarding:', completedOnboarding)
   return completedOnboarding
 }
