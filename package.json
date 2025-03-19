@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "npx jest",
-    "docker:run": "docker compose -f docker-compose.proxy.yml up"
+    "docker:proxy:run": "docker compose -f docker-compose.proxy.yml up"
   },
   "dependencies": {
     "@aws-sdk/client-polly": "^3.750.0",
