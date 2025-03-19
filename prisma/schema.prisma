@@ -13,9 +13,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Onboarding {
+  id                      String   @id @default(cuid())
+  userId                  Int      @unique
+  user                    User     @relation(fields: [userId], references: [id])
+  steps                   Json
+  completed               Boolean  @default(false)
+  learningPurpose         String?
+  nativeLanguage          String?
+  targetLanguage          String?
+  proficiencyLevel        ProficiencyLevel?
+  initialAssessmentCompleted Boolean @default(false)
+  lessonGenerationStatus  LessonGenerationStatus?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@map("onboarding")
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   name      String?
   createdAt DateTime @default(now())
+  onboarding Onboarding?
+}
+
+enum ProficiencyLevel {
+  beginner
+  intermediate
+  advanced
+}
+
+enum LessonGenerationStatus {
+  pending
+  completed
+  failed
 }
