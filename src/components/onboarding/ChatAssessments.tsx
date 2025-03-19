@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { AssessmentLesson } from '@/models/AppAllModels.model'
 import logger from '@/utils/logger';
+import { mapLanguageToCode } from '@/utils/map-language-to-code.util';
 
 // Add this interface at the top of the file
 interface SpeechRecognitionEvent extends Event {
@@ -99,7 +100,7 @@ export default function ChatAssessment({
     recognitionRef.current = new SpeechRecognition()
     
     const recognition = recognitionRef.current
-    recognition.lang = targetLanguage
+    recognition.lang = mapLanguageToCode(targetLanguage)
     recognition.interimResults = true
     recognition.continuous = true
     
