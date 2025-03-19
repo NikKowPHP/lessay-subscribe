@@ -1,9 +1,8 @@
-import { PrismaClient } from '@prisma/client'
 import { IAuthService } from '@/services/auth.service'
 import { ILessonRepository } from '@/lib/interfaces/all-interfaces'
 import logger from '@/utils/logger'
 import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
-const prisma = new PrismaClient()
+import prisma from '@/lib/prisma'
 
 export class LessonRepository implements ILessonRepository {
   private authService: IAuthService

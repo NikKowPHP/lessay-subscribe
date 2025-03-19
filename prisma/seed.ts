@@ -1,6 +1,5 @@
-import { PrismaClient, ProficiencyLevel } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import {  ProficiencyLevel } from '@prisma/client'
+import prisma from '@/lib/prisma'
 
 async function main() {
   // Clear existing data in the correct order

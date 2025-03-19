@@ -3,6 +3,7 @@ import OnboardingService from '@/services/onboarding.service'
 import { OnboardingRepository } from '@/repositories/onboarding.repository'
 import { SupabaseAuthService } from '@/services/supabase-auth.service'
 import { getSession } from '@/repositories/supabase/supabase'
+import 'server-only'
 
 function createOnboardingService() {
   const repository = new OnboardingRepository(new SupabaseAuthService())

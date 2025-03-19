@@ -1,10 +1,8 @@
-import { PrismaClient } from '@prisma/client'
 import { OnboardingModel, AssessmentLesson } from '@/models/AppAllModels.model'
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces'
 import logger from '@/utils/logger'
 import { IAuthService } from '@/services/auth.service'
-
-const prisma = new PrismaClient()
+import prisma from '@/lib/prisma'
 
 export class OnboardingRepository implements IOnboardingRepository {
   private authService: IAuthService
