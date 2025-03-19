@@ -238,7 +238,7 @@ export default function ChatAssessment({
   }
 
   return (
-    <div className="flex flex-col  border rounded-md bg-gray-50 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-13rem)] border rounded-md bg-gray-50 overflow-hidden">
       {/* Chat Header */}
       <div className="p-4 bg-black text-white">
         <h2 className="text-xl font-bold">
