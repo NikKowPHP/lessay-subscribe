@@ -87,8 +87,11 @@ export default function Home() {
           </p>
         </div>
 
-        {/* <YouTubeVideo videoId="vNMmQsKgOgs" pageLoaded={true} /> */}
-        {videoId && <YouTubeVideoWrapper videoId={videoId} />}
+        {/* <YouTubeVodeo videoId="vNMmQsKgOgs" pageLoaded={true} /> */}
+        <div className="w-full h-96">
+          {process.env.NODE_ENV === 'development' && <div className="w-full h-96 bg-gray-200 rounded-xl"></div>}
+          {videoId && process.env.NODE_ENV === 'production' && <YouTubeVideoWrapper videoId={videoId} />}
+        </div>
 
         <div
           id="waitlist"
