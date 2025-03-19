@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { createOnboardingAction, updateOnboardingAction, getStatusAction, getAssessmentLessonsAction, completeAssessmentLessonAction } from '@/lib/server-actions/onboarding-actions'
 import logger from '@/utils/logger'
 import { AssessmentLesson } from '@/models/AppAllModels.model'
+import toast from 'react-hot-toast'
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean
@@ -23,81 +24,58 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const checkOnboardingStatus = async () => {
+
+  // Helper method to handle async operations with loading and error states
+  const withLoadingAndErrorHandling = async <T,>(operation: () => Promise<T>): Promise<T> => {
     setLoading(true)
     try {
+      return await operation()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred'
+      setError(message)
+      logger.error(message)
+      toast.error(message)
+
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const checkOnboardingStatus = async () => {
+    return withLoadingAndErrorHandling(async () => {
       const status = await getStatusAction()
       setIsOnboardingComplete(status)
       return status
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to check onboarding status'
-      setError(message)
-      logger.error(message)
-      return false
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   const startOnboarding = async () => {
-    setLoading(true)
-    try {
+    return withLoadingAndErrorHandling(async () => {
       await createOnboardingAction()
       setIsOnboardingComplete(false)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to start onboarding'
-      setError(message)
-      logger.error(message)
-      throw error
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   const markStepComplete = async (step: string) => {
-    setLoading(true)
-    try {
+    return withLoadingAndErrorHandling(async () => {
       await updateOnboardingAction(step)
-      // After marking a step complete, check if onboarding is now complete
       await checkOnboardingStatus()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to mark step complete'
-      setError(message)
-      logger.error(message)
-      throw error
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   const clearError = () => setError(null)
 
   const getAssessmentLessons = async () => {
-    setLoading(true)
-    try {
+    return withLoadingAndErrorHandling(async () => {
       return await getAssessmentLessonsAction()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to get assessment lessons'
-      setError(message)
-      logger.error(message)
-      throw error
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   const completeAssessmentLesson = async (lessonId: string, userResponse: string) => {
-    setLoading(true)
-    try {
+    return withLoadingAndErrorHandling(async () => {
       return await completeAssessmentLessonAction(lessonId, userResponse)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to complete assessment lesson'
-      setError(message)
-      logger.error(message)
-      throw error
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   // Check onboarding status on initial load
