@@ -53,7 +53,7 @@ export default function OnboardingPage() {
     }
 
     fetchOnboardingData()
-  }, [getOnboarding])
+  }, [])
 
   // Check if onboarding is complete
   useEffect(() => {
