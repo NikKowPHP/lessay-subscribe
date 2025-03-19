@@ -4,9 +4,17 @@ import { OnboardingRepository } from '@/repositories/onboarding.repository'
 import { SupabaseAuthService } from '@/services/supabase-auth.service'
 import { getSession } from '@/repositories/supabase/supabase'
 import 'server-only'
+import { MockAuthService } from '@/services/mock-auth-service.service'
+
+function getAuthServiceBasedOnEnvironment() {
+  if (process.env.NODE_ENV === 'development') {
+    return new MockAuthService()
+  }
+  return new SupabaseAuthService()
+}
 
 function createOnboardingService() {
-  const repository = new OnboardingRepository(new SupabaseAuthService())
+  const repository = new OnboardingRepository(getAuthServiceBasedOnEnvironment())
   return new OnboardingService(repository)
 }
 
@@ -46,7 +54,8 @@ export async function getStatusAction() {
 
 export async function getAssessmentLessonsAction() {
   const onboardingService = createOnboardingService()
-  const session = await getSession()
+  const authService = getAuthServiceBasedOnEnvironment()
+  const session = await authService.getSession()
   if (!session) {
     throw new Error('User not authenticated')
   }
@@ -55,5 +64,6 @@ export async function getAssessmentLessonsAction() {
 
 export async function completeAssessmentLessonAction(lessonId: string, userResponse: string) {
   const onboardingService = createOnboardingService()
+
   return await onboardingService.completeAssessmentLesson(lessonId, userResponse)
 }

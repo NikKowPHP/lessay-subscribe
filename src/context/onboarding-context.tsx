@@ -5,6 +5,7 @@ import { createOnboardingAction, updateOnboardingAction, getStatusAction, getAss
 import logger from '@/utils/logger'
 import { AssessmentLesson } from '@/models/AppAllModels.model'
 import toast from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean
@@ -23,7 +24,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
+  const router = useRouter()
 
   // Helper method to handle async operations with loading and error states
   const withLoadingAndErrorHandling = async <T,>(operation: () => Promise<T>): Promise<T> => {
@@ -81,9 +82,19 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   // Check onboarding status on initial load
   useEffect(() => {
     const initializeOnboarding = async () => {
-      const isComplete = await checkOnboardingStatus()
-      if (!isComplete) {
-        await startOnboarding()
+      try {
+        const isComplete = await checkOnboardingStatus()
+        
+        if (!isComplete) {
+          await startOnboarding()
+          
+          // Only redirect in browser context
+          if (typeof window !== 'undefined') {
+            router.push('/app/onboarding')
+          }
+        }
+      } catch (error) {
+        logger.error('Failed to initialize onboarding:', error)
       }
     }
 

@@ -1,6 +1,5 @@
 import { OnboardingModel, AssessmentLesson } from "@/models/AppAllModels.model"
-import IOnboardingRepository from "@/lib/interfaces/all-interfaces"
-
+import { IOnboardingRepository } from "@/lib/interfaces/all-interfaces"
 
 
 export default class OnboardingService implements IOnboardingRepository {

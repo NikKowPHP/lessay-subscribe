@@ -34,6 +34,16 @@ export class OnboardingRepository implements IOnboardingRepository {
   async createOnboarding(): Promise<OnboardingModel> {
     try {
       const session = await this.getSession()
+      
+      // Check if onboarding already exists
+      const existingOnboarding = await prisma.onboarding.findUnique({
+        where: { userId: session.user.id }
+      })
+
+      if (existingOnboarding) {
+        return existingOnboarding
+      }
+
       return await prisma.onboarding.create({
         data: {
           userId: session.user.id,
