@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { OnboardingModel } from '@/models/AppAllModels.model'
+import { OnboardingModel, AssessmentLesson } from '@/models/AppAllModels.model'
 import IOnboardingRepository from '@/lib/interfaces/all-interfaces'
 import logger from '@/utils/logger'
 import { IAuthService } from '@/services/auth.service'
@@ -94,5 +94,32 @@ export class OnboardingRepository implements IOnboardingRepository {
   async getStatus(): Promise<boolean> {
     const onboarding = await this.getOnboarding()
     return onboarding?.completed ?? false
+  }
+
+  async getAssessmentLessons(userId: string): Promise<AssessmentLesson[]> {
+    try {
+      return await prisma.assessmentLesson.findMany({
+        where: { userId },
+        orderBy: { step: 'asc' }
+      })
+    } catch (error) {
+      logger.error('Error fetching assessment lessons:', error)
+      throw error
+    }
+  }
+
+  async completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson> {
+    try {
+      return await prisma.assessmentLesson.update({
+        where: { id: lessonId },
+        data: {
+          userResponse,
+          completed: true
+        }
+      })
+    } catch (error) {
+      logger.error('Error completing assessment lesson:', error)
+      throw error
+    }
   }
 }

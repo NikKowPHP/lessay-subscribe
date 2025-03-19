@@ -1,8 +1,9 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { createOnboardingAction, updateOnboardingAction, getStatusAction } from '@/lib/server-actions/onboarding-actions'
+import { createOnboardingAction, updateOnboardingAction, getStatusAction, getAssessmentLessonsAction, completeAssessmentLessonAction } from '@/lib/server-actions/onboarding-actions'
 import logger from '@/utils/logger'
+import { AssessmentLesson } from '@/models/AppAllModels.model'
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean
@@ -11,6 +12,8 @@ interface OnboardingContextType {
   loading: boolean
   error: string | null
   clearError: () => void
+  getAssessmentLessons: () => Promise<AssessmentLesson[]>
+  completeAssessmentLesson: (lessonId: string, userResponse: string) => Promise<AssessmentLesson>
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined)
@@ -69,6 +72,34 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   const clearError = () => setError(null)
 
+  const getAssessmentLessons = async () => {
+    setLoading(true)
+    try {
+      return await getAssessmentLessonsAction()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to get assessment lessons'
+      setError(message)
+      logger.error(message)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const completeAssessmentLesson = async (lessonId: string, userResponse: string) => {
+    setLoading(true)
+    try {
+      return await completeAssessmentLessonAction(lessonId, userResponse)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to complete assessment lesson'
+      setError(message)
+      logger.error(message)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Check onboarding status on initial load
   useEffect(() => {
     const initializeOnboarding = async () => {
@@ -88,7 +119,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       markStepComplete,
       loading,
       error,
-      clearError
+      clearError,
+      getAssessmentLessons,
+      completeAssessmentLesson
     }}>
       {children}
     </OnboardingContext.Provider>

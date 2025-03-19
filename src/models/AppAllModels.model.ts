@@ -10,7 +10,30 @@ export interface OnboardingModel {
   targetLanguage?: string;
   proficiencyLevel?: 'beginner' | 'intermediate' | 'advanced';
   initialAssessmentCompleted?: boolean;
-  lessonGenerationStatus?: 'pending' | 'completed' | 'failed';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AssessmentLesson {
+  id: string;
+  userId: string;
+  step: number;
+  prompt: string;
+  modelAnswer: string;
+  userResponse?: string;
+  completed: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface GeneratedLesson {
+  id: string;
+  userId: string;
+  lessonId: string;
+  focusArea: string;
+  targetSkills: string[];
+  sequence: LessonStep[];
+  completed: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

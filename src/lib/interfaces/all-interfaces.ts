@@ -1,4 +1,4 @@
-import { OnboardingModel } from "@/models/AppAllModels.model"
+import { AssessmentLesson, OnboardingModel } from "@/models/AppAllModels.model"
 
 export default interface IOnboardingRepository {
   getOnboarding(): Promise<OnboardingModel | null>
@@ -7,4 +7,6 @@ export default interface IOnboardingRepository {
   completeOnboarding(): Promise<OnboardingModel>
   deleteOnboarding(): Promise<void>
   getStatus(): Promise<boolean>
+  getAssessmentLessons(userId: string): Promise<AssessmentLesson[]>
+  completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson>
 }

@@ -1,4 +1,4 @@
-import { OnboardingModel } from "@/models/AppAllModels.model"
+import { OnboardingModel, AssessmentLesson } from "@/models/AppAllModels.model"
 import IOnboardingRepository from "@/lib/interfaces/all-interfaces"
 
 
@@ -31,5 +31,13 @@ export default class OnboardingService implements IOnboardingRepository {
 
   getStatus = async (): Promise<boolean> => {
     return this.onboardingRepository.getStatus()
+  }
+
+  async getAssessmentLessons(userId: string): Promise<AssessmentLesson[]> {
+    return this.onboardingRepository.getAssessmentLessons(userId)
+  }
+
+  async completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson> {
+    return this.onboardingRepository.completeAssessmentLesson(lessonId, userResponse)
   }
 }

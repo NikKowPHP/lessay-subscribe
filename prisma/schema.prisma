@@ -37,6 +37,7 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   onboarding Onboarding?
+  assessmentLessons AssessmentLesson[]
 }
 
 enum ProficiencyLevel {
@@ -49,4 +50,19 @@ enum LessonGenerationStatus {
   pending
   completed
   failed
+}
+
+model AssessmentLesson {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  step      Int
+  prompt    String
+  modelAnswer String
+  userResponse String?
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("assessment_lessons")
 }
