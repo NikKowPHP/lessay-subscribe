@@ -5,14 +5,24 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.proxy
+      args:
+        - HTTP_PROXY=http://172.16.2.254:3128
+        - HTTPS_PROXY=http://172.16.2.254:3128
     ports:
       - "3025:3025"
     env_file:
       - .env
     environment:
+      - HTTP_PROXY=http://172.16.2.254:3128
+      - HTTPS_PROXY=http://172.16.2.254:3128
       - DATABASE_URL=postgresql://myuser:mypassword@db:5432/mydb
     depends_on:
       - db
+    volumes:
+      - ./src:/app/src  # Mount src directory for hot reload
+      - ./public:/app/public  # Mount public directory for hot reload
+      - ./package.json:/app/package.json  # Mount package.json
+      - ./package-lock.json:/app/package-lock.json  # Mount package-lock.json
     networks:
       - web-network
 
