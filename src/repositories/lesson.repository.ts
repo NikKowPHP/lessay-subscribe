@@ -61,7 +61,7 @@ export class LessonRepository implements ILessonRepository {
           lessonId: `lesson-${Date.now()}`,
           focusArea: lessonData.focusArea,
           targetSkills: lessonData.targetSkills,
-          sequence: lessonData.sequence,
+          sequence: JSON.parse(JSON.stringify(lessonData.sequence)),
           completed: false
         }
       })
@@ -74,12 +74,19 @@ export class LessonRepository implements ILessonRepository {
   async updateLesson(lessonId: string, lessonData: Partial<LessonModel>): Promise<LessonModel> {
     try {
       const session = await this.getSession()
+      const data = {
+        ...lessonData,
+        sequence: lessonData.sequence ? JSON.parse(JSON.stringify(lessonData.sequence)) : undefined,
+        performanceMetrics: lessonData.performanceMetrics ? 
+          JSON.parse(JSON.stringify(lessonData.performanceMetrics)) : 
+          undefined
+      }
       return await prisma.lesson.update({
         where: { 
           id: lessonId,
           userId: session.user.id
         },
-        data: lessonData
+        data: data
       })
     } catch (error) {
       logger.error('Error updating lesson:', error)

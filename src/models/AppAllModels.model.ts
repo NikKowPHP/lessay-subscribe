@@ -46,7 +46,7 @@ export interface LessonModel {
   focusArea: string;
   targetSkills: string[];
   sequence: JsonValue;
-  performanceMetrics?: {
+  performanceMetrics?: JsonValue | null | {
     accuracy?: number;
     pronunciationScore?: number;
     errorPatterns?: string[];
@@ -77,4 +77,12 @@ export interface UserProfileModel {
   onboardingCompleted: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export function isPerformanceMetrics(obj: JsonValue): obj is {
+  accuracy?: number;
+  pronunciationScore?: number;
+  errorPatterns?: string[];
+} {
+  return typeof obj === 'object' && obj !== null && !Array.isArray(obj);
 }
