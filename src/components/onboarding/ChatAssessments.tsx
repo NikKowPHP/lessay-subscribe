@@ -238,7 +238,7 @@ export default function ChatAssessment({
   }
 
   return (
-    <div className="flex flex-col h-[600px] border rounded-md bg-gray-50 overflow-hidden">
+    <div className="flex flex-col  border rounded-md bg-gray-50 overflow-hidden">
       {/* Chat Header */}
       <div className="p-4 bg-black text-white">
         <h2 className="text-xl font-bold">
@@ -249,7 +249,7 @@ export default function ChatAssessment({
       {/* Chat Messages */}
       <div 
         ref={chatMessagesRef}
-        className="flex-grow p-4 overflow-y-auto space-y-4"
+        className="flex-1 p-4 overflow-y-auto space-y-4"
       >
         {chatHistory.map((message, index) => (
           <div 
