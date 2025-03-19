@@ -25,10 +25,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isMock ? new MockAuthService() : new SupabaseAuthService()
   )
 
-const isAdminRoute = (path: string) => {
-  const adminRoutes = ['/admin', '/admin/login', '/admin/sections/dashboard', '/admin/sections/case-studies', '/admin/sections/case-study-sliders', '/admin/sections/testimonials']
-  return adminRoutes.some(route => path.startsWith(route))
-}
 
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
@@ -53,15 +49,10 @@ const isAdminRoute = (path: string) => {
         setUser(session?.user ?? null)
         setLoading(false)
 
-        // Get current path using window.location
         const currentPath = window.location.pathname
-        console.log('is mocked', isMock)
 
-        if (isMock && !isAdminRoute(currentPath) || (event === 'SIGNED_IN' && !isAdminRoute(currentPath))) {
-          console.log('redirecting to admin dashboard')
-          router.replace('/admin/sections/dashboard')
-        } else if (event === 'SIGNED_OUT') {
-          router.replace('/admin/login')
+        if (event === 'SIGNED_OUT' && currentPath.startsWith('/app')) {
+          router.replace('/app/login')
         }
       }
     )
@@ -77,7 +68,7 @@ const isAdminRoute = (path: string) => {
       setUser(user)
       setSession(session)
       if (user) {
-        router.push('/admin/sections/dashboard')
+        router.push('/app/')
       }
     } catch (error) {
       const message = error instanceof AuthError 

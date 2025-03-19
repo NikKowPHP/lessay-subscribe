@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/contexts/auth-context'
-import logger from '@/lib/logger'
+import { useAuth } from '@/context/auth-context'
+import logger from '@/utils/logger'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
