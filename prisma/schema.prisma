@@ -24,7 +24,6 @@ model Onboarding {
   targetLanguage          String?
   proficiencyLevel        ProficiencyLevel?
   initialAssessmentCompleted Boolean @default(false)
-  lessonGenerationStatus  LessonGenerationStatus?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
