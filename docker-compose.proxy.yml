@@ -9,7 +9,7 @@ services:
         - HTTP_PROXY=http://172.16.2.254:3128
         - HTTPS_PROXY=http://172.16.2.254:3128
     ports:
-      - "3025:3025"
+      - "3000:3000"
     env_file:
       - .env
     environment:
@@ -27,13 +27,13 @@ services:
       - web-network
 
   db:
-    image: postgres:13
+    image: postgres:17
     environment:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
       POSTGRES_DB: mydb
     ports:
-      - "5432:5432"
+      - "5433:5432" 
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
