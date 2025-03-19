@@ -48,6 +48,7 @@ export default function ChatAssessment({
   const [chatHistory, setChatHistory] = useState<Array<{type: 'prompt' | 'response', content: string}>>([])
   
   const recognitionRef = useRef<any>(null)
+  const chatMessagesRef = useRef<HTMLDivElement>(null)
   
   const showMockButtons = useMemo(() => {
     return process.env.NEXT_PUBLIC_MOCK_USER_RESPONSES === 'true'
@@ -134,6 +135,13 @@ export default function ChatAssessment({
       }
     }
   }, [currentLessonIndex, lessons])
+
+  // Scroll to bottom when chat history changes
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight
+    }
+  }, [chatHistory])
 
   // Check if response is correct (this can be enhanced with more sophisticated matching)
   const isResponseCorrect = (response: string, modelAnswer: string): boolean => {
@@ -239,7 +247,10 @@ export default function ChatAssessment({
       </div>
       
       {/* Chat Messages */}
-      <div className="flex-grow p-4 overflow-y-auto space-y-4">
+      <div 
+        ref={chatMessagesRef}
+        className="flex-grow p-4 overflow-y-auto space-y-4"
+      >
         {chatHistory.map((message, index) => (
           <div 
             key={index} 
