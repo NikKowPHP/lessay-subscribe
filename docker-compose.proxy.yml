@@ -1,0 +1,61 @@
+version: '3.3'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+      args:
+        - HTTP_PROXY=http://172.16.2.254:3128
+        - HTTPS_PROXY=http://172.16.2.254:3128
+    ports:
+      - 3025:3025
+    env_file:
+      - .env
+    environment:
+      - HTTP_PROXY=http://172.16.2.254:3128
+      - HTTPS_PROXY=http://172.16.2.254:3128
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - DATABASE_URL=sqlite.db
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    restart: unless-stopped
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+    networks:
+      - web-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3025"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# db service is removed
+# db:
+#   image: postgres:13
+#   environment:
+#     POSTGRES_USER: myuser
+#     POSTGRES_PASSWORD: mypassword
+#     POSTGRES_DB: mydb
+#   volumes:
+#     - postgres-data:/var/lib/postgresql/data
+#     - ./docker/db/entrypoint.sh:/docker-entrypoint-initdb.d/entrypoint.sh
+#     - ./src/lib/data/migrations:/docker-entrypoint-initdb.d/migrations
+#   ports:
+#     - "5455:5432"
+#   networks:
+#     - web-network
+
+networks:
+  web-network:
+    driver: bridge
+
+# volumes section can be removed if only postgres-data was defined and is no longer needed
+# volumes:
+#   postgres-data: 

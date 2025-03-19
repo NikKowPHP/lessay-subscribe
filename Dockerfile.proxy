@@ -1,0 +1,25 @@
+FROM node:20.11-alpine3.19
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+WORKDIR /app
+
+RUN npm config set proxy $HTTP_PROXY && \
+    npm config set https-proxy $HTTPS_PROXY && \
+    npm config set registry https://registry.npmjs.org/
+
+COPY package*.json ./
+
+RUN npm ci
+
+COPY . .
+COPY docker/db/entrypoint.sh /docker-entrypoint-initdb.d/entrypoint.sh
+
+RUN chmod +x /docker-entrypoint-initdb.d/entrypoint.sh
+
+EXPOSE 3025
+
+CMD ["npm", "run", "dev"] 
