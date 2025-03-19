@@ -36,6 +36,21 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     }
   }
 
+  const startOnboarding = async () => {
+    setLoading(true)
+    try {
+      await createOnboardingAction()
+      setIsOnboardingComplete(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to start onboarding'
+      setError(message)
+      logger.error(message)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const markStepComplete = async (step: string) => {
     setLoading(true)
     try {
@@ -56,7 +71,14 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   // Check onboarding status on initial load
   useEffect(() => {
-    checkOnboardingStatus()
+    const initializeOnboarding = async () => {
+      const isComplete = await checkOnboardingStatus()
+      if (!isComplete) {
+        await startOnboarding()
+      }
+    }
+
+    initializeOnboarding()
   }, [])
 
   return (
