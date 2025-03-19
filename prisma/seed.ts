@@ -18,23 +18,23 @@ async function main() {
   })
 
   // Create onboarding data
-  const onboarding = await prisma.onboarding.create({
-    data: {
-      userId: user.id,
-      steps: {
-        welcome: true,
-        purpose: true,
-        languages: true,
-        proficiency: false
-      },
-      completed: false,
-      learningPurpose: 'travel',
-      nativeLanguage: 'English',
-      targetLanguage: 'German',
-      proficiencyLevel: ProficiencyLevel.beginner,
-      initialAssessmentCompleted: false,
-    },
-  })
+  // const onboarding = await prisma.onboarding.create({
+  //   data: {
+  //     userId: user.id,
+  //     steps: {
+  //       welcome: true,
+  //       purpose: true,
+  //       languages: true,
+  //       proficiency: false
+  //     },
+  //     completed: false,
+  //     learningPurpose: 'travel',
+  //     nativeLanguage: 'English',
+  //     targetLanguage: 'German',
+  //     proficiencyLevel: ProficiencyLevel.beginner,
+  //     initialAssessmentCompleted: false,
+  //   },
+  // })
 
   // Create assessment lessons
   const assessmentLessons = await Promise.all([
@@ -114,8 +114,8 @@ async function main() {
   ])
 
   console.log(`Created user: ${user.email}`)
-  console.log(`Created onboarding for user`)
-  console.log(`Created onboarding: ${onboarding.id}`)
+  // console.log(`Created onboarding for user`)
+  // console.log(`Created onboarding: ${onboarding.id}`)
   console.log(`Created ${assessmentLessons.length} assessment lessons`)
   console.log(`Created ${lessons.length} regular lessons`)
 }
