@@ -32,10 +32,9 @@ export default function LessonDetailPage() {
   }, [id]);
 
   const handleStepComplete = async (step: LessonStep, userResponse: string) => {
-    // todo: improve this
-    // Fix comparison to use translation instead of content
-
     logger.info('handleStepComplete', { step, userResponse });
+    
+    // Basic validation
     if (!userResponse) {
       throw new Error('there is no response');
     }
@@ -43,11 +42,37 @@ export default function LessonDetailPage() {
       throw new Error('the response is too short');
     }
 
-    const correct =
-      userResponse.trim().toLowerCase() ===
-      (step.translation as string).trim().toLowerCase();
+    let correct = false;
 
-    // Add error handling and use step.stepNumber for updates
+    // Handle different step types
+    switch (step.type) {
+      case 'practice':
+        // For practice steps, compare with the content directly
+        correct = userResponse.trim().toLowerCase() === step.content.trim().toLowerCase();
+        break;
+        
+      case 'new_word':
+      case 'model_answer':
+        // For these types, compare with the translation if available
+        if (step.translation) {
+          correct = userResponse.trim().toLowerCase() === step.translation.trim().toLowerCase();
+        } else {
+          // If no translation, compare with content
+          correct = userResponse.trim().toLowerCase() === step.content.trim().toLowerCase();
+        }
+        break;
+        
+      case 'prompt':
+      case 'user_answer':
+        // These types might not need strict comparison
+        // Consider them correct if there's any response
+        correct = true;
+        break;
+        
+      default:
+        correct = false;
+    }
+
     try {
       await recordStepAttempt(lesson!.id, String(step.stepNumber), {
         userResponse,
