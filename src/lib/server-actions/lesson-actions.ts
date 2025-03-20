@@ -7,10 +7,14 @@ import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
 import { OnboardingModel } from '@/models/AppAllModels.model'
 import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock'
 import { OnboardingRepository } from '@/repositories/onboarding.repository'
+import { getContainer } from '@/container'
+import logger from '@/utils/logger'
+import LessonGeneratorService from '@/services/lesson-generator.service'
+import AIService from '@/services/ai.service'
 
 function createLessonService() {
   const repository = new LessonRepository(getAuthServiceBasedOnEnvironment())
-  return new LessonService(repository, MockLessonGeneratorService, new OnboardingRepository(getAuthServiceBasedOnEnvironment()))
+  return new LessonService(repository, new LessonGeneratorService(new AIService(), true), new OnboardingRepository(getAuthServiceBasedOnEnvironment()))
 }
 
 export async function getLessonsAction() {
@@ -100,4 +104,19 @@ export async function getStepHistoryAction(lessonId: string, stepId: string) {
   }
   const lessonService = createLessonService()
   return await lessonService.getStepHistory(lessonId, stepId)
+}
+
+export async function generateNewLessonsAction(): Promise<LessonModel[]> {
+  // TODO: Ask about what container is and why we use it here.
+  const container = await getContainer()
+  const lessonService = container.resolve<LessonService>('lessonService')
+  
+  try {
+    // Use the existing function but modify for continuation learning
+    return await lessonService.generateNewLessonsBasedOnProgress()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'An error occurred while generating new lessons'
+    logger.error(message)
+    throw new Error(message)
+  }
 }

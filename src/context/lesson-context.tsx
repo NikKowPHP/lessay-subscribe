@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState } from 'react'
-import { getLessonsAction, getLessonByIdAction, createLessonAction, updateLessonAction, completeLessonAction, deleteLessonAction, recordStepAttemptAction, getStepHistoryAction } from '@/lib/server-actions/lesson-actions'
+import { getLessonsAction, getLessonByIdAction, createLessonAction, updateLessonAction, completeLessonAction, deleteLessonAction, recordStepAttemptAction, getStepHistoryAction, generateNewLessonsAction } from '@/lib/server-actions/lesson-actions'
 import logger from '@/utils/logger'
 import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
 import toast from 'react-hot-toast'
@@ -33,6 +33,7 @@ interface LessonContextType {
   }) => Promise<LessonStep>
   getStepHistory: (lessonId: string, stepId: string) => Promise<LessonStep[]>
   setCurrentLesson: (lesson: LessonModel | null) => void
+  checkAndGenerateNewLessons: () => Promise<void>
 }
 
 const LessonContext = createContext<LessonContextType | undefined>(undefined)
@@ -120,6 +121,10 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       if (currentLesson?.id === lessonId) {
         setCurrentLesson(completedLesson)
       }
+      
+      // Check if all lessons are complete and generate new ones if needed
+      await checkAndGenerateNewLessons()
+      
       return completedLesson
     })
   }
@@ -145,7 +150,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       logger.info('recordStepAttempt in context', { lessonId, stepId, data })
       const updatedStep = await recordStepAttemptAction(lessonId, stepId, data)
       logger.info('recordStepAttempt after updation', { updatedStep })
-      // Optionally update the current lesson’s step response locally:
+      // Optionally update the current lesson's step response locally:
       setCurrentLesson(prev => {
         if (!prev) return prev
         const updatedsteps = prev?.steps?.map(s =>
@@ -166,6 +171,38 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   
   const clearError = () => setError(null)
 
+  // Add new method to check if all lessons are complete and generate new ones
+  const checkAndGenerateNewLessons = async () => {
+    // First get the latest list of lessons
+    // TODO: this should be done on the server
+    const currentLessons = await getLessonsAction()
+    
+    // If there are no lessons or not all are complete, just return
+    if (currentLessons.length === 0) return
+    
+    const allComplete = currentLessons.every(lesson => lesson.completed)
+    
+    if (!allComplete) return
+    
+    logger.info('All lessons complete, generating new lessons')
+    
+    try {
+      // Generate new lessons based on aggregated results
+      const newLessons = await generateNewLessonsAction()
+      
+      // TODO: ui does only this check and sets the new lessons, or skips. 
+      // Update local state with new lessons
+      setLessons(prevLessons => [...newLessons, ...prevLessons])
+      
+      // Notify user
+      toast.success('New lessons generated based on your progress!')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to generate new lessons'
+      logger.error(message)
+      toast.error(message)
+    }
+  }
+
   return (
     <LessonContext.Provider value={{
       currentLesson,
@@ -181,7 +218,8 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       deleteLesson,
       recordStepAttempt,
       getStepHistory,
-      setCurrentLesson
+      setCurrentLesson,
+      checkAndGenerateNewLessons,
     }}>
       {children}
     </LessonContext.Provider>

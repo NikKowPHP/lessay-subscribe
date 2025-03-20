@@ -1,9 +1,17 @@
 import { ILessonGeneratorService } from "@/lib/interfaces/all-interfaces"
 
-export const MockLessonGeneratorService: ILessonGeneratorService = {
-  generateLesson: async (topic: string, targetLanguage: string, difficultyLevel: string) => {
-    // Different steps based on topic
-    const lessonTemplates: Record<string, any> = {
+// Helper function outside the object
+function getRandomTopic(lessons: Record<string, any>): string {
+  const topics = Object.keys(lessons);
+  const randomIndex = Math.floor(Math.random() * topics.length);
+  return topics[randomIndex];
+}
+
+export const MockLessonGeneratorService = {
+  generateLesson: async function(topic: string, targetLanguage: string, difficultyLevel: string) {
+    // Combined list of all lessons (initial + advanced)
+    const allLessonTemplates: Record<string, any> = {
+      // Initial lessons
       'Airport Navigation': {
         focusArea: 'Travel',
         targetSkills: ['Vocabulary', 'Asking for Directions'],
@@ -72,45 +80,83 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
           }
         ]
       },
-      'Daily Greetings': {
-        focusArea: 'Everyday Conversation',
-        targetSkills: ['Greetings', 'Small Talk'],
+      // Advanced lessons
+      'Pronunciation Practice': {
+        focusArea: 'Pronunciation Improvement',
+        targetSkills: ['Sound Recognition', 'Accent Reduction'],
         steps: [
           {
             stepNumber: 1,
             type: 'prompt',
-            content: 'To start, say "ready to start"',
-            translation: 'Um zu beginnen, sagen Sie "bereit zu starten"'
+            content: 'To start, say "ready to practice pronunciation"',
+            translation: 'Um zu beginnen, sagen Sie "bereit für die Ausspracheübung"'
           },
           {
             stepNumber: 2,
             type: 'new_word',
-            content: 'Guten Tag',
-            translation: 'Good day'
+            content: 'die Aussprache',
+            translation: 'the pronunciation'
           },
           {
             stepNumber: 3,
             type: 'practice',
-            content: 'Guten Tag'
+            content: 'die Aussprache'
           },
           {
             stepNumber: 4,
             type: 'new_word',
-            content: 'Wie geht es Ihnen?',
-            translation: 'How are you?'
+            content: 'schwierig',
+            translation: 'difficult'
           },
           {
             stepNumber: 5,
             type: 'model_answer',
-            content: 'Gut, danke',
-            translation: 'Good, thank you'
+            content: 'Die Aussprache ist manchmal schwierig',
+            translation: 'The pronunciation is sometimes difficult'
+          }
+        ]
+      },
+      'Grammar Rules': {
+        focusArea: 'Grammar Fundamentals',
+        targetSkills: ['Sentence Structure', 'Verb Conjugation'],
+        steps: [
+          {
+            stepNumber: 1,
+            type: 'prompt',
+            content: 'To start, say "I am ready to learn grammar"',
+            translation: 'Um zu beginnen, sagen Sie "Ich bin bereit, Grammatik zu lernen"'
+          },
+          {
+            stepNumber: 2,
+            type: 'new_word',
+            content: 'die Grammatik',
+            translation: 'the grammar'
+          },
+          {
+            stepNumber: 3,
+            type: 'practice',
+            content: 'die Grammatik'
+          },
+          {
+            stepNumber: 4,
+            type: 'prompt',
+            content: 'How do you say "I learn grammar"?'
+          },
+          {
+            stepNumber: 5,
+            type: 'model_answer',
+            content: 'Ich lerne Grammatik',
+            translation: 'I learn grammar'
           }
         ]
       }
     };
 
-    // Default to a generic lesson if topic not found
-    const lessonData = lessonTemplates[topic] || {
+    // If topic is not specified, pick a random one
+    const selectedTopic = topic || getRandomTopic(allLessonTemplates);
+    
+    // Get lesson data for the selected topic
+    const lessonData = allLessonTemplates[selectedTopic] || {
       focusArea: 'General Conversation',
       targetSkills: ['Vocabulary', 'Basic Phrases'],
       steps: [
@@ -118,7 +164,7 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
           stepNumber: 1,
           type: 'prompt',
           content: 'To start, say "ready to start"',
-          translation: `To start, say "ready to start" `
+          translation: `To start, say "ready to start"`
         },
         {
           stepNumber: 2,
@@ -135,9 +181,21 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
     };
 
     // Log the generated lesson data
-    console.log('Generated lesson data:', { topic, targetLanguage, difficultyLevel, lessonData });
+    console.log('Generated lesson data:', { 
+      topic: selectedTopic, 
+      targetLanguage, 
+      difficultyLevel, 
+      lessonData 
+    });
 
     // Return the lesson data wrapped in an object with a 'data' property
     return { data: [lessonData] };
+  },
+
+  // Helper method to get a random topic
+  getRandomTopic(lessons: Record<string, any>): string {
+    const topics = Object.keys(lessons);
+    const randomIndex = Math.floor(Math.random() * topics.length);
+    return topics[randomIndex];
   }
-};
+}
