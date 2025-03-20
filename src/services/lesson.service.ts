@@ -22,9 +22,15 @@ export default class LessonService implements ILessonRepository {
   }
 
   async getLessonById(lessonId: string): Promise<LessonModel | null> {
-    return this.lessonRepository.getLessonById(lessonId)
+    const lesson = await this.lessonRepository.getLessonById(lessonId)
+    if (lesson) {
+        // Sort steps by stepNumber
+        lesson.steps = lesson.steps.sort((a, b) => a.stepNumber - b.stepNumber)
+    }
+    logger.info('getLessonById', { lesson })
+    return lesson
   }
-
+  
   async createLesson(lessonData: {
     focusArea: string
     targetSkills: string[]

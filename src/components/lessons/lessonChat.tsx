@@ -54,15 +54,25 @@ export default function LessonChat({
 
   // Initialize chat history with the first prompt from the lesson steps
   useEffect(() => {
-    if (lesson && lesson.steps && Array.isArray(lesson.steps)) {
-      const initialHistory: Array<{ type: 'prompt' | 'response'; content: string }> = [];
-      const firstStep = lesson.steps[0]
-      if (firstStep) {
-        initialHistory.push({ type: 'prompt', content: firstStep.content as string })
-      }
-      setChatHistory(initialHistory)
+    if (lesson && lesson.steps && Array.isArray(lesson.steps) && chatHistory.length === 0) {
+        const initialHistory: Array<{ type: 'prompt' | 'response'; content: string }> = [];
+        
+        // Iterate through sorted steps and add prompts + responses
+        lesson.steps.forEach(step => {
+            // Add prompt
+            initialHistory.push({ type: 'prompt', content: step.content as string });
+            
+            // Add user response if present
+            if (step.userResponse) {
+                initialHistory.push({ type: 'response', content: step.userResponse });
+            }
+        });
+
+        setChatHistory(initialHistory);
+        const firstIncompleteStepIndex = lesson.steps.findIndex(step => !step.userResponse);
+        setCurrentStepIndex(firstIncompleteStepIndex >= 0 ? firstIncompleteStepIndex : lesson.steps.length - 1);
     }
-  }, [lesson])
+  }, [lesson]);
 
   // Set up speech recognition
   useEffect(() => {
