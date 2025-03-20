@@ -69,25 +69,33 @@ export default class LessonService implements ILessonRepository {
     
     // Generate lessons for each topic
     const lessonPromises = topics.map(async (topic) => {
-      const generatedLesson = await this.lessonGeneratorService.generateLesson(
+      const generatedResult = await this.lessonGeneratorService.generateLesson(
         topic, 
         targetLanguage, 
         proficiencyLevel
-      )
+      );
+      const lessonItems = Array.isArray(generatedResult.data)
+        ? generatedResult.data
+        : [generatedResult.data];
       
-      // Create a lesson from the generated data
-      const lessonData = {
-        focusArea: generatedLesson.data.focusArea,
-        targetSkills: generatedLesson.data.targetSkills,
-        sequence: generatedLesson.data.sequence as LessonStep[]
-      }
+      // For each lesson item, create a lesson record
+      const createdLessons = await Promise.all(
+        lessonItems.map((lessonItem: any) => {
+          const lessonData = {
+            focusArea: lessonItem.focusArea,
+            targetSkills: lessonItem.targetSkills,
+            sequence: lessonItem.sequence as LessonStep[]
+          }
+          return this.lessonRepository.createLesson(lessonData)
+        })
+      );
       
-      // Persist in repository
-      return this.lessonRepository.createLesson(lessonData)
+      return createdLessons;
     })
     
-    // Wait for all lessons to be created
-    return Promise.all(lessonPromises)
+    // Flatten the nested array of lessons and return
+    const lessonsNested = await Promise.all(lessonPromises);
+    return lessonsNested.flat();
   }
   
   private getTopicsFromLearningPurpose(purpose: string): string[] {

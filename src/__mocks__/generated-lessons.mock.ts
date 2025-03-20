@@ -1,7 +1,5 @@
-import { ILessonGeneratorService } from "@/lib/interfaces/all-interfaces"
-
-export const MockLessonGeneratorService: ILessonGeneratorService = {
-  generateLesson: async (topic: string, targetLanguage: string, difficultyLevel: string) => {
+export const MockLessonGeneratorService = {
+  generateLesson: async (topic: string) => {
     // Different sequences based on topic
     const lessonTemplates: Record<string, any> = {
       'Airport Navigation': {
@@ -28,7 +26,7 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
           {
             step: 4,
             type: 'prompt',
-            content: 'How do you ask "Where is the gate?"',
+            content: 'How do you ask "Where is the gate?"'
           },
           {
             step: 5,
@@ -62,7 +60,7 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
           {
             step: 4,
             type: 'prompt',
-            content: 'How do you say "I have a reservation"',
+            content: 'How do you say "I have a reservation"'
           },
           {
             step: 5,
@@ -118,7 +116,7 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
           step: 1,
           type: 'prompt',
           content: 'To start, say "ready to start"',
-          translation: `To start, say "ready to start" in ${targetLanguage}`
+          translation: `To start, say "ready to start" `
         },
         {
           step: 2,
@@ -134,16 +132,7 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
       ]
     };
 
-    return {
-      data: {
-        ...lessonData,
-        // Add performance metrics
-        performance_metrics: {
-          accuracy: 100,
-          pronunciation_score: 85,
-          error_patterns: []
-        }
-      }
-    };
+    // Return the lesson data wrapped in an array
+    return [lessonData];
   }
 };
