@@ -93,20 +93,28 @@ async function main() {
         lessonId: 'lesson-1',
         focusArea: 'Everyday Conversation',
         targetSkills: ['Greetings', 'Small Talk'],
-        sequence: [
-          {
-            step: 1,
-            type: 'prompt',
-            content: 'How do you introduce yourself?',
-            translation: 'Wie stellst du dich vor?'
-          },
-          {
-            step: 2,
-            type: 'model_answer',
-            content: 'Hello, my name is...',
-            translation: 'Hallo, ich heiße...'
-          }
-        ],
+        steps: {
+          create: [
+            {
+              stepNumber: 1,
+              type: 'prompt',
+              content: 'How do you introduce yourself?',
+              translation: 'Wie stellst du dich vor?',
+              attempts: 0,
+              correct: false,
+              errorPatterns: []
+            },
+            {
+              stepNumber: 2,
+              type: 'model_answer',
+              content: 'Hello, my name is...',
+              translation: 'Hallo, ich heiße...',
+              attempts: 0,
+              correct: false,
+              errorPatterns: []
+            }
+          ]
+        },
         completed: false
       }
     }),

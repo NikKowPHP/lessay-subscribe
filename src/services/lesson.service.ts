@@ -28,12 +28,12 @@ export default class LessonService implements ILessonRepository {
   async createLesson(lessonData: {
     focusArea: string
     targetSkills: string[]
-    sequence: LessonStep[]
+    steps: LessonStep[]
   }): Promise<LessonModel> {
     logger.info('Creating lesson', { 
       focusArea: lessonData.focusArea,
       targetSkills: lessonData.targetSkills,
-      sequenceLength: lessonData.sequence.length
+      stepsLength: lessonData.steps.length
     });
 
     try {
@@ -49,7 +49,7 @@ export default class LessonService implements ILessonRepository {
         lessonData: {
           focusArea: lessonData.focusArea,
           targetSkills: lessonData.targetSkills,
-          sequenceLength: lessonData.sequence.length
+          stepsLength: lessonData.steps.length
         }
       });
       throw error;
@@ -108,7 +108,7 @@ export default class LessonService implements ILessonRepository {
           const lessonData = {
             focusArea: lessonItem.focusArea,
             targetSkills: lessonItem.targetSkills,
-            sequence: lessonItem.sequence as LessonStep[]
+            steps: lessonItem.steps as LessonStep[]
           }
           return this.createLesson(lessonData)
         })
@@ -133,7 +133,7 @@ export default class LessonService implements ILessonRepository {
   async getStepHistory(lessonId: string, stepId: string): Promise<LessonStep[]> {
     return this.lessonRepository.getStepHistory(lessonId, stepId);
   }
-  
+
   
   private getTopicsFromLearningPurpose(purpose: string): string[] {
     // Map learning purposes to relevant topics

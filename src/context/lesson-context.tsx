@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState } from 'react'
-import { getLessonsAction, getLessonByIdAction, createLessonAction, updateLessonAction, completeLessonAction, deleteLessonAction } from '@/lib/server-actions/lesson-actions'
+import { getLessonsAction, getLessonByIdAction, createLessonAction, updateLessonAction, completeLessonAction, deleteLessonAction, recordStepAttemptAction, getStepHistoryAction } from '@/lib/server-actions/lesson-actions'
 import logger from '@/utils/logger'
 import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
 import toast from 'react-hot-toast'
@@ -17,7 +17,7 @@ interface LessonContextType {
   createLesson: (lessonData: {
     focusArea: string
     targetSkills: string[]
-    sequence: LessonStep[]
+    steps: LessonStep[]
   }) => Promise<LessonModel>
   updateLesson: (lessonId: string, lessonData: Partial<LessonModel>) => Promise<LessonModel>
   completeLesson: (lessonId: string, performanceMetrics?: {
@@ -26,6 +26,12 @@ interface LessonContextType {
     errorPatterns?: string[]
   }) => Promise<LessonModel>
   deleteLesson: (lessonId: string) => Promise<void>
+  recordStepAttempt: (lessonId: string, stepId: string, data: {
+    userResponse: string
+    correct: boolean
+    errorPatterns?: string[]
+  }) => Promise<LessonStep>
+  getStepHistory: (lessonId: string, stepId: string) => Promise<LessonStep[]>
   setCurrentLesson: (lesson: LessonModel | null) => void
 }
 
@@ -74,7 +80,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   const createLesson = async (lessonData: {
     focusArea: string
     targetSkills: string[]
-    sequence: LessonStep[]
+    steps: LessonStep[]
   }) => {
     return withLoadingAndErrorHandling(async () => {
       const newLesson = await createLessonAction(lessonData)
@@ -130,6 +136,32 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
+  const recordStepAttempt = async (
+    lessonId: string,
+    stepId: string,
+    data: { userResponse: string; correct: boolean; errorPatterns?: string[] }
+  ) => {
+    return withLoadingAndErrorHandling(async () => {
+      const updatedStep = await recordStepAttemptAction(lessonId, stepId, data)
+      // Optionally update the current lesson’s step response locally:
+      setCurrentLesson(prev => {
+        if (!prev) return prev
+        const updatedsteps = prev?.steps?.map(s =>
+          s.stepNumber === updatedStep.stepNumber ? { ...s, ...updatedStep } : s
+        )
+        return { ...prev, steps: updatedsteps }
+      })
+      return updatedStep
+    })
+  }
+
+  const getStepHistory = async (lessonId: string, stepId: string) => {
+    return withLoadingAndErrorHandling(async () => {
+      const history = await getStepHistoryAction(lessonId, stepId)
+      return history
+    })
+  }
+  
   const clearError = () => setError(null)
 
   return (
@@ -145,6 +177,8 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       updateLesson,
       completeLesson,
       deleteLesson,
+      recordStepAttempt,
+      getStepHistory,
       setCurrentLesson
     }}>
       {children}

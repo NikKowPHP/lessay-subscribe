@@ -20,7 +20,7 @@ export interface ILessonRepository {
   createLesson: (lessonData: { 
     focusArea: string
     targetSkills: string[]
-    sequence: LessonStep[]
+    steps: LessonStep[]
   }) => Promise<LessonModel>
   updateLesson: (lessonId: string, lessonData: Partial<LessonModel>) => Promise<LessonModel>
   completeLesson: (lessonId: string, performanceMetrics?: {

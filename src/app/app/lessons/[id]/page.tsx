@@ -13,7 +13,7 @@ export default function LessonDetailPage() {
   const { id } = useParams()
 
   const { onboarding } = useOnboarding()
-  const {  getLessonById, completeLesson, loading } = useLesson()
+  const { getLessonById, completeLesson, recordStepAttempt, loading } = useLesson()
   const [lesson, setLesson] = useState<LessonModel | null>(null)
 
   useEffect(() => {
@@ -22,15 +22,27 @@ export default function LessonDetailPage() {
       setLesson(fetchedLesson)
     }
     init()
-  }, [id])
+  }, [id, getLessonById])
 
   const handleStepComplete = async (step: LessonStep, userResponse: string) => {
-    // Update step with user response
-    const updatedSteps = lesson?.sequence?.map(s => 
-      s.step === step.step ? { ...s, userResponse } : s
-    ) || []
-    
-    setLesson(prev => prev ? { ...prev, sequence: updatedSteps } : null)
+    // Determine if the user's answer is correct
+    const correct =
+      userResponse.trim().toLowerCase() === (step.content as string).trim().toLowerCase()
+
+    // Record this step attempt in the backend
+    await recordStepAttempt(lesson!.id, step.id, { userResponse, correct })
+
+    // Optionally update local lesson state (if you want to reflect the response immediately)
+    setLesson(prev =>
+      prev
+        ? {
+            ...prev,
+            steps: prev.steps.map(s =>
+              s.stepNumber === step.stepNumber ? { ...s, userResponse } : s
+            )
+          }
+        : null
+    )
   }
 
   const handleLessonComplete = async () => {

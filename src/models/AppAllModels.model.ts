@@ -33,7 +33,7 @@ export interface GeneratedLesson {
   lessonId: string;
   focusArea: string;
   targetSkills: string[];
-  sequence: LessonStep[];
+  steps: LessonStep[];
   completed: boolean;
   createdAt: Date;
   updatedAt: Date;

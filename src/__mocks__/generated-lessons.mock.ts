@@ -2,12 +2,12 @@ import { ILessonGeneratorService } from "@/lib/interfaces/all-interfaces"
 
 export const MockLessonGeneratorService: ILessonGeneratorService = {
   generateLesson: async (topic: string, targetLanguage: string, difficultyLevel: string) => {
-    // Different sequences based on topic
+    // Different stepss based on topic
     const lessonTemplates: Record<string, any> = {
       'Airport Navigation': {
         focusArea: 'Travel',
         targetSkills: ['Vocabulary', 'Asking for Directions'],
-        sequence: [
+        steps: [
           {
             step: 1,
             type: 'prompt',
@@ -41,7 +41,7 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
       'Hotel Booking': {
         focusArea: 'Travel Accommodation',
         targetSkills: ['Booking', 'Requests'],
-        sequence: [
+        steps: [
           {
             step: 1,
             type: 'prompt',
@@ -75,7 +75,7 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
       'Daily Greetings': {
         focusArea: 'Everyday Conversation',
         targetSkills: ['Greetings', 'Small Talk'],
-        sequence: [
+        steps: [
           {
             step: 1,
             type: 'prompt',
@@ -113,7 +113,7 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
     const lessonData = lessonTemplates[topic] || {
       focusArea: 'General Conversation',
       targetSkills: ['Vocabulary', 'Basic Phrases'],
-      sequence: [
+      steps: [
         {
           step: 1,
           type: 'prompt',

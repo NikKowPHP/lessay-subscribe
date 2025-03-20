@@ -29,9 +29,9 @@ export async function getLessonByIdAction(lessonId: string) {
 export async function createLessonAction(lessonData: {
   focusArea: string
   targetSkills: string[]
-  sequence: LessonStep[]
+  steps: LessonStep[]
 }) {
-  if (!lessonData.focusArea || !lessonData.targetSkills || !lessonData.sequence) {
+  if (!lessonData.focusArea || !lessonData.targetSkills || !lessonData.steps) {
     throw new Error('All lesson data is required')
   }
   const lessonService = createLessonService()
@@ -76,4 +76,28 @@ export async function generateInitialLessonsAction(onboardingData: OnboardingMod
   
   const lessonService = createLessonService()
   return await lessonService.generateInitialLessons()
+}
+
+export async function recordStepAttemptAction(
+  lessonId: string,
+  stepId: string,
+  data: {
+    userResponse: string
+    correct: boolean
+    errorPatterns?: string[]
+  }
+) {
+  if (!lessonId || !stepId) {
+    throw new Error('Lesson ID and Step ID are required')
+  }
+  const lessonService = createLessonService()
+  return await lessonService.recordStepAttempt(lessonId, stepId, data)
+}
+
+export async function getStepHistoryAction(lessonId: string, stepId: string) {
+  if (!lessonId || !stepId) {
+    throw new Error('Lesson ID and Step ID are required')
+  }
+  const lessonService = createLessonService()
+  return await lessonService.getStepHistory(lessonId, stepId)
 }

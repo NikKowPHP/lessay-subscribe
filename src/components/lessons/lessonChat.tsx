@@ -52,11 +52,11 @@ export default function LessonChat({
   const recognitionRef = useRef<any>(null)
   const chatMessagesRef = useRef<HTMLDivElement>(null)
 
-  // Initialize chat history with the first prompt from the lesson sequence
+  // Initialize chat history with the first prompt from the lesson steps
   useEffect(() => {
-    if (lesson && lesson.sequence && Array.isArray(lesson.sequence)) {
+    if (lesson && lesson.steps && Array.isArray(lesson.steps)) {
       const initialHistory: Array<{ type: 'prompt' | 'response'; content: string }> = [];
-      const firstStep = lesson.sequence[0]
+      const firstStep = lesson.steps[0]
       if (firstStep) {
         initialHistory.push({ type: 'prompt', content: firstStep.content as string })
       }
@@ -94,9 +94,9 @@ export default function LessonChat({
       logger.info("LessonChat: Recognized speech", { transcript })
 
       // For lessons, you might accept any non-empty answer or compare with an expected answer if available.
-      const currentStep = lesson.sequence[currentStepIndex] as LessonStep
+      const currentStep = lesson.steps[currentStepIndex] as LessonStep
       if (currentStep && currentStep.type === 'prompt' && transcript.trim().length > 3) {
-        handleStepComplete(currentStep, transcript)
+        handleSubmitStep(currentStep, transcript)
       }
     }
 
@@ -125,7 +125,7 @@ export default function LessonChat({
     }
   }, [chatHistory])
 
-  const handleStepComplete = async (step: LessonStep, response: string) => {
+  const handleSubmitStep = async (step: LessonStep, response: string) => {
     if (isListening) {
       pauseListening()
     }
@@ -136,14 +136,14 @@ export default function LessonChat({
       // Append user response to the chat history
       setChatHistory(prev => [...prev, { type: 'response', content: response }])
 
-      if (currentStepIndex < lesson.sequence.length - 1) {
+      if (currentStepIndex < lesson.steps.length - 1) {
         const nextIndex = currentStepIndex + 1
         setCurrentStepIndex(nextIndex)
         setUserResponse('')
 
         // After a short delay, add the next prompt to the chat history and resume listening
         setTimeout(() => {
-          const nextStep = lesson.sequence[nextIndex] as LessonStep
+          const nextStep = lesson.steps[nextIndex] as LessonStep
           setChatHistory(prev => [...prev, { type: 'prompt', content: nextStep.content }])
           startListening()
         }, 1000)
@@ -182,13 +182,13 @@ export default function LessonChat({
   }
 
   const handleMockResponse = (forStep: boolean) => {
-    const currentStep: LessonStep = lesson.sequence[currentStepIndex] as LessonStep
+    const currentStep: LessonStep = lesson.steps[currentStepIndex] as LessonStep
     if (!currentStep) return
     const response = forStep
       ? currentStep.content
       : 'This is a mock response different from the expected'
     setUserResponse(response)
-    handleStepComplete(currentStep, response)
+    handleSubmitStep(currentStep, response)
   }
 
   return (
@@ -196,7 +196,7 @@ export default function LessonChat({
       {/* Chat Header */}
       <div className="p-4 bg-black text-white">
         <h2 className="text-xl font-bold">
-          Lesson: {lesson.focusArea} - Step {currentStepIndex + 1}/{lesson.sequence.length}
+          Lesson: {lesson.focusArea} - Step {currentStepIndex + 1}/{lesson.steps.length}
         </h2>
       </div>
       {/* Chat Messages */}
@@ -228,7 +228,7 @@ export default function LessonChat({
           </button>
           <button
             type="button"
-            onClick={() => handleStepComplete(lesson.sequence[currentStepIndex] as LessonStep, userResponse)}
+            onClick={() => handleSubmitStep(lesson.steps[currentStepIndex] as LessonStep, userResponse)}
             disabled={!userResponse || loading}
             className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
           >

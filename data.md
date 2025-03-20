@@ -2,7 +2,7 @@
   "lesson_id": "AI_GEN_023",
   "focus_area": "food_ordering",
   "target_skills": ["vocabulary", "present_tense"],
-  "sequence": [
+  "steps": [
     {
       "step": 1,
       "type": "prompt",

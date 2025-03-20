@@ -92,7 +92,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
         'Vocabulary',
         'Grammar',
       ],
-      sequence: (aiResponse.sequence as LessonStep[]) || [],
+      steps: (aiResponse.steps as LessonStep[]) || [],
       completed: false,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -112,14 +112,14 @@ class LessonGeneratorService implements ILessonGeneratorService {
     return {
       systemPrompt: `You are a helpful language tutor teaching ${targetLanguage}. 
         Create engaging lessons appropriate for ${difficultyLevel} level learners.
-        Structure the lesson with a sequence of steps including prompts, new words, 
+        Structure the lesson with a steps of steps including prompts, new words, 
         practice opportunities, and model answers.`,
       userPrompt: `Create a comprehensive lesson about "${topic}" in ${targetLanguage} 
         for ${difficultyLevel} level students.
         Format the response as JSON with:
         - focusArea: The main focus of the lesson
         - targetSkills: Array of skills being taught
-        - sequence: Array of lesson steps with:
+        - steps: Array of lesson steps with:
           - step: number (sequential)
           - type: one of [prompt, new_word, practice, model_answer]
           - content: The content of the step
