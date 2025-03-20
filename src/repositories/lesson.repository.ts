@@ -50,7 +50,7 @@ export class LessonRepository implements ILessonRepository {
   async createLesson(lessonData: {
     focusArea: string
     targetSkills: string[]
-    sequence: LessonStep[]
+    steps: LessonStep[]
   }): Promise<LessonModel> {
     try {
       const session = await this.getSession()
@@ -60,10 +60,23 @@ export class LessonRepository implements ILessonRepository {
           lessonId: `lesson-${Date.now()}`,
           focusArea: lessonData.focusArea,
           targetSkills: lessonData.targetSkills,
-          sequence: JSON.parse(JSON.stringify(lessonData.sequence)),
+          steps: {
+            create: lessonData.steps.map(step => ({
+              stepNumber: step.stepNumber,
+              type: step.type,
+              content: step.content,
+              translation: step.translation,
+              attempts: step.attempts || 0,
+              correct: step.correct || false,
+              errorPatterns: step.errorPatterns || []
+            }))
+          },
           completed: false,
           createdAt: new Date(),
           updatedAt: new Date()
+        },
+        include: {
+          steps: true
         }
       })
     } catch (error) {
@@ -77,7 +90,6 @@ export class LessonRepository implements ILessonRepository {
       const session = await this.getSession()
       const data = {
         ...lessonData,
-        sequence: lessonData.sequence ? JSON.parse(JSON.stringify(lessonData.sequence)) : undefined,
         performanceMetrics: lessonData.performanceMetrics ? 
           JSON.parse(JSON.stringify(lessonData.performanceMetrics)) : 
           undefined

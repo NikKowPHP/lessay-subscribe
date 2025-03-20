@@ -45,7 +45,7 @@ export interface LessonModel {
   lessonId: string;
   focusArea: string;
   targetSkills: string[];
-  sequence: JsonValue;
+  steps: LessonStep[];
   performanceMetrics?: JsonValue | null | {
     accuracy?: number;
     pronunciationScore?: number;
@@ -57,6 +57,7 @@ export interface LessonModel {
 }
 
 export interface LessonStep {
+  id: string;
   stepNumber: number;
   type: 'prompt' | 'model_answer' | 'user_answer' | 'new_word' | 'practice';
   content: string;

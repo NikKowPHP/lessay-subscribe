@@ -73,7 +73,6 @@ model Lesson {
   lessonId            String
   focusArea           String
   targetSkills        String[]
-  sequence            Json
   performanceMetrics  Json?
   completed           Boolean   @default(false)
   createdAt           DateTime  @default(now())
