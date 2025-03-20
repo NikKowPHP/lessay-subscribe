@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { useAuth } from '@/context/auth-context'
 import { useLesson } from '@/context/lesson-context'
 import { useOnboarding } from '@/context/onboarding-context'
 import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
 import LessonChat from '@/components/lessons/lessonChat'
+import logger from '@/utils/logger'
 
 export default function LessonDetailPage() {
   const router = useRouter()
@@ -18,31 +18,34 @@ export default function LessonDetailPage() {
 
   useEffect(() => {
     const init = async () => {
+      logger.info('init', { id })
       const fetchedLesson = await getLessonById(id as string)
       setLesson(fetchedLesson)
     }
     init()
-  }, [id, getLessonById])
+  }, [id])
 
   const handleStepComplete = async (step: LessonStep, userResponse: string) => {
-    // Determine if the user's answer is correct
-    const correct =
-      userResponse.trim().toLowerCase() === (step.content as string).trim().toLowerCase()
+    // Fix comparison to use translation instead of content
 
-    // Record this step attempt in the backend
-    await recordStepAttempt(lesson!.id, step.id, { userResponse, correct })
+    logger.info('handleStepComplete', { step, userResponse })
 
-    // Optionally update local lesson state (if you want to reflect the response immediately)
-    setLesson(prev =>
-      prev
-        ? {
+    const correct = userResponse.trim().toLowerCase() === 
+      (step.translation as string).trim().toLowerCase()
+
+    // Add error handling and use step.stepNumber for updates
+    try {
+        await recordStepAttempt(lesson!.id, String(step.stepNumber), { userResponse, correct })
+        
+        setLesson(prev => prev ? {
             ...prev,
-            steps: prev.steps.map(s =>
-              s.stepNumber === step.stepNumber ? { ...s, userResponse } : s
+            steps: prev.steps.map(s => 
+                s.stepNumber === step.stepNumber ? { ...s, userResponse } : s
             )
-          }
-        : null
-    )
+        } : null)
+    } catch (error) {
+      logger.error("Failed to record step attempt:", error)
+    }
   }
 
   const handleLessonComplete = async () => {

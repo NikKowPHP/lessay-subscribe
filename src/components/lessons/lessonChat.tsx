@@ -129,26 +129,23 @@ export default function LessonChat({
     if (isListening) {
       pauseListening()
     }
+    
     try {
       await onStepComplete(step, response)
-      logger.info("LessonChat: Step completed", { step, response })
-
-      // Append user response to the chat history
-      setChatHistory(prev => [...prev, { type: 'response', content: response }])
-
-      if (currentStepIndex < lesson.steps.length - 1) {
-        const nextIndex = currentStepIndex + 1
-        setCurrentStepIndex(nextIndex)
+      
+      // Use step.stepNumber instead of index for reliability
+      const nextStep = lesson.steps.find(s => s.stepNumber === step.stepNumber + 1)
+      
+      if (nextStep) {
+        setCurrentStepIndex(prev => prev + 1)
         setUserResponse('')
-
-        // After a short delay, add the next prompt to the chat history and resume listening
-        setTimeout(() => {
-          const nextStep = lesson.steps[nextIndex] as LessonStep
-          setChatHistory(prev => [...prev, { type: 'prompt', content: nextStep.content }])
-          startListening()
-        }, 1000)
+        // Add next prompt immediately
+        setChatHistory(prev => [...prev, 
+          { type: 'response', content: response },
+          { type: 'prompt', content: nextStep.content }
+        ])
+        startListening()
       } else {
-        // When finished with all steps, complete the lesson flow
         onComplete()
       }
     } catch (error) {

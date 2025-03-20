@@ -142,7 +142,9 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     data: { userResponse: string; correct: boolean; errorPatterns?: string[] }
   ) => {
     return withLoadingAndErrorHandling(async () => {
+      logger.info('recordStepAttempt in context', { lessonId, stepId, data })
       const updatedStep = await recordStepAttemptAction(lessonId, stepId, data)
+      logger.info('recordStepAttempt after updation', { updatedStep })
       // Optionally update the current lesson’s step response locally:
       setCurrentLesson(prev => {
         if (!prev) return prev

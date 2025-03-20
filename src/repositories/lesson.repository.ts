@@ -172,9 +172,28 @@ export class LessonRepository implements ILessonRepository {
     correct: boolean
     errorPatterns?: string[]
   }): Promise<LessonStep> {
+    // Convert stepId to number and find by stepNumber
+    const stepNumber = parseInt(stepId)
     
+    // First get the existing step to validate existence
+    const existingStep = await prisma.lessonStep.findFirst({
+      where: { 
+        lessonId,
+        stepNumber 
+      }
+    })
+
+    if (!existingStep) {
+      throw new Error(`Step ${stepNumber} not found in lesson ${lessonId}`)
+    }
+    logger.info('existingStep in repo', { existingStep })
+
+    // Update using the database ID from existing step
     return prisma.lessonStep.update({
-      where: { id: stepId, lessonId },
+      where: { 
+        id: existingStep.id,
+        lessonId 
+      },
       data: {
         attempts: { increment: 1 },
         userResponse: data.userResponse,
@@ -182,8 +201,6 @@ export class LessonRepository implements ILessonRepository {
         errorPatterns: data.errorPatterns,
         lastAttemptAt: new Date()
       }
-    });
+    })
   }
-
-  
 }
