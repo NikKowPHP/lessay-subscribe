@@ -88,7 +88,7 @@ export class OnboardingRepository implements IOnboardingRepository {
       const session = await this.getSession()
       return await prisma.onboarding.update({
         where: { userId: session.user.id },
-        data: { completed: true }
+        data: { completed: true, createdAt: new Date(), updatedAt: new Date(), initialAssessmentCompleted: true }
       })
     } catch (error) {
       logger.error('Error completing onboarding:', error)

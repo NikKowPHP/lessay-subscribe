@@ -27,6 +27,7 @@ export default class OnboardingService implements IOnboardingRepository {
   }
 
   completeOnboarding = async (): Promise<OnboardingModel> => {
+    
     const onboarding = await this.onboardingRepository.completeOnboarding()
     await this.lessonService.generateInitialLessons()
     return onboarding
