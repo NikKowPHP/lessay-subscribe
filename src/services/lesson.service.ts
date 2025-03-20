@@ -74,6 +74,8 @@ export default class LessonService implements ILessonRepository {
       errorPatterns?: string[]
     }
   ): Promise<LessonModel> {
+    // todo: ai handle and give perfomance metrics
+    // todo: create perfomance metrics. from attemts and so on 
     return this.lessonRepository.completeLesson(lessonId, performanceMetrics)
   }
 
