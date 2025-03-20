@@ -33,7 +33,7 @@ export default function LessonsPage() {
     }
 
     init()
-  }, [user, isOnboardingComplete, getLessons, router])
+  }, [user, isOnboardingComplete ])
 
   const handleStartLesson = (lesson: LessonModel) => {
     router.push(`/app/lessons/${lesson.id}`)

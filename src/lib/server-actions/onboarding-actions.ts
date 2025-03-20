@@ -16,7 +16,7 @@ import { LessonRepository } from '@/repositories/lesson.repository'
 function createOnboardingService() {
   const repository = new OnboardingRepository(getAuthServiceBasedOnEnvironment())
   const lessonRepository = new LessonRepository(getAuthServiceBasedOnEnvironment())
-  return new OnboardingService(repository, new LessonService(lessonRepository, MockLessonGeneratorService))
+  return new OnboardingService(repository, new LessonService(lessonRepository, MockLessonGeneratorService, repository))
 }
 
 export async function createOnboardingAction() {

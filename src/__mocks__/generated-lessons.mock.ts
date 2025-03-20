@@ -134,7 +134,10 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
       ]
     };
 
-    // Return the lesson data wrapped in an array
-    return [lessonData];
+    // Log the generated lesson data
+    console.log('Generated lesson data:', { topic, targetLanguage, difficultyLevel, lessonData });
+
+    // Return the lesson data wrapped in an object with a 'data' property
+    return { data: [lessonData] };
   }
 };
