@@ -61,7 +61,9 @@ export class LessonRepository implements ILessonRepository {
           focusArea: lessonData.focusArea,
           targetSkills: lessonData.targetSkills,
           sequence: JSON.parse(JSON.stringify(lessonData.sequence)),
-          completed: false
+          completed: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
         }
       })
     } catch (error) {
@@ -131,42 +133,7 @@ export class LessonRepository implements ILessonRepository {
     }
   }
 
-  async generateInitialLessons(): Promise<LessonModel[]> {
-    try {
-      const session = await this.getSession()
-      const userId = session.user.id
-      
-      // Define basic lesson templates based on proficiency level
-      const lessonTemplates = this.getLessonTemplatesForProficiency(
-        onboardingData.targetLanguage || 'English',
-        onboardingData.proficiencyLevel || 'beginner',
-        onboardingData.learningPurpose || 'general'
-      )
-      
-      // Create all lessons in a batch
-      const createdLessons = await Promise.all(
-        lessonTemplates.map(template => 
-          prisma.lesson.create({
-            data: {
-              userId,
-              lessonId: `lesson-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              focusArea: template.focusArea,
-              targetSkills: template.targetSkills,
-              sequence: template.sequence,
-              completed: false,
-              difficultyLevel: template.difficultyLevel || 'beginner',
-              estimatedTimeMinutes: template.estimatedTimeMinutes || 15,
-            }
-          })
-        )
-      )
-      
-      return createdLessons
-    } catch (error) {
-      logger.error('Error generating initial lessons:', error)
-      throw error
-    }
-  }
+  
   
   private getLessonTemplatesForProficiency(
     targetLanguage: string, 

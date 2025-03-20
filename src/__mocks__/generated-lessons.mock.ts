@@ -1,5 +1,7 @@
-export const MockLessonGeneratorService = {
-  generateLesson: async (topic: string) => {
+import { ILessonGeneratorService } from "@/lib/interfaces/all-interfaces"
+
+export const MockLessonGeneratorService: ILessonGeneratorService = {
+  generateLesson: async (topic: string, targetLanguage: string, difficultyLevel: string) => {
     // Different sequences based on topic
     const lessonTemplates: Record<string, any> = {
       'Airport Navigation': {

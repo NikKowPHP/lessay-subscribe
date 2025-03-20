@@ -1,5 +1,6 @@
 import { LessonModel, LessonStep, OnboardingModel } from "@/models/AppAllModels.model"
 import { ILessonGeneratorService, ILessonRepository, IOnboardingRepository } from "@/lib/interfaces/all-interfaces"
+import logger from "@/utils/logger"
 
 export default class LessonService implements ILessonRepository {
   private lessonRepository: ILessonRepository
@@ -29,7 +30,30 @@ export default class LessonService implements ILessonRepository {
     targetSkills: string[]
     sequence: LessonStep[]
   }): Promise<LessonModel> {
-    return this.lessonRepository.createLesson(lessonData)
+    logger.info('Creating lesson', { 
+      focusArea: lessonData.focusArea,
+      targetSkills: lessonData.targetSkills,
+      sequenceLength: lessonData.sequence.length
+    });
+
+    try {
+      const createdLesson = await this.lessonRepository.createLesson(lessonData);
+      logger.info('Lesson created successfully', { 
+        lessonId: createdLesson.id,
+        userId: createdLesson.userId
+      });
+      return createdLesson;
+    } catch (error) {
+      logger.error('Error creating lesson', { 
+        error: (error as Error).message,
+        lessonData: {
+          focusArea: lessonData.focusArea,
+          targetSkills: lessonData.targetSkills,
+          sequenceLength: lessonData.sequence.length
+        }
+      });
+      throw error;
+    }
   }
 
   async updateLesson(lessonId: string, lessonData: Partial<LessonModel>): Promise<LessonModel> {
@@ -51,7 +75,7 @@ export default class LessonService implements ILessonRepository {
     return this.lessonRepository.deleteLesson(lessonId)
   }
 
-  async generateInitialLessons(userId: string): Promise<LessonModel[]> {
+  async generateInitialLessons(): Promise<LessonModel[]> {
     // Get user onboarding data to extract learning preferences
     const onboardingData = await this.onboardingRepository.getOnboarding()
     
@@ -86,7 +110,7 @@ export default class LessonService implements ILessonRepository {
             targetSkills: lessonItem.targetSkills,
             sequence: lessonItem.sequence as LessonStep[]
           }
-          return this.lessonRepository.createLesson(lessonData)
+          return this.createLesson(lessonData)
         })
       );
       

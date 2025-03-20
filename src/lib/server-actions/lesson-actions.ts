@@ -6,10 +6,11 @@ import { getAuthServiceBasedOnEnvironment  } from '@/services/supabase-auth.serv
 import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
 import { OnboardingModel } from '@/models/AppAllModels.model'
 import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock'
+import { OnboardingRepository } from '@/repositories/onboarding.repository'
 
 function createLessonService() {
   const repository = new LessonRepository(getAuthServiceBasedOnEnvironment())
-  return new LessonService(repository, MockLessonGeneratorService)
+  return new LessonService(repository, MockLessonGeneratorService, new OnboardingRepository(getAuthServiceBasedOnEnvironment()))
 }
 
 export async function getLessonsAction() {

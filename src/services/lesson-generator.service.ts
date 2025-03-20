@@ -16,6 +16,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
   ) {
     this.aiService = aiService;
     this.useMock = useMock;
+    logger.info('LessonGeneratorService initialized', { useMock });
   }
 
   async generateLesson(
@@ -23,19 +24,20 @@ class LessonGeneratorService implements ILessonGeneratorService {
     targetLanguage: string,
     difficultyLevel: string
   ): Promise<Record<string, unknown>> {
+    logger.info('Generating lesson', { topic, targetLanguage, difficultyLevel });
     try {
       if (this.useMock) {
-        logger.log('Using mock lesson generator for topic:', topic);
+        logger.info('Using mock lesson generator for topic:', topic);
         const mockLesson = await MockLessonGeneratorService.generateLesson(topic);
-        // Wrap the mock lesson in an object with a 'data' property as an array.
+        logger.info('Mock lesson generated', { topic, mockLesson });
         return { data: Array.isArray(mockLesson) ? mockLesson : [mockLesson] };
       } else {
-        // Otherwise use the actual AI service
         const prompts = this.generateLessonPrompts(
           topic,
           targetLanguage,
           difficultyLevel
         );
+        logger.info('Generated prompts for lesson', { prompts });
 
         const aiResponse = await retryOperation(() =>
           this.aiService.generateContent(
@@ -45,18 +47,18 @@ class LessonGeneratorService implements ILessonGeneratorService {
             models.gemini_2_pro_exp
           )
         );
+        logger.info('AI response received', { aiResponse });
 
-        // Make sure aiResponse is an array, then format each lesson
         const lessonsArray = Array.isArray(aiResponse) ? aiResponse : [aiResponse];
         const generatedLessons = lessonsArray.map((lesson) =>
           this.formatLessonResponse(lesson)
         );
+        logger.info('Formatted lessons', { generatedLessons });
 
-        logger.log('Generated Lesson for topic:', topic);
         return { data: generatedLessons };
       }
     } catch (error) {
-      logger.error('Error generating lesson:', error);
+      logger.error('Error generating lesson:', { topic, targetLanguage, difficultyLevel, error });
       throw error;
     }
   }
@@ -64,6 +66,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
   private formatLessonResponse(
     aiResponse: Record<string, unknown>
   ): GeneratedLesson {
+    logger.info('Formatting lesson response', { aiResponse });
     return {
       id: '', // Populated when saved to the database.
       userId: '', // Will be assigned in the lesson service.
@@ -82,6 +85,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
     targetLanguage: string,
     difficultyLevel: string
   ): { userPrompt: string; systemPrompt: string } {
+    logger.info('Generating lesson prompts', { topic, targetLanguage, difficultyLevel });
     return {
       systemPrompt: `You are a helpful language tutor teaching ${targetLanguage}. 
         Create engaging lessons appropriate for ${difficultyLevel} level learners.
