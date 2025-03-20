@@ -9,31 +9,19 @@ import { LessonModel } from '@/models/AppAllModels.model'
 
 export default function LessonsPage() {
   const router = useRouter()
-  const { user } = useAuth()
-  const { isOnboardingComplete, onboarding } = useOnboarding()
+  const { onboarding } = useOnboarding()
   const { lessons, getLessons, loading } = useLesson()
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
     const init = async () => {
-      // Check if user is logged in and onboarding is complete
-      if (!user) {
-        router.push('/app/login')
-        return
-      }
-
-      if (!isOnboardingComplete) {
-        router.push('/app/onboarding')
-        return
-      }
-
       // Fetch lessons
       await getLessons()
       setInitialized(true)
     }
 
     init()
-  }, [user, isOnboardingComplete ])
+  }, [])
 
   const handleStartLesson = (lesson: LessonModel) => {
     router.push(`/app/lessons/${lesson.id}`)

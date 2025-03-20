@@ -11,29 +11,18 @@ import LessonChat from '@/components/lessons/lessonChat'
 export default function LessonDetailPage() {
   const router = useRouter()
   const { id } = useParams()
-  const { user } = useAuth()
-  const { isOnboardingComplete,onboarding } = useOnboarding()
-  const { lessons, getLessonById, completeLesson, loading } = useLesson()
+
+  const { onboarding } = useOnboarding()
+  const {  getLessonById, completeLesson, loading } = useLesson()
   const [lesson, setLesson] = useState<LessonModel | null>(null)
 
   useEffect(() => {
     const init = async () => {
-      if (!user) {
-        router.push('/app/login')
-        return
-      }
-
-      if (!isOnboardingComplete) {
-        router.push('/app/onboarding')
-        return
-      }
-
       const fetchedLesson = await getLessonById(id as string)
       setLesson(fetchedLesson)
     }
-
     init()
-  }, [user, isOnboardingComplete, id])
+  }, [id])
 
   const handleStepComplete = async (step: LessonStep, userResponse: string) => {
     // Update step with user response

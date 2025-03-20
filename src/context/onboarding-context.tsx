@@ -106,7 +106,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     const initializeOnboarding = async () => {
       try {
         const isComplete = await checkOnboardingStatus()
-        
         if (!isComplete) {
           await startOnboarding()
           

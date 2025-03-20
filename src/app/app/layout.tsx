@@ -17,7 +17,6 @@ export default function AdminLayout({
           </div>
           <Toaster />
         </LessonProvider>
-        <Toaster />
       </OnboardingProvider>
     </AuthProvider>
   )

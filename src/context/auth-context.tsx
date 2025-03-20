@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
+ 
     authService.getSession().then((session) => {
       setSession(session)
       setUser(session?.user ?? null)
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user)
       setSession(session)
       if (user) {
-        router.push('/app/')
+        router.push('/app/lessons')
       }
     } catch (error) {
       const message = error instanceof AuthError 
