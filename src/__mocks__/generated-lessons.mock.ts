@@ -2,36 +2,36 @@ import { ILessonGeneratorService } from "@/lib/interfaces/all-interfaces"
 
 export const MockLessonGeneratorService: ILessonGeneratorService = {
   generateLesson: async (topic: string, targetLanguage: string, difficultyLevel: string) => {
-    // Different stepss based on topic
+    // Different steps based on topic
     const lessonTemplates: Record<string, any> = {
       'Airport Navigation': {
         focusArea: 'Travel',
         targetSkills: ['Vocabulary', 'Asking for Directions'],
         steps: [
           {
-            step: 1,
+            stepNumber: 1,
             type: 'prompt',
             content: 'To start, say "ready to start"',
             translation: 'Um zu beginnen, sagen Sie "bereit zu starten"'
           },
           {
-            step: 2,
+            stepNumber: 2,
             type: 'new_word',
             content: 'der Flughafen',
             translation: 'the airport'
           },
           {
-            step: 3,
+            stepNumber: 3,
             type: 'practice',
             content: 'der Flughafen'
           },
           {
-            step: 4,
+            stepNumber: 4,
             type: 'prompt',
             content: 'How do you ask "Where is the gate?"'
           },
           {
-            step: 5,
+            stepNumber: 5,
             type: 'model_answer',
             content: 'Wo ist das Gate?',
             translation: 'Where is the gate?'
@@ -43,29 +43,29 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
         targetSkills: ['Booking', 'Requests'],
         steps: [
           {
-            step: 1,
+            stepNumber: 1,
             type: 'prompt',
             content: 'To start, say "ready to start"',
             translation: 'Um zu beginnen, sagen Sie "bereit zu starten"'
           },
           {
-            step: 2,
+            stepNumber: 2,
             type: 'new_word',
             content: 'das Hotel',
             translation: 'the hotel'
           },
           {
-            step: 3,
+            stepNumber: 3,
             type: 'practice',
             content: 'das Hotel'
           },
           {
-            step: 4,
+            stepNumber: 4,
             type: 'prompt',
             content: 'How do you say "I have a reservation"'
           },
           {
-            step: 5,
+            stepNumber: 5,
             type: 'model_answer',
             content: 'Ich habe eine Reservierung',
             translation: 'I have a reservation'
@@ -77,30 +77,30 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
         targetSkills: ['Greetings', 'Small Talk'],
         steps: [
           {
-            step: 1,
+            stepNumber: 1,
             type: 'prompt',
             content: 'To start, say "ready to start"',
             translation: 'Um zu beginnen, sagen Sie "bereit zu starten"'
           },
           {
-            step: 2,
+            stepNumber: 2,
             type: 'new_word',
             content: 'Guten Tag',
             translation: 'Good day'
           },
           {
-            step: 3,
+            stepNumber: 3,
             type: 'practice',
             content: 'Guten Tag'
           },
           {
-            step: 4,
+            stepNumber: 4,
             type: 'new_word',
             content: 'Wie geht es Ihnen?',
             translation: 'How are you?'
           },
           {
-            step: 5,
+            stepNumber: 5,
             type: 'model_answer',
             content: 'Gut, danke',
             translation: 'Good, thank you'
@@ -115,19 +115,19 @@ export const MockLessonGeneratorService: ILessonGeneratorService = {
       targetSkills: ['Vocabulary', 'Basic Phrases'],
       steps: [
         {
-          step: 1,
+          stepNumber: 1,
           type: 'prompt',
           content: 'To start, say "ready to start"',
           translation: `To start, say "ready to start" `
         },
         {
-          step: 2,
+          stepNumber: 2,
           type: 'new_word',
           content: 'Hello',
           translation: 'Hello'
         },
         {
-          step: 3,
+          stepNumber: 3,
           type: 'practice',
           content: 'Hello'
         }

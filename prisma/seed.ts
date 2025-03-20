@@ -1,5 +1,5 @@
 import {  ProficiencyLevel } from '@prisma/client'
-import prisma from '@/lib/prisma'
+import prisma from '../src/lib/prisma'
 
 async function main() {
   // Clear existing data in the correct order
@@ -18,23 +18,23 @@ async function main() {
   })
 
   // Create onboarding data
-  // const onboarding = await prisma.onboarding.create({
-  //   data: {
-  //     userId: user.id,
-  //     steps: {
-  //       welcome: true,
-  //       purpose: true,
-  //       languages: true,
-  //       proficiency: false
-  //     },
-  //     completed: false,
-  //     learningPurpose: 'travel',
-  //     nativeLanguage: 'English',
-  //     targetLanguage: 'German',
-  //     proficiencyLevel: ProficiencyLevel.beginner,
-  //     initialAssessmentCompleted: false,
-  //   },
-  // })
+  const onboarding = await prisma.onboarding.create({
+    data: {
+      userId: user.id,
+      steps: {
+        welcome: true,
+        purpose: true,
+        languages: true,
+        proficiency: false
+      },
+      completed: false,
+      learningPurpose: 'travel',
+      nativeLanguage: 'English',
+      targetLanguage: 'German',
+      proficiencyLevel: ProficiencyLevel.beginner,
+      initialAssessmentCompleted: false,
+    },
+  })
 
   // Create assessment lessons
   const assessmentLessons = await Promise.all([
