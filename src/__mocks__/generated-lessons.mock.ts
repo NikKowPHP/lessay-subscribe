@@ -12,7 +12,7 @@ export const MockLessonGeneratorService = {
     // Combined list of all lessons (initial + advanced)
     const allLessonTemplates: Record<string, any> = {
       // Initial lessons
-      'Airport Navigation': {
+      'Vocabulary Building': {
         focusArea: 'Travel',
         targetSkills: ['Vocabulary', 'Asking for Directions'],
         steps: [
