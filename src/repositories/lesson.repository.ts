@@ -144,7 +144,6 @@ export class LessonRepository implements ILessonRepository {
     correct: boolean
     errorPatterns?: string[]
   }): Promise<LessonStep> {
-    const session = await this.getSession();
     
     return prisma.lessonStep.update({
       where: { id: stepId, lessonId },

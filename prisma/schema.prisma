@@ -83,12 +83,21 @@ model Lesson {
   @@map("lessons")
 }
 
+
+enum LessonStepType {
+  prompt
+  model_answer
+  user_answer
+  new_word
+  practice
+}
+
 model LessonStep {
   id              String   @id @default(cuid())
   lessonId        String
   lesson          Lesson   @relation(fields: [lessonId], references: [id])
   stepNumber      Int
-  type            String
+  type            LessonStepType
   content         String
   translation     String?
   userResponse    String?

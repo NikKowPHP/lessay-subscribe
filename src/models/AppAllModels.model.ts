@@ -57,15 +57,15 @@ export interface LessonModel {
 }
 
 export interface LessonStep {
-  step: number;
+  stepNumber: number;
   type: 'prompt' | 'model_answer' | 'user_answer' | 'new_word' | 'practice';
   content: string;
-  translation?: string;
-  userResponse?: string;
+  translation?: string | null;
+  userResponse?: string | null;
   audioUrl?: string;
   attempts: number;
   correct: boolean;
-  lastAttemptAt?: Date;
+  lastAttemptAt?: Date | null;
   errorPatterns?: string[];
 }
 
