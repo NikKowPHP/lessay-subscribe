@@ -63,6 +63,10 @@ export interface LessonStep {
   translation?: string;
   userResponse?: string;
   audioUrl?: string;
+  attempts: number;
+  correct: boolean;
+  lastAttemptAt?: Date;
+  errorPatterns?: string[];
 }
 
 // Add other models as needed

@@ -78,6 +78,26 @@ model Lesson {
   completed           Boolean   @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+  steps               LessonStep[]
 
   @@map("lessons")
+}
+
+model LessonStep {
+  id              String   @id @default(cuid())
+  lessonId        String
+  lesson          Lesson   @relation(fields: [lessonId], references: [id])
+  stepNumber      Int
+  type            String
+  content         String
+  translation     String?
+  userResponse    String?
+  attempts        Int      @default(0)
+  correct         Boolean  @default(false)
+  lastAttemptAt   DateTime?
+  errorPatterns   String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("lesson_steps")
 }

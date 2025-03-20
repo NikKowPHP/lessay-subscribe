@@ -29,6 +29,12 @@ export interface ILessonRepository {
     errorPatterns?: string[]
   }) => Promise<LessonModel>
   deleteLesson: (lessonId: string) => Promise<void>
+  recordStepAttempt: (lessonId: string, stepId: string, data: {
+    userResponse: string
+    correct: boolean
+    errorPatterns?: string[]
+  }) => Promise<LessonStep>
+  getStepHistory: (lessonId: string, stepId: string) => Promise<LessonStep[]>
 }
 
 

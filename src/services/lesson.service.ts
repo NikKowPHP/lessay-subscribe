@@ -121,6 +121,19 @@ export default class LessonService implements ILessonRepository {
     const lessonsNested = await Promise.all(lessonPromises);
     return lessonsNested.flat();
   }
+
+  async recordStepAttempt(lessonId: string, stepId: string, data: {
+    userResponse: string
+    correct: boolean
+    errorPatterns?: string[]
+  }): Promise<LessonStep> {
+    return this.lessonRepository.recordStepAttempt(lessonId, stepId, data);
+  }
+  
+  async getStepHistory(lessonId: string, stepId: string): Promise<LessonStep[]> {
+    return this.lessonRepository.getStepHistory(lessonId, stepId);
+  }
+  
   
   private getTopicsFromLearningPurpose(purpose: string): string[] {
     // Map learning purposes to relevant topics
