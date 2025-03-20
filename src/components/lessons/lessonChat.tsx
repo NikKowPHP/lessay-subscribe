@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
 import logger from '@/utils/logger'
 import { mapLanguageToCode } from '@/utils/map-language-to-code.util'
+import ChatMessages, { ChatMessage } from './ChatMessages'
+import ChatInput from './ChatInput'
 
 // Add this interface at the top of the file
 interface SpeechRecognitionEvent extends Event {
@@ -47,14 +49,14 @@ export default function LessonChat({
   const [userResponse, setUserResponse] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [feedback, setFeedback] = useState('')
-  const [chatHistory, setChatHistory] = useState<Array<{ type: 'prompt' | 'response'; content: string }>>([])
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
 
   const recognitionRef = useRef<any>(null)
   const chatMessagesRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (lesson && lesson.steps && Array.isArray(lesson.steps) && chatHistory.length === 0) {
-        const initialHistory: Array<{ type: 'prompt' | 'response'; content: string }> = [];
+        const initialHistory: ChatMessage[] = [];
         
         // Find the last completed step
         let lastCompletedIndex = -1;
@@ -109,7 +111,8 @@ export default function LessonChat({
     }
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = Array.from(event.results)
+      const speechEvent = event as SpeechRecognitionEvent
+      const transcript = Array.from(speechEvent.results)
         .map((result) => result[0])
         .map((result) => result.transcript)
         .join('');
@@ -209,6 +212,12 @@ export default function LessonChat({
     }
   }
 
+  // A wrapper to trigger submission from the input component.
+  const handleSubmit = () => {
+    const currentStep = lesson.steps[currentStepIndex] as LessonStep
+    handleSubmitStep(currentStep, userResponse)
+  }
+
   const handleMockResponse = (forStep: boolean) => {
     const currentStep: LessonStep = lesson.steps[currentStepIndex] as LessonStep
     if (!currentStep) return
@@ -229,59 +238,35 @@ export default function LessonChat({
       </div>
       {/* Chat Messages */}
       <div ref={chatMessagesRef} className="flex-1 p-4 overflow-y-auto space-y-4">
-        {chatHistory.map((msg, index) => (
-          <div key={index} className={`flex ${msg.type === 'prompt' ? 'justify-start' : 'justify-end'}`}>
-            <div className={`max-w-[75%] p-3 rounded-lg ${msg.type === 'prompt' ? 'bg-gray-200 text-gray-800' : 'bg-blue-600 text-white'}`}>
-              {msg.content}
-            </div>
-          </div>
-        ))}
+        <ChatMessages messages={chatHistory} />
       </div>
       {/* User Input Area */}
-      <div className="border-t p-4 bg-white">
-        <div className="mb-4 min-h-[60px] p-2 border rounded-md bg-gray-50">
-          {userResponse || (isListening ? 'Listening...' : 'Ready to listen')}
-        </div>
-        {feedback && (
-          <div className="text-sm text-gray-500 mb-2">{feedback}</div>
-        )}
-        <div className="flex space-x-4">
+      <ChatInput
+        userResponse={userResponse}
+        isListening={isListening}
+        feedback={feedback}
+        onToggleListening={toggleListening}
+        onSubmit={handleSubmit}
+        disableSubmit={!userResponse || loading}
+      />
+      {process.env.NEXT_PUBLIC_MOCK_USER_RESPONSES === 'true' && (
+        <div className="flex space-x-2 mt-4 p-4">
           <button
             type="button"
-            onClick={toggleListening}
-            disabled={loading}
-            className={`flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50`}
+            onClick={() => handleMockResponse(true)}
+            className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
           >
-            {isListening ? 'Pause Listening' : 'Start Listening'}
+            Mock Correct Response
           </button>
           <button
             type="button"
-            onClick={() => handleSubmitStep(lesson.steps[currentStepIndex] as LessonStep, userResponse)}
-            disabled={!userResponse || loading}
-            className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
+            onClick={() => handleMockResponse(false)}
+            className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
           >
-            Skip & Continue
+            Mock Incorrect Response
           </button>
         </div>
-        {process.env.NEXT_PUBLIC_MOCK_USER_RESPONSES === 'true' && (
-          <div className="flex space-x-2 mt-4">
-            <button
-              type="button"
-              onClick={() => handleMockResponse(true)}
-              className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
-            >
-              Mock Correct Response
-            </button>
-            <button
-              type="button"
-              onClick={() => handleMockResponse(false)}
-              className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
-            >
-              Mock Incorrect Response
-            </button>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   )
 }

@@ -104,7 +104,7 @@ export default function LessonDetailPage() {
     }
   };
 
-  if (!lesson || loading) {
+  if (!lesson && loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black mb-4"></div>
@@ -267,7 +267,7 @@ export default function LessonDetailPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <LessonChat
-        lesson={lesson}
+        lesson={lesson as LessonModel}
         onComplete={handleLessonComplete}
         onStepComplete={handleStepComplete}
         loading={loading}
