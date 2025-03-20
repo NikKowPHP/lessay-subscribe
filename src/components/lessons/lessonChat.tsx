@@ -136,6 +136,14 @@ export default function LessonChat({
   }, [chatHistory])
 
   const handleSubmitStep = async (step: LessonStep, response: string) => {
+    if(!response) {
+      setFeedback('there is no response')
+      throw new Error('there is no response')
+    }
+    if(response.length < 3) {
+      setFeedback('the response is too short')
+      throw new Error('the response is too short')
+    }
     if (isListening) {
       pauseListening()
     }

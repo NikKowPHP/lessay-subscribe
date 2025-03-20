@@ -26,9 +26,16 @@ export default function LessonDetailPage() {
   }, [id])
 
   const handleStepComplete = async (step: LessonStep, userResponse: string) => {
+    // todo: improve this
     // Fix comparison to use translation instead of content
 
     logger.info('handleStepComplete', { step, userResponse })
+    if(!userResponse) {
+      throw new Error('there is no response')
+    }
+    if(userResponse.length < 3) {
+      throw new Error('the response is too short')
+    }
 
     const correct = userResponse.trim().toLowerCase() === 
       (step.translation as string).trim().toLowerCase()
