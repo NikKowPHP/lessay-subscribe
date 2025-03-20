@@ -52,27 +52,40 @@ export default function LessonChat({
   const recognitionRef = useRef<any>(null)
   const chatMessagesRef = useRef<HTMLDivElement>(null)
 
-  // Initialize chat history with the first prompt from the lesson steps
   useEffect(() => {
     if (lesson && lesson.steps && Array.isArray(lesson.steps) && chatHistory.length === 0) {
         const initialHistory: Array<{ type: 'prompt' | 'response'; content: string }> = [];
         
-        // Iterate through sorted steps and add prompts + responses
-        lesson.steps.forEach(step => {
-            // Add prompt
-            initialHistory.push({ type: 'prompt', content: step.content as string });
-            
-            // Add user response if present
+        // Find the last completed step
+        let lastCompletedIndex = -1;
+        lesson.steps.forEach((step, index) => {
             if (step.userResponse) {
-                initialHistory.push({ type: 'response', content: step.userResponse });
+                lastCompletedIndex = index;
             }
         });
 
+        // Add all completed steps with their prompts and responses
+        for (let i = 0; i <= lastCompletedIndex; i++) {
+            const step = lesson.steps[i];
+            initialHistory.push({ type: 'prompt', content: step.content });
+            if (step.userResponse) {
+                initialHistory.push({ type: 'response', content: step.userResponse });
+            }
+        }
+
+        // Add only the next uncompleted prompt
+        if (lastCompletedIndex + 1 < lesson.steps.length) {
+            const nextStep = lesson.steps[lastCompletedIndex + 1];
+            initialHistory.push({ type: 'prompt', content: nextStep.content });
+        }
+
         setChatHistory(initialHistory);
+        
+        // Set current step index to the first uncompleted step
         const firstIncompleteStepIndex = lesson.steps.findIndex(step => !step.userResponse);
         setCurrentStepIndex(firstIncompleteStepIndex >= 0 ? firstIncompleteStepIndex : lesson.steps.length - 1);
     }
-  }, [lesson]);
+}, [lesson]);
 
   // Set up speech recognition
   useEffect(() => {
