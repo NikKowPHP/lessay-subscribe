@@ -24,7 +24,8 @@ export class LessonRepository implements ILessonRepository {
       const session = await this.getSession()
       return await prisma.lesson.findMany({
         where: { userId: session.user.id },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
+        include: { steps: true }
       })
     } catch (error) {
       logger.error('Error fetching lessons:', error)
@@ -39,7 +40,8 @@ export class LessonRepository implements ILessonRepository {
         where: { 
           id: lessonId,
           userId: session.user.id
-        }
+        },
+        include: { steps: true }
       })
     } catch (error) {
       logger.error('Error fetching lesson:', error)
@@ -92,14 +94,27 @@ export class LessonRepository implements ILessonRepository {
         ...lessonData,
         performanceMetrics: lessonData.performanceMetrics ? 
           JSON.parse(JSON.stringify(lessonData.performanceMetrics)) : 
-          undefined
+          undefined,
+        steps: lessonData.steps ? {
+          deleteMany: {}, // Delete existing steps
+          create: lessonData.steps.map(step => ({
+            stepNumber: step.stepNumber,
+            type: step.type,
+            content: step.content,
+            translation: step.translation,
+            attempts: step.attempts || 0,
+            correct: step.correct || false,
+            errorPatterns: step.errorPatterns || []
+          }))
+        } : undefined
       }
       return await prisma.lesson.update({
         where: { 
           id: lessonId,
           userId: session.user.id
         },
-        data: data
+        data: data,
+        include: { steps: true }
       })
     } catch (error) {
       logger.error('Error updating lesson:', error)
@@ -122,7 +137,8 @@ export class LessonRepository implements ILessonRepository {
         data: { 
           completed: true,
           performanceMetrics
-        }
+        },
+        include: { steps: true }
       })
     } catch (error) {
       logger.error('Error completing lesson:', error)
