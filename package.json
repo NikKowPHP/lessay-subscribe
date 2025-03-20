@@ -11,6 +11,7 @@
     "lint": "next lint",
     "test": "npx jest",
     "docker:proxy:run": "docker compose -f docker-compose.proxy.yml up",
+    "docker:proxy:build": "docker compose -f docker-compose.proxy.yml build",
     "db:seed": "NODE_OPTIONS='--loader ts-node/esm --require tsconfig-paths/register'   node prisma/seed.ts"
   },
   "dependencies": {

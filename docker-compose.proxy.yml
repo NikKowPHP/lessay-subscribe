@@ -23,6 +23,9 @@ services:
       - ./public:/app/public  # Mount public directory for hot reload
       - ./package.json:/app/package.json  # Mount package.json
       - ./package-lock.json:/app/package-lock.json  # Mount package-lock.json
+      - ./tailwind.config.ts:/app/tailwind.config.ts  # Mount tailwind.config.ts
+      - ./src/app/globals.css:/app/src/app/globals.css  # Mount globals.css
+      - ./tsconfig.json:/app/tsconfig.json  # Mount tsconfig.json
     networks:
       - web-network
 

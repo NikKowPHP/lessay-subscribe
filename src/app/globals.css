@@ -3,8 +3,40 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Neutral Colors */
+  --neutral-1: #ffffff;
+  --neutral-2: #fafafa;
+  --neutral-3: #f5f5f5;
+  --neutral-4: #f0f0f0;
+  --neutral-5: #d9d9d9;
+  --neutral-6: #bfbfbf;
+  --neutral-7: #8c8c8c;
+  --neutral-8: #595959;
+  --neutral-9: #434343;
+  --neutral-10: #262626;
+  --neutral-11: #1f1f1f;
+  --neutral-12: #141414;
+
+  /* Accent Colors */
+  --accent-1: #e6f7ff;
+  --accent-2: #bae7ff;
+  --accent-3: #91d5ff;
+  --accent-4: #69c0ff;
+  --accent-5: #40a9ff;
+  --accent-6: #1890ff;
+  --accent-7: #096dd9;
+  --accent-8: #0050b3;
+  --accent-9: #003a8c;
+  --accent-10: #002766;
+
+  /* Semantic Colors */
+  --background: var(--neutral-1);
+  --foreground: var(--neutral-12);
+  --primary: var(--accent-6);
+  --secondary: var(--neutral-3);
+  --success: #52c41a;
+  --warning: #faad14;
+  --error: #ff4d4f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -17,7 +49,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Segoe UI', sans-serif;
 }
 
 .text-transparent {
@@ -37,4 +69,8 @@ body {
 
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
+}
+
+.dark {
+  /* Dark mode colors if needed */
 }

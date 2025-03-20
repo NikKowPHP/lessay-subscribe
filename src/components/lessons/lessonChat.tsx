@@ -231,17 +231,17 @@ export default function LessonChat({
   }
 
   return lesson &&(
-    <div className="flex flex-col h-full border rounded-md bg-gray-50 overflow-hidden">
+    <div className="flex flex-col h-full border rounded-[4px] bg-neutral-2 overflow-hidden">
       {/* Chat Header */}
-      <div className="p-4 bg-black text-white shrink-0 flex justify-between items-center">
-      <button
+      <div className="p-4 bg-neutral-12 text-white shrink-0 flex justify-between items-center">
+        <button
           onClick={() => router.push('/app/lessons')}
-          className="flex items-center text-sm font-medium text-white hover:text-gray-300 transition-colors"
+          className="flex items-center text-sm font-medium text-white hover:text-neutral-3 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Lessons
         </button>
-        <h2 className="text-xl font-bold">
+        <h2 className="text-xl font-semibold">
           Lesson: {lesson.focusArea} - Step {currentStepIndex + 1}/{lesson.steps.length}
         </h2>
       </div>
