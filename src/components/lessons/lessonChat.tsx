@@ -4,6 +4,8 @@ import logger from '@/utils/logger'
 import { mapLanguageToCode } from '@/utils/map-language-to-code.util'
 import ChatMessages, { ChatMessage } from './ChatMessages'
 import ChatInput from './ChatInput'
+import { ArrowLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 // Add this interface at the top of the file
 interface SpeechRecognitionEvent extends Event {
@@ -50,7 +52,7 @@ export default function LessonChat({
   const [isListening, setIsListening] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
-
+  const router = useRouter();
   const recognitionRef = useRef<any>(null)
   const chatMessagesRef = useRef<HTMLDivElement>(null)
 
@@ -228,16 +230,23 @@ export default function LessonChat({
     handleSubmitStep(currentStep, response)
   }
 
-  return (
+  return lesson &&(
     <div className="flex flex-col h-full border rounded-md bg-gray-50 overflow-hidden">
       {/* Chat Header */}
-      <div className="p-4 bg-black text-white">
+      <div className="p-4 bg-black text-white shrink-0 flex justify-between items-center">
+      <button
+          onClick={() => router.push('/app/lessons')}
+          className="flex items-center text-sm font-medium text-white hover:text-gray-300 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Lessons
+        </button>
         <h2 className="text-xl font-bold">
           Lesson: {lesson.focusArea} - Step {currentStepIndex + 1}/{lesson.steps.length}
         </h2>
       </div>
       {/* Chat Messages */}
-      <div ref={chatMessagesRef} className="flex-1 p-4 overflow-y-auto space-y-4">
+      <div ref={chatMessagesRef} className="flex-1 min-h-0 overflow-y-auto">
         <ChatMessages messages={chatHistory} />
       </div>
       {/* User Input Area */}

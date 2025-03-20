@@ -18,7 +18,7 @@ const ChatInput = React.memo(function ChatInput({
   disableSubmit
 }: ChatInputProps) {
   return (
-    <div className="border-t p-4 bg-white">
+    <div className="border-t p-4 bg-white shrink-0">
       <div className="mb-4 min-h-[60px] p-2 border rounded-md bg-gray-50">
         {userResponse || (isListening ? 'Listening...' : 'Ready to listen')}
       </div>

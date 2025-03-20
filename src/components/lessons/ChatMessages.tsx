@@ -11,7 +11,7 @@ interface ChatMessagesProps {
 
 const ChatMessages = React.memo(function ChatMessages({ messages }: ChatMessagesProps) {
   return (
-    <div className="flex-1 p-4 overflow-y-auto space-y-4">
+    <div className="h-full p-4 space-y-4 overflow-y-auto">
       {messages.map((msg, index) => (
         <div key={index} className={`flex ${msg.type === 'prompt' ? 'justify-start' : 'justify-end'}`}>
           <div className={`max-w-[75%] p-3 rounded-lg ${msg.type === 'prompt' ? 'bg-gray-200 text-gray-800' : 'bg-blue-600 text-white'}`}>

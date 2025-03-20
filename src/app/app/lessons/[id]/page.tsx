@@ -265,14 +265,18 @@ export default function LessonDetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <LessonChat
-        lesson={lesson as LessonModel}
-        onComplete={handleLessonComplete}
-        onStepComplete={handleStepComplete}
-        loading={loading}
-        targetLanguage={onboarding?.targetLanguage || 'English'}
-      />
+    <div className="container mx-auto h-screen flex flex-col py-4 px-4 overflow-hidden">
+     
+      
+      <div className="flex-1 min-h-0">
+        <LessonChat
+          lesson={lesson as LessonModel}
+          onComplete={handleLessonComplete}
+          onStepComplete={handleStepComplete}
+          loading={loading}
+          targetLanguage={onboarding?.targetLanguage || 'English'}
+        />
+      </div>
     </div>
   );
 }
