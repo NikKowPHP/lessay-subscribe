@@ -37,22 +37,32 @@ async function main() {
     },
   })
 
-  // Create assessment lessons with steps
-  const assessmentLesson1 = await prisma.assessmentLesson.create({
+  // Create single assessment lesson with multiple steps
+  const assessmentLesson = await prisma.assessmentLesson.create({
     data: {
       userId: user.id,
-      step: 1,
-      title: "Basic Greetings Assessment",
-      description: "Test your knowledge of basic German greetings",
+      description: "Comprehensive language assessment to evaluate your current German knowledge and skills",
       completed: false,
       sourceLanguage: onboarding.nativeLanguage || "English",
       targetLanguage: onboarding.targetLanguage || "German",
+      metrics: {
+        accuracy: 0,
+        pronunciationScore: 0,
+        grammarScore: 0,
+        vocabularyScore: 0,
+        overallScore: 0,
+        strengths: [],
+        weaknesses: []
+      },
+      proposedTopics: ["Basic Greetings", "Restaurant Vocabulary", "Travel Essentials"],
+      summary: null, // Will be filled after assessment completion
       steps: {
         create: [
           {
             stepNumber: 1,
             type: AssessmentStepType.instruction,
-            content: "Welcome to your first language assessment. I'll ask you a few questions to evaluate your current knowledge of German. Let's begin!",
+            content: "Welcome to your language assessment. I'll ask you a series of questions to evaluate your current knowledge of German. This will help me create a personalized learning plan for you. Let's begin!",
+            maxAttempts: 1, // Instructions don't need attempts
             attempts: 0,
             correct: false
           },
@@ -62,48 +72,68 @@ async function main() {
             content: "How do you say 'Hello, my name is...' in German?",
             expectedAnswer: "Hallo, ich heiße...",
             expectedAnswerAudioUrl: "https://example.com/audio/german/hallo_ich_heisse.mp3",
+            maxAttempts: 3,
             attempts: 0,
-            correct: false
+            correct: false,
+            feedback: "The correct way to introduce yourself in German is 'Hallo, ich heiße...' followed by your name."
           },
           {
             stepNumber: 3,
             type: AssessmentStepType.feedback,
             content: "Great job! Let's try another phrase.",
-            attempts: 0,
-            correct: false
-          }
-        ]
-      }
-    },
-    include: {
-      steps: true
-    }
-  });
-
-  const assessmentLesson2 = await prisma.assessmentLesson.create({
-    data: {
-      userId: user.id,
-      step: 2,
-      title: "Basic Questions Assessment",
-      description: "Test your ability to ask questions in German",
-      completed: false,
-      sourceLanguage: onboarding.nativeLanguage || "English",
-      targetLanguage: onboarding.targetLanguage || "German",
-      steps: {
-        create: [
-          {
-            stepNumber: 1,
-            type: AssessmentStepType.question,
-            content: "How do you ask 'Where is the bathroom?' in German?",
-            expectedAnswer: "Wo ist die Toilette?",
-            expectedAnswerAudioUrl: "https://example.com/audio/german/wo_ist_die_toilette.mp3",
+            maxAttempts: 1,
             attempts: 0,
             correct: false
           },
           {
-            stepNumber: 2,
-            type: AssessmentStepType.feedback,
-            content: "Excellent pronunciation! Let's continue.",
+            stepNumber: 4,
+            type: AssessmentStepType.question,
+            content: "How do you ask 'Where is the bathroom?' in German?",
+            expectedAnswer: "Wo ist die Toilette?",
+            expectedAnswerAudioUrl: "https://example.com/audio/german/wo_ist_die_toilette.mp3",
+            maxAttempts: 3,
+            attempts: 0,
+            correct: false,
+            feedback: "To ask where the bathroom is in German, you say 'Wo ist die Toilette?'"
+          },
+          {
+            stepNumber: 5, 
+            type: AssessmentStepType.question,
+            content: "How would you order a coffee in German?",
+            expectedAnswer: "Einen Kaffee, bitte.",
+            expectedAnswerAudioUrl: "https://example.com/audio/german/einen_kaffee_bitte.mp3",
+            maxAttempts: 3,
+            attempts: 0,
+            correct: false,
+            feedback: "To order a coffee in German, you can say 'Einen Kaffee, bitte.'"
+          },
+          {
+            stepNumber: 6,
+            type: AssessmentStepType.question,
+            content: "How do you ask for the time in German?",
+            expectedAnswer: "Wie spät ist es?",
+            expectedAnswerAudioUrl: "https://example.com/audio/german/wie_spat_ist_es.mp3",
+            maxAttempts: 3,
+            attempts: 0,
+            correct: false,
+            feedback: "To ask for the time in German, you say 'Wie spät ist es?'"
+          },
+          {
+            stepNumber: 7,
+            type: AssessmentStepType.question,
+            content: "How do you say 'I don't understand' in German?",
+            expectedAnswer: "Ich verstehe nicht.",
+            expectedAnswerAudioUrl: "https://example.com/audio/german/ich_verstehe_nicht.mp3",
+            maxAttempts: 3,
+            attempts: 0,
+            correct: false,
+            feedback: "When you don't understand something in German, you can say 'Ich verstehe nicht.'"
+          },
+          {
+            stepNumber: 8,
+            type: AssessmentStepType.summary,
+            content: "Thank you for completing your language assessment. Based on your responses, I'll create a personalized learning plan for you. Your results will help me identify the most effective lessons to improve your German skills.",
+            maxAttempts: 1,
             attempts: 0,
             correct: false
           }
@@ -155,12 +185,12 @@ async function main() {
           },
           {
             stepNumber: 3,
-            type: LessonStepType.prompt,
-            content: 'How do you say "My name is..." in German?',
-            contentAudioUrl: 'https://example.com/audio/english/my_name_is.mp3',
-            translation: 'Ich heiße...',
-            expectedAnswer: 'Ich heiße',
-            expectedAnswerAudioUrl: 'https://example.com/audio/german/ich_heisse.mp3',
+            type: LessonStepType.new_word,
+            content: 'Auf Wiedersehen',
+            contentAudioUrl: 'https://example.com/audio/german/auf_wiedersehen.mp3',
+            translation: 'Goodbye',
+            expectedAnswer: 'Auf Wiedersehen',
+            expectedAnswerAudioUrl: 'https://example.com/audio/german/auf_wiedersehen.mp3',
             attempts: 0,
             correct: false,
             errorPatterns: []
@@ -168,11 +198,11 @@ async function main() {
           {
             stepNumber: 4,
             type: LessonStepType.practice,
-            content: 'Repeat: "Ich bin [your name]"',
-            contentAudioUrl: 'https://example.com/audio/german/ich_bin.mp3',
-            translation: 'I am [your name]',
-            expectedAnswer: 'Ich bin',
-            expectedAnswerAudioUrl: 'https://example.com/audio/german/ich_bin.mp3',
+            content: 'How do you introduce yourself in German saying "My name is John"?',
+            contentAudioUrl: null,
+            translation: 'Ich heiße John',
+            expectedAnswer: 'Ich heiße John',
+            expectedAnswerAudioUrl: 'https://example.com/audio/german/ich_heisse_john.mp3',
             attempts: 0,
             correct: false,
             errorPatterns: []
@@ -180,7 +210,7 @@ async function main() {
           {
             stepNumber: 5,
             type: LessonStepType.model_answer,
-            content: 'Great job! Now let\'s practice: "Nice to meet you"',
+            content: 'Great job! Now let\'s learn how to ask someone\'s name.',
             contentAudioUrl: null,
             translation: null,
             expectedAnswer: null,
@@ -192,29 +222,18 @@ async function main() {
           {
             stepNumber: 6,
             type: LessonStepType.new_word,
-            content: 'Schön, Sie kennenzulernen',
-            contentAudioUrl: 'https://example.com/audio/german/schoen_sie_kennenzulernen.mp3',
-            translation: 'Nice to meet you (formal)',
-            expectedAnswer: 'Schön, Sie kennenzulernen',
-            expectedAnswerAudioUrl: 'https://example.com/audio/german/schoen_sie_kennenzulernen.mp3',
-            attempts: 0,
-            correct: false,
-            errorPatterns: []
-          },
-          {
-            stepNumber: 7,
-            type: LessonStepType.practice,
-            content: 'How would you say "Nice to meet you" informally?',
-            contentAudioUrl: null,
-            translation: 'Schön, dich kennenzulernen',
-            expectedAnswer: 'Schön, dich kennenzulernen',
-            expectedAnswerAudioUrl: 'https://example.com/audio/german/schoen_dich_kennenzulernen.mp3',
+            content: 'Wie heißt du?',
+            contentAudioUrl: 'https://example.com/audio/german/wie_heisst_du.mp3',
+            translation: 'What is your name?',
+            expectedAnswer: 'Wie heißt du',
+            expectedAnswerAudioUrl: 'https://example.com/audio/german/wie_heisst_du.mp3',
             attempts: 0,
             correct: false,
             errorPatterns: []
           }
         ]
-      }
+      },
+      completed: false
     },
     include: {
       steps: true
@@ -357,31 +376,31 @@ async function main() {
           {
             stepNumber: 3,
             type: LessonStepType.new_word,
-            content: 'Ein Zimmer, bitte',
-            contentAudioUrl: 'https://example.com/audio/german/ein_zimmer_bitte.mp3',
-            translation: 'A room, please',
-            expectedAnswer: 'Ein Zimmer, bitte',
-            expectedAnswerAudioUrl: 'https://example.com/audio/german/ein_zimmer_bitte.mp3',
+            content: 'Der Zug',
+            contentAudioUrl: 'https://example.com/audio/german/der_zug.mp3',
+            translation: 'The train',
+            expectedAnswer: 'Der Zug',
+            expectedAnswerAudioUrl: 'https://example.com/audio/german/der_zug.mp3',
             attempts: 0,
             correct: false,
             errorPatterns: []
           },
           {
             stepNumber: 4,
-            type: LessonStepType.model_answer,
-            content: 'Good progress! Now let\'s try asking about public transportation.',
-            contentAudioUrl: null,
-            translation: null,
-            expectedAnswer: null,
-            expectedAnswerAudioUrl: null,
+            type: LessonStepType.new_word,
+            content: 'Der Bus',
+            contentAudioUrl: 'https://example.com/audio/german/der_bus.mp3',
+            translation: 'The bus',
+            expectedAnswer: 'Der Bus',
+            expectedAnswerAudioUrl: 'https://example.com/audio/german/der_bus.mp3',
             attempts: 0,
             correct: false,
             errorPatterns: []
           },
           {
             stepNumber: 5,
-            type: LessonStepType.prompt,
-            content: 'How do you ask "When does the next bus arrive?" in German?',
+            type: LessonStepType.practice,
+            content: 'How would you ask "When does the next bus come?" in German?',
             contentAudioUrl: null,
             translation: 'Wann kommt der nächste Bus?',
             expectedAnswer: 'Wann kommt der nächste Bus',
@@ -401,8 +420,7 @@ async function main() {
 
   console.log(`Created user: ${user.email}`)
   console.log(`Created onboarding for user: ${onboarding.id}`)
-  console.log(`Created assessment lesson 1: ${assessmentLesson1.title} with ${assessmentLesson1.steps.length} steps`)
-  console.log(`Created assessment lesson 2: ${assessmentLesson2.title} with ${assessmentLesson2.steps.length} steps`)
+  console.log(`Created assessment lesson with ${assessmentLesson.steps.length} steps`)
   console.log(`Created lesson 1: ${lesson1.focusArea} with ${lesson1.steps.length} steps`)
   console.log(`Created lesson 2: ${lesson2.focusArea} with ${lesson2.steps.length} steps`)
   console.log(`Created lesson 3: ${lesson3.focusArea} with ${lesson3.steps.length} steps`)
