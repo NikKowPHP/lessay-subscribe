@@ -22,6 +22,7 @@ export default function LessonsPage() {
     init()
   }, [])
 
+
   const handleStartLesson = (lesson: LessonModel) => {
     router.push(`/app/lessons/${lesson.id}`)
   }

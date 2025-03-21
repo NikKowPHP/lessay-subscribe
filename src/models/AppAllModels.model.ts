@@ -62,6 +62,7 @@ export interface LessonStep {
   type: 'prompt' | 'model_answer' | 'user_answer' | 'new_word' | 'practice';
   content: string;
   translation?: string | null;
+  expectedAnswer?: string | null;
   userResponse?: string | null;
   audioUrl?: string;
   attempts: number;

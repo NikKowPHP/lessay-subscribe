@@ -97,18 +97,48 @@ async function main() {
           create: [
             {
               stepNumber: 1,
-              type: 'prompt',
-              content: 'How do you introduce yourself?',
-              translation: 'Wie stellst du dich vor?',
+              type: 'new_word',
+              content: 'Guten Tag',
+              contentAudioUrl: 'https://example.com/audio/guten_tag.mp3',
+              translation: 'Good day',
+              expectedAnswer: 'Guten Tag',
+              expectedAnswerAudioUrl: 'https://example.com/audio/guten_tag.mp3',
               attempts: 0,
               correct: false,
               errorPatterns: []
             },
             {
               stepNumber: 2,
+              type: 'prompt',
+              content: 'How do you say "Good morning"?',
+              contentAudioUrl: 'https://example.com/audio/good_morning.mp3',
+              translation: 'Guten Morgen',
+              expectedAnswer: 'Guten Morgen',
+              expectedAnswerAudioUrl: 'https://example.com/audio/guten_morgen.mp3',
+              attempts: 0,
+              correct: false,
+              errorPatterns: []
+            },
+            {
+              stepNumber: 3,
               type: 'model_answer',
-              content: 'Hello, my name is...',
-              translation: 'Hallo, ich heiße...',
+              content: 'My name is Anna',
+              contentAudioUrl: 'https://example.com/audio/my_name_is_anna.mp3',
+              translation: 'Ich heiße Anna',
+              expectedAnswer: 'Ich heiße Anna',
+              expectedAnswerAudioUrl: 'https://example.com/audio/ich_heiße_anna.mp3',
+              attempts: 0,
+              correct: false,
+              errorPatterns: []
+            },
+            {
+              stepNumber: 4,
+              type: 'practice',
+              content: 'Repeat after me: "Nice to meet you"',
+              contentAudioUrl: 'https://example.com/audio/nice_to_meet_you.mp3',
+              translation: 'Schön, Sie kennenzulernen',
+              expectedAnswer: 'Schön, Sie kennenzulernen',
+              expectedAnswerAudioUrl: 'https://example.com/audio/schoen_sie_kennenzulernen.mp3',
               attempts: 0,
               correct: false,
               errorPatterns: []

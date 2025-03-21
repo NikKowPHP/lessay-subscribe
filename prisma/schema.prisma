@@ -74,6 +74,7 @@ model Lesson {
   focusArea           String
   targetSkills        String[]
   performanceMetrics  Json?
+
   completed           Boolean   @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -85,7 +86,7 @@ model Lesson {
 
 enum LessonStepType {
   prompt
-  model_answer
+  model_answer // messages like 'great job'
   user_answer
   new_word
   practice
@@ -98,7 +99,10 @@ model LessonStep {
   stepNumber      Int
   type            LessonStepType
   content         String
+  contentAudioUrl String?
   translation     String?
+  expectedAnswer  String?
+  expectedAnswerAudioUrl String?
   userResponse    String?
   attempts        Int      @default(0)
   correct         Boolean  @default(false)
