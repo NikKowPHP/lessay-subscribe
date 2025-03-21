@@ -58,17 +58,21 @@ export interface LessonModel {
 
 export interface LessonStep {
   id: string;
+  lessonId: string;
   stepNumber: number;
   type: 'prompt' | 'model_answer' | 'user_answer' | 'new_word' | 'practice';
   content: string;
+  contentAudioUrl?: string | null;
   translation?: string | null;
   expectedAnswer?: string | null;
+  expectedAnswerAudioUrl?: string | null;
   userResponse?: string | null;
-  audioUrl?: string;
   attempts: number;
   correct: boolean;
   lastAttemptAt?: Date | null;
-  errorPatterns?: string[];
+  errorPatterns: string[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Add other models as needed
