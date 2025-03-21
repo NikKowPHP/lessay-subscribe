@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/context/auth-context'
 import { useLesson } from '@/context/lesson-context'
 import { useOnboarding } from '@/context/onboarding-context'
 import { LessonModel } from '@/models/AppAllModels.model'
