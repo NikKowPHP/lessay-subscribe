@@ -64,7 +64,7 @@ async function main() {
             stepNumber: 1,
             type: AssessmentStepType.instruction,
             content: "Welcome to your language assessment. I'll ask you a series of questions to evaluate your current knowledge of German. This will help me create a personalized learning plan for you. Let's begin!",
-            maxAttempts: 1, // Instructions don't need attempts
+            maxAttempts: 1,
             attempts: 0,
             correct: false
           },
@@ -134,7 +134,7 @@ async function main() {
           {
             stepNumber: 8,
             type: AssessmentStepType.summary,
-            content: "Thank you for completing your language assessment. Based on your responses, I'll create a personalized learning plan for you. Your results will help me identify the most effective lessons to improve your German skills.",
+            content: "Great work on completing the assessment! Based on your responses, we'll create a personalized learning plan to help you improve your German skills.",
             maxAttempts: 1,
             attempts: 0,
             correct: false
@@ -165,6 +165,7 @@ async function main() {
             stepNumber: 1,
             type: LessonStepType.instruction,
             content: "Welcome to the 'Basic Greetings' lesson! In this lesson, you'll learn common German greetings and introductions.",
+            contentAudioUrl: 'https://example.com/audio/german/hallo.mp3',
             attempts: 0,
             correct: false,
             errorPatterns: []
@@ -245,6 +246,7 @@ async function main() {
             stepNumber: 8,
             type: LessonStepType.summary,
             content: "Congratulations! You've completed the Basic Greetings lesson. You now know how to greet people and introduce yourself in German!",
+            contentAudioUrl: 'https://example.com/audio/german/congratulations.mp3',
             attempts: 0,
             correct: false,
             errorPatterns: []
@@ -274,6 +276,15 @@ async function main() {
         create: [
           {
             stepNumber: 1,
+            type: LessonStepType.instruction,
+            content: "Welcome to the 'Restaurant Phrases' lesson! In this lesson, you'll learn essential phrases for ordering food and drinks in German restaurants.",
+            contentAudioUrl: 'https://example.com/audio/german/congratulations.mp3',
+            attempts: 0,
+            correct: false,
+            errorPatterns: []
+          },
+          {
+            stepNumber: 2,
             type: LessonStepType.new_word,
             content: 'Speisekarte',
             contentAudioUrl: 'https://example.com/audio/german/speisekarte.mp3',
@@ -285,7 +296,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 2,
+            stepNumber: 3,
             type: LessonStepType.prompt,
             content: 'How do you ask "Can I have the menu, please?" in German?',
             contentAudioUrl: null,
@@ -297,7 +308,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 3,
+            stepNumber: 4,
             type: LessonStepType.new_word,
             content: 'Ich möchte bestellen',
             contentAudioUrl: 'https://example.com/audio/german/ich_moechte_bestellen.mp3',
@@ -309,7 +320,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 4,
+            stepNumber: 5,
             type: LessonStepType.practice,
             content: 'How would you say "The check, please" in German?',
             contentAudioUrl: null,
@@ -321,7 +332,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 5,
+            stepNumber: 6,
             type: LessonStepType.model_answer,
             content: 'Excellent! Now try ordering a specific item.',
             contentAudioUrl: null,
@@ -333,7 +344,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 6,
+            stepNumber: 7,
             type: LessonStepType.new_word,
             content: 'Ein Wasser, bitte',
             contentAudioUrl: 'https://example.com/audio/german/ein_wasser_bitte.mp3',
@@ -341,6 +352,15 @@ async function main() {
             expectedAnswer: 'Ein Wasser, bitte',
             expectedAnswerAudioUrl: 'https://example.com/audio/german/ein_wasser_bitte.mp3',
             attempts: 0,
+            correct: false,
+            errorPatterns: []
+          },
+          {
+            stepNumber: 8,
+            type: LessonStepType.summary,
+            content: "Great job! You've completed the Restaurant Phrases lesson. You're now ready to order food and drinks in German restaurants with confidence!",
+            contentAudioUrl: 'https://example.com/audio/german/congratulations.mp3',
+            attempts: 1,
             correct: false,
             errorPatterns: []
           }
@@ -369,6 +389,14 @@ async function main() {
         create: [
           {
             stepNumber: 1,
+            type: LessonStepType.instruction,
+            content: "Welcome to the 'Travel Essentials' lesson! In this lesson, you'll learn key phrases for navigating public transportation and asking for directions in German.",
+            attempts: 0,
+            correct: false,
+            errorPatterns: []
+          },
+          {
+            stepNumber: 2,
             type: LessonStepType.new_word,
             content: 'Wo ist...?',
             contentAudioUrl: 'https://example.com/audio/german/wo_ist.mp3',
@@ -380,7 +408,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 2,
+            stepNumber: 3,
             type: LessonStepType.practice,
             content: 'How do you ask "How do I get to the train station?" in German?',
             contentAudioUrl: null,
@@ -392,25 +420,13 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 3,
+            stepNumber: 4,
             type: LessonStepType.new_word,
             content: 'Der Zug',
             contentAudioUrl: 'https://example.com/audio/german/der_zug.mp3',
             translation: 'The train',
             expectedAnswer: 'Der Zug',
             expectedAnswerAudioUrl: 'https://example.com/audio/german/der_zug.mp3',
-            attempts: 0,
-            correct: false,
-            errorPatterns: []
-          },
-          {
-            stepNumber: 4,
-            type: LessonStepType.new_word,
-            content: 'Der Bus',
-            contentAudioUrl: 'https://example.com/audio/german/der_bus.mp3',
-            translation: 'The bus',
-            expectedAnswer: 'Der Bus',
-            expectedAnswerAudioUrl: 'https://example.com/audio/german/der_bus.mp3',
             attempts: 0,
             correct: false,
             errorPatterns: []
@@ -423,6 +439,14 @@ async function main() {
             translation: 'Wann kommt der nächste Bus?',
             expectedAnswer: 'Wann kommt der nächste Bus',
             expectedAnswerAudioUrl: 'https://example.com/audio/german/wann_kommt_der_naechste_bus.mp3',
+            attempts: 0,
+            correct: false,
+            errorPatterns: []
+          },
+          {
+            stepNumber: 6,
+            type: LessonStepType.summary,
+            content: "Well done! You've completed the Travel Essentials lesson. You're now prepared to navigate German cities and use public transportation with ease!",
             attempts: 0,
             correct: false,
             errorPatterns: []

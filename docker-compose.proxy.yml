@@ -26,6 +26,7 @@ services:
       - ./tailwind.config.ts:/app/tailwind.config.ts  # Mount tailwind.config.ts
       - ./src/app/globals.css:/app/src/app/globals.css  # Mount globals.css
       - ./tsconfig.json:/app/tsconfig.json  # Mount tsconfig.json
+      - ./prisma:/app/prisma  # Mount prisma
     networks:
       - web-network
 
