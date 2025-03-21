@@ -184,8 +184,10 @@ async function main() {
             errorPatterns: []
           }
         ]
-      },
-      completed: false
+      }
+    },
+    include: {
+      steps: true
     }
   })
 
@@ -278,6 +280,9 @@ async function main() {
         ]
       },
       completed: false
+    },
+    include: {
+      steps: true
     }
   })
 
@@ -358,6 +363,9 @@ async function main() {
         ]
       },
       completed: false
+    },
+    include: {
+      steps: true
     }
   })
 
