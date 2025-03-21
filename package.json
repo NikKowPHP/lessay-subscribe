@@ -12,7 +12,7 @@
     "test": "npx jest",
     "docker:proxy:run": "docker compose -f docker-compose.proxy.yml up",
     "docker:proxy:build": "docker compose -f docker-compose.proxy.yml build",
-    "db:seed": "node --loader ts-node/esm --require tsconfig-paths/register prisma/seed.ts",
+    "db:seed": "TS_NODE_PROJECT=tsconfig-seed.json node --loader ts-node/esm --require tsconfig-paths/register prisma/seed.ts",
     "prisma:migrate": "prisma migrate dev",
     "prisma:reset": "prisma migrate reset"
   },
