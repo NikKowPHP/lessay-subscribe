@@ -230,7 +230,9 @@ export default function LessonChat({
     handleSubmitStep(currentStep, response)
   }
 
-  return lesson &&(
+  const progressPercentage = ((currentStepIndex + 1) / lesson.steps.length) * 100;
+
+  return lesson && (
     <div className="flex flex-col h-full border rounded-[4px] bg-neutral-2 overflow-hidden">
       {/* Chat Header */}
       <div className="p-4 bg-neutral-12 text-white shrink-0 flex justify-between items-center">
@@ -241,14 +243,27 @@ export default function LessonChat({
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Lessons
         </button>
-        <h2 className="text-xl font-semibold">
-          Lesson: {lesson.focusArea} - Step {currentStepIndex + 1}/{lesson.steps.length}
+        <h2 className="text-xl font-semibold flex items-center justify-center">
+          Lesson: {lesson.focusArea}
+          {/* - Step {currentStepIndex + 1}/{lesson.steps.length} */}
         </h2>
       </div>
+
+      {/* Progress Bar */}
+      <div className="w-full bg-neutral-3 h-1.5">
+        <div
+          className="bg-accent-6 h-1.5 transition-all duration-300"
+          style={{
+            width: `${progressPercentage}%`
+          }}
+        ></div>
+      </div>
+
       {/* Chat Messages */}
       <div ref={chatMessagesRef} className="flex-1 min-h-0 overflow-y-auto">
         <ChatMessages messages={chatHistory} />
       </div>
+
       {/* User Input Area */}
       <ChatInput
         userResponse={userResponse}
