@@ -1,4 +1,4 @@
-import { OnboardingModel, AssessmentLesson } from '@/models/AppAllModels.model'
+import { OnboardingModel, AssessmentLesson, AssessmentStep } from '@/models/AppAllModels.model'
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces'
 import logger from '@/utils/logger'
 import { IAuthService } from '@/services/auth.service'
@@ -118,7 +118,14 @@ export class OnboardingRepository implements IOnboardingRepository {
       const session = await this.getSession()
       return await prisma.assessmentLesson.findMany({
         where: { userId: session.user.id },
-        orderBy: { step: 'asc' }
+        orderBy: { step: 'asc' },
+        include: {
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
+        }
       })
     } catch (error) {
       logger.error('Error fetching assessment lessons:', error)
@@ -126,17 +133,54 @@ export class OnboardingRepository implements IOnboardingRepository {
     }
   }
 
-  async completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson> {
+  async getAssessmentLesson(id: string): Promise<AssessmentLesson | null> {
+    try {
+      return await prisma.assessmentLesson.findUnique({
+        where: { id },
+        include: {
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
+        }
+      })
+    } catch (error) {
+      logger.error(`Error fetching assessment lesson with id ${id}:`, error)
+      throw error
+    }
+  }
+
+  async completeAssessmentLesson(lessonId: string): Promise<AssessmentLesson> {
     try {
       return await prisma.assessmentLesson.update({
         where: { id: lessonId },
         data: {
-          userResponse,
           completed: true
+        },
+        include: {
+          steps: true
         }
       })
     } catch (error) {
       logger.error('Error completing assessment lesson:', error)
+      throw error
+    }
+  }
+
+  async completeAssessmentStep(stepId: string, userResponse: string, correct: boolean): Promise<AssessmentStep> {
+    try {
+      return await prisma.assessmentStep.update({
+        where: { id: stepId },
+        data: {
+          userResponse,
+          attempts: { increment: 1 },
+          correct,
+          lastAttemptAt: new Date()
+        }
+      })
+    } catch (error) {
+      logger.error('Error completing assessment step:', error)
       throw error
     }
   }

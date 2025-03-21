@@ -1,4 +1,4 @@
-import { ProficiencyLevel, LessonStepType } from '@prisma/client'
+import { ProficiencyLevel, LessonStepType, AssessmentStepType } from '@prisma/client'
 // import prisma from '../src/lib/prisma.ts'
 import prisma from '../src/lib/prisma.js';
 
@@ -37,64 +37,83 @@ async function main() {
     },
   })
 
-  // Create assessment lessons based on user language preferences
-  const assessmentLessons = await Promise.all([
-    prisma.assessmentLesson.create({
-      data: {
-        userId: user.id,
-        step: 1,
-        prompt: "How do you say 'Hello, my name is...' in German?",
-        modelAnswer: "Hallo, ich heiße...",
-        completed: false,
-        sourceLanguage: onboarding.nativeLanguage || "English", // Get from onboarding
-        targetLanguage: onboarding.targetLanguage || "German"   // Get from onboarding
+  // Create assessment lessons with steps
+  const assessmentLesson1 = await prisma.assessmentLesson.create({
+    data: {
+      userId: user.id,
+      step: 1,
+      title: "Basic Greetings Assessment",
+      description: "Test your knowledge of basic German greetings",
+      completed: false,
+      sourceLanguage: onboarding.nativeLanguage || "English",
+      targetLanguage: onboarding.targetLanguage || "German",
+      steps: {
+        create: [
+          {
+            stepNumber: 1,
+            type: AssessmentStepType.instruction,
+            content: "Welcome to your first language assessment. I'll ask you a few questions to evaluate your current knowledge of German. Let's begin!",
+            attempts: 0,
+            correct: false
+          },
+          {
+            stepNumber: 2,
+            type: AssessmentStepType.question,
+            content: "How do you say 'Hello, my name is...' in German?",
+            expectedAnswer: "Hallo, ich heiße...",
+            expectedAnswerAudioUrl: "https://example.com/audio/german/hallo_ich_heisse.mp3",
+            attempts: 0,
+            correct: false
+          },
+          {
+            stepNumber: 3,
+            type: AssessmentStepType.feedback,
+            content: "Great job! Let's try another phrase.",
+            attempts: 0,
+            correct: false
+          }
+        ]
       }
-    }),
-    prisma.assessmentLesson.create({
-      data: {
-        userId: user.id,
-        step: 2,
-        prompt: "How do you ask 'Where is the bathroom?' in German?",
-        modelAnswer: "Wo ist die Toilette?",
-        completed: false,
-        sourceLanguage: onboarding.nativeLanguage || "English",
-        targetLanguage: onboarding.targetLanguage || "German"
+    },
+    include: {
+      steps: true
+    }
+  });
+
+  const assessmentLesson2 = await prisma.assessmentLesson.create({
+    data: {
+      userId: user.id,
+      step: 2,
+      title: "Basic Questions Assessment",
+      description: "Test your ability to ask questions in German",
+      completed: false,
+      sourceLanguage: onboarding.nativeLanguage || "English",
+      targetLanguage: onboarding.targetLanguage || "German",
+      steps: {
+        create: [
+          {
+            stepNumber: 1,
+            type: AssessmentStepType.question,
+            content: "How do you ask 'Where is the bathroom?' in German?",
+            expectedAnswer: "Wo ist die Toilette?",
+            expectedAnswerAudioUrl: "https://example.com/audio/german/wo_ist_die_toilette.mp3",
+            attempts: 0,
+            correct: false
+          },
+          {
+            stepNumber: 2,
+            type: AssessmentStepType.feedback,
+            content: "Excellent pronunciation! Let's continue.",
+            attempts: 0,
+            correct: false
+          }
+        ]
       }
-    }),
-    prisma.assessmentLesson.create({
-      data: {
-        userId: user.id,
-        step: 3,
-        prompt: "How do you say 'I would like to order a coffee' in German?",
-        modelAnswer: "Ich möchte einen Kaffee bestellen",
-        completed: false,
-        sourceLanguage: onboarding.nativeLanguage || "English",
-        targetLanguage: onboarding.targetLanguage || "German"
-      }
-    }),
-    prisma.assessmentLesson.create({
-      data: {
-        userId: user.id,
-        step: 4,
-        prompt: "How do you say 'How much does this cost?' in German?",
-        modelAnswer: "Wie viel kostet das?",
-        completed: false,
-        sourceLanguage: onboarding.nativeLanguage || "English",
-        targetLanguage: onboarding.targetLanguage || "German"
-      }
-    }),
-    prisma.assessmentLesson.create({
-      data: {
-        userId: user.id,
-        step: 5,
-        prompt: "How do you say 'I don't understand' in German?",
-        modelAnswer: "Ich verstehe nicht",
-        completed: false,
-        sourceLanguage: onboarding.nativeLanguage || "English",
-        targetLanguage: onboarding.targetLanguage || "German"
-      }
-    })
-  ])
+    },
+    include: {
+      steps: true
+    }
+  });
 
   // Create regular lessons - Lesson 1: Greetings and Introductions
   const lesson1 = await prisma.lesson.create({
@@ -382,7 +401,8 @@ async function main() {
 
   console.log(`Created user: ${user.email}`)
   console.log(`Created onboarding for user: ${onboarding.id}`)
-  console.log(`Created ${assessmentLessons.length} assessment lessons`)
+  console.log(`Created assessment lesson 1: ${assessmentLesson1.title} with ${assessmentLesson1.steps.length} steps`)
+  console.log(`Created assessment lesson 2: ${assessmentLesson2.title} with ${assessmentLesson2.steps.length} steps`)
   console.log(`Created lesson 1: ${lesson1.focusArea} with ${lesson1.steps.length} steps`)
   console.log(`Created lesson 2: ${lesson2.focusArea} with ${lesson2.steps.length} steps`)
   console.log(`Created lesson 3: ${lesson3.focusArea} with ${lesson3.steps.length} steps`)

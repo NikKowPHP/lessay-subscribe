@@ -1,4 +1,4 @@
-import { ProficiencyLevel } from '@prisma/client'
+import { ProficiencyLevel, AssessmentStepType, LessonStepType } from '@prisma/client'
 import type { JsonValue } from '@prisma/client/runtime/library'
 
 export interface OnboardingModel {
@@ -18,13 +18,42 @@ export interface OnboardingModel {
 export interface AssessmentLesson {
   id: string;
   userId: string;
-  step: number;
-  prompt: string;
-  modelAnswer: string;
-  userResponse?: string | null;
+  description?: string | null;
   completed: boolean;
   sourceLanguage: string;
   targetLanguage: string;
+  metrics?: JsonValue | null | {
+    accuracy?: number;
+    pronunciationScore?: number;
+    grammarScore?: number;
+    vocabularyScore?: number;
+    overallScore?: number;
+    strengths?: string[];
+    weaknesses?: string[];
+  };
+  proposedTopics: string[]; 
+  summary?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  steps: AssessmentStep[];
+}
+
+export interface AssessmentStep {
+  id: string;
+  assessmentId: string;
+  stepNumber: number;
+  type: AssessmentStepType;
+  content: string;
+  contentAudioUrl?: string | null;
+  translation?: string | null;
+  expectedAnswer?: string | null;
+  expectedAnswerAudioUrl?: string | null;
+  maxAttempts: number;
+  userResponse?: string | null;
+  attempts: number;
+  correct: boolean;
+  lastAttemptAt?: Date | null;
+  feedback?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,10 +120,15 @@ export interface UserProfileModel {
   updatedAt: Date;
 }
 
-export function isPerformanceMetrics(obj: JsonValue): obj is {
+// Add a type guard for assessment metrics
+export function isAssessmentMetrics(obj: JsonValue): obj is {
   accuracy?: number;
   pronunciationScore?: number;
-  errorPatterns?: string[];
+  grammarScore?: number;
+  vocabularyScore?: number;
+  overallScore?: number;
+  strengths?: string[];
+  weaknesses?: string[];
 } {
   return typeof obj === 'object' && obj !== null && !Array.isArray(obj);
 }

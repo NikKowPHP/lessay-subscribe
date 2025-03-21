@@ -52,22 +52,56 @@ enum LessonGenerationStatus {
   failed
 }
 
+enum AssessmentStepType {
+  question        // Assessment question
+  user_response   // User's answer
+  feedback        // Feedback on user's answer
+  instruction     // Instructions for the assessment
+  summary         // Assessment summary/results
+}
+
 model AssessmentLesson {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  step          Int
-  prompt        String
-  modelAnswer   String
-  userResponse  String?
-  completed     Boolean  @default(false)
-  sourceLanguage String  // User's native language
-  targetLanguage String  // User's target language
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String   @id @default(cuid())
+  userId            String   @unique // Only one assessment per user
+  user              User     @relation(fields: [userId], references: [id])
+  description       String?  // Brief description if needed
+  completed         Boolean  @default(false)
+  sourceLanguage    String   // User's native language
+  targetLanguage    String   // User's target language
+  // Assessment metrics
+  metrics           Json?    // Store assessment metrics like accuracy, pronunciation scores, etc.
+  proposedTopics    String[] // Topics suggested based on assessment performance
+  summary           String?  // Overall assessment summary
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  steps             AssessmentStep[]
 
   @@map("assessment_lessons")
 }
+
+model AssessmentStep {
+  id                String           @id @default(cuid())
+  assessmentId      String
+  assessment        AssessmentLesson @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  stepNumber        Int
+  type              AssessmentStepType
+  content           String
+  contentAudioUrl   String?
+  translation       String?
+  expectedAnswer    String?
+  expectedAnswerAudioUrl String?
+  maxAttempts       Int              @default(3)  // Maximum attempts before showing correct answer
+  userResponse      String?
+  attempts          Int              @default(0)
+  correct           Boolean          @default(false)
+  lastAttemptAt     DateTime?
+  feedback          String?          // Feedback specific to this step
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@map("assessment_steps")
+}
+
 model Lesson {
   id                  String    @id @default(cuid())
   userId              String
@@ -76,7 +110,6 @@ model Lesson {
   focusArea           String
   targetSkills        String[]
   performanceMetrics  Json?
-
   completed           Boolean   @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -84,7 +117,6 @@ model Lesson {
 
   @@map("lessons")
 }
-
 
 enum LessonStepType {
   prompt
