@@ -130,8 +130,7 @@ export default function LessonDetailPage() {
                 Performance Summary
               </h3>
 
-              {results.performanceMetrics &&
-              isPerformanceMetrics(results.performanceMetrics) ? (
+              {results.performanceMetrics && isPerformanceMetrics(results.performanceMetrics) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Accuracy */}
                   <div className="bg-gray-50 p-4 rounded-lg">
@@ -167,9 +166,7 @@ export default function LessonDetailPage() {
                       <div
                         className="bg-green-600 h-2.5 rounded-full"
                         style={{
-                          width: `${
-                            results.performanceMetrics.pronunciationScore || 0
-                          }%`,
+                          width: `${results.performanceMetrics.pronunciationScore || 0}%`,
                         }}
                       ></div>
                     </div>

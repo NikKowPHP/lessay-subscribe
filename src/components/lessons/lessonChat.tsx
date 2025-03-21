@@ -230,7 +230,7 @@ export default function LessonChat({
     handleSubmitStep(currentStep, response)
   }
 
-  const progressPercentage = ((currentStepIndex + 1) / lesson.steps.length) * 100;
+  const progressPercentage = lesson && (((currentStepIndex + 1) / lesson.steps.length) * 100);
 
   return lesson && (
     <div className="flex flex-col h-full border rounded-[4px] bg-neutral-2 overflow-hidden">

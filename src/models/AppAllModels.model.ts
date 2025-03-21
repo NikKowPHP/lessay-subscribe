@@ -132,3 +132,12 @@ export function isAssessmentMetrics(obj: JsonValue): obj is {
 } {
   return typeof obj === 'object' && obj !== null && !Array.isArray(obj);
 }
+
+// Add a type guard for lesson performance metrics
+export function isPerformanceMetrics(obj: JsonValue): obj is {
+  accuracy?: number;
+  pronunciationScore?: number;
+  errorPatterns?: string[];
+} {
+  return typeof obj === 'object' && obj !== null && !Array.isArray(obj);
+}
