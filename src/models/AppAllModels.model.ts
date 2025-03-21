@@ -23,6 +23,8 @@ export interface AssessmentLesson {
   modelAnswer: string;
   userResponse?: string | null;
   completed: boolean;
+  sourceLanguage: string;
+  targetLanguage: string;
   createdAt: Date;
   updatedAt: Date;
 }
