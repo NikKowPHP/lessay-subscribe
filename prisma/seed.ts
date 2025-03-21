@@ -23,9 +23,9 @@ async function main() {
     data: {
       userId: user.id,
       steps: {
-        welcome: false,
-        purpose: false,
-        languages: false,
+        welcome: true,
+        purpose: true,
+        languages: true,
         proficiency: false
       },
       completed: false,

@@ -67,7 +67,7 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.2"
   },
- "prisma": {
-  "seed": "node --loader ts-node/esm --require tsconfig-paths/register prisma/seed.ts"
-}
+  "prisma": {
+    "seed": "TS_NODE_PROJECT=tsconfig-seed.json node --loader ts-node/esm --require tsconfig-paths/register prisma/seed.ts"
+  }
 }

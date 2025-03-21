@@ -116,8 +116,11 @@ export class OnboardingRepository implements IOnboardingRepository {
   async getUserAssessment(): Promise<AssessmentLesson | null> {
     try {
       const session = await this.getSession()
-      return await prisma.assessmentLesson.findUnique({
-        where: { userId: session.user.id },
+      return await prisma.assessmentLesson.findFirst({
+        where: {
+          userId: session.user.id,
+          completed: false
+        },
         include: {
           steps: {
             orderBy: {
@@ -132,13 +135,78 @@ export class OnboardingRepository implements IOnboardingRepository {
     }
   }
 
+  async getAssessmentLessons(userId: string): Promise<AssessmentLesson[]> {
+    try {
+      // Validate the user has permission to access this data
+      const session = await this.getSession()
+      if (session.user.id !== userId) {
+        throw new Error('Unauthorized access to assessment lessons')
+      }
+      
+      return await prisma.assessmentLesson.findMany({
+        where: { userId },
+        include: {
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
+        }
+      })
+    } catch (error) {
+      logger.error('Error fetching assessment lessons:', error)
+      return []
+    }
+  }
+
+  async completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson> {
+    try {
+      const session = await this.getSession()
+      
+      // First verify the assessment exists and belongs to this user
+      const assessment = await prisma.assessmentLesson.findFirst({
+        where: { 
+          id: lessonId,
+          userId: session.user.id
+        }
+      })
+      
+      if (!assessment) {
+        throw new Error('Assessment lesson not found or unauthorized')
+      }
+      
+      // Mark the assessment as completed
+      return await prisma.assessmentLesson.update({
+        where: { id: lessonId },
+        data: {
+          completed: true,
+          summary: userResponse, // Store the user's response as the summary
+          updatedAt: new Date()
+        },
+        include: {
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
+        }
+      })
+    } catch (error) {
+      logger.error('Error completing assessment lesson:', error)
+      throw error
+    }
+  }
+
   async createUserAssessment(sourceLanguage: string, targetLanguage: string): Promise<AssessmentLesson> {
     try {
       const session = await this.getSession()
       
       // Check if assessment already exists
       const existingAssessment = await prisma.assessmentLesson.findUnique({
-        where: { userId: session.user.id }
+        where: { userId: session.user.id },
+        include: {
+          steps: true
+        }
       })
 
       if (existingAssessment) {
@@ -204,7 +272,11 @@ export class OnboardingRepository implements IOnboardingRepository {
           completed: true
         },
         include: {
-          steps: true
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
         }
       })
       
@@ -271,7 +343,11 @@ export class OnboardingRepository implements IOnboardingRepository {
           metrics
         },
         include: {
-          steps: true
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
         }
       })
     } catch (error) {
@@ -289,7 +365,11 @@ export class OnboardingRepository implements IOnboardingRepository {
           proposedTopics: topics
         },
         include: {
-          steps: true
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
         }
       })
     } catch (error) {
@@ -307,7 +387,11 @@ export class OnboardingRepository implements IOnboardingRepository {
           summary
         },
         include: {
-          steps: true
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
         }
       })
     } catch (error) {
