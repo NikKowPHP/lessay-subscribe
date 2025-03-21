@@ -38,13 +38,18 @@ export default function OnboardingPage() {
           })
 
           // Determine current step based on completed steps
-          const steps = ['welcome', 'languages', 'purpose', 'proficiency', 'assessment']
-          const completedSteps = Object.keys(onboarding.steps || {})
+          const stepsOrder   = ['welcome', 'languages', 'purpose', 'proficiency', 'assessment']
+          const completedSteps = Object.entries(onboarding.steps || {})
+          .filter(([_, isCompleted]) => isCompleted) // Only include completed steps
+          .map(([step]) => step) // Extract step names
+          .sort((a, b) => stepsOrder.indexOf(a) - stepsOrder.indexOf(b)) // Sort by defined order
           const lastCompletedStep = completedSteps[completedSteps.length - 1]
-          
           if (lastCompletedStep) {
             const nextStep = getNextStep(lastCompletedStep)
             setCurrentStep(nextStep)
+          } else {
+            // If no steps are completed, start with the first step
+            setCurrentStep(stepsOrder[0])
           }
         }
       } catch (error) {
