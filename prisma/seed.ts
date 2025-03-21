@@ -1,5 +1,6 @@
 import { ProficiencyLevel, LessonStepType } from '@prisma/client'
-import prisma from '../src/lib/prisma'
+// import prisma from '../src/lib/prisma.ts'
+import prisma from '../src/lib/prisma.js';
 
 async function main() {
   // Clear existing data in the correct order
