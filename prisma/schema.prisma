@@ -53,16 +53,18 @@ enum LessonGenerationStatus {
 }
 
 model AssessmentLesson {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  step      Int
-  prompt    String
-  modelAnswer String
-  userResponse String?
-  completed Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  step          Int
+  prompt        String
+  modelAnswer   String
+  userResponse  String?
+  completed     Boolean  @default(false)
+  sourceLanguage String  // User's native language
+  targetLanguage String  // User's target language
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("assessment_lessons")
 }

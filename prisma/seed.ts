@@ -22,21 +22,21 @@ async function main() {
     data: {
       userId: user.id,
       steps: {
-        welcome: true,
-        purpose: true,
-        languages: true,
+        welcome: false,
+        purpose: false,
+        languages: false,
         proficiency: false
       },
       completed: false,
-      learningPurpose: 'travel',
-      nativeLanguage: 'English',
-      targetLanguage: 'German',
-      proficiencyLevel: ProficiencyLevel.beginner,
+      learningPurpose: '',
+      nativeLanguage: '',
+      targetLanguage: '',
+      proficiencyLevel: null,
       initialAssessmentCompleted: false,
     },
   })
 
-  // Create assessment lessons (more realistic German phrases)
+  // Create assessment lessons based on user language preferences
   const assessmentLessons = await Promise.all([
     prisma.assessmentLesson.create({
       data: {
@@ -44,7 +44,9 @@ async function main() {
         step: 1,
         prompt: "How do you say 'Hello, my name is...' in German?",
         modelAnswer: "Hallo, ich heiße...",
-        completed: false
+        completed: false,
+        sourceLanguage: onboarding.nativeLanguage || "English", // Get from onboarding
+        targetLanguage: onboarding.targetLanguage || "German"   // Get from onboarding
       }
     }),
     prisma.assessmentLesson.create({
@@ -53,7 +55,9 @@ async function main() {
         step: 2,
         prompt: "How do you ask 'Where is the bathroom?' in German?",
         modelAnswer: "Wo ist die Toilette?",
-        completed: false
+        completed: false,
+        sourceLanguage: onboarding.nativeLanguage || "English",
+        targetLanguage: onboarding.targetLanguage || "German"
       }
     }),
     prisma.assessmentLesson.create({
@@ -62,7 +66,9 @@ async function main() {
         step: 3,
         prompt: "How do you say 'I would like to order a coffee' in German?",
         modelAnswer: "Ich möchte einen Kaffee bestellen",
-        completed: false
+        completed: false,
+        sourceLanguage: onboarding.nativeLanguage || "English",
+        targetLanguage: onboarding.targetLanguage || "German"
       }
     }),
     prisma.assessmentLesson.create({
@@ -71,7 +77,9 @@ async function main() {
         step: 4,
         prompt: "How do you say 'How much does this cost?' in German?",
         modelAnswer: "Wie viel kostet das?",
-        completed: false
+        completed: false,
+        sourceLanguage: onboarding.nativeLanguage || "English",
+        targetLanguage: onboarding.targetLanguage || "German"
       }
     }),
     prisma.assessmentLesson.create({
@@ -80,7 +88,9 @@ async function main() {
         step: 5,
         prompt: "How do you say 'I don't understand' in German?",
         modelAnswer: "Ich verstehe nicht",
-        completed: false
+        completed: false,
+        sourceLanguage: onboarding.nativeLanguage || "English",
+        targetLanguage: onboarding.targetLanguage || "German"
       }
     })
   ])
