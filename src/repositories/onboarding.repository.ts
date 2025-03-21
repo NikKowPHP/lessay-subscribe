@@ -113,12 +113,11 @@ export class OnboardingRepository implements IOnboardingRepository {
     return onboarding?.completed ?? false
   }
 
-  async getAssessmentLessons(): Promise<AssessmentLesson[]> {
+  async getUserAssessment(): Promise<AssessmentLesson | null> {
     try {
       const session = await this.getSession()
-      return await prisma.assessmentLesson.findMany({
+      return await prisma.assessmentLesson.findUnique({
         where: { userId: session.user.id },
-        orderBy: { step: 'asc' },
         include: {
           steps: {
             orderBy: {
@@ -128,12 +127,57 @@ export class OnboardingRepository implements IOnboardingRepository {
         }
       })
     } catch (error) {
-      logger.error('Error fetching assessment lessons:', error)
+      logger.error('Error fetching user assessment:', error)
       throw error
     }
   }
 
-  async getAssessmentLesson(id: string): Promise<AssessmentLesson | null> {
+  async createUserAssessment(sourceLanguage: string, targetLanguage: string): Promise<AssessmentLesson> {
+    try {
+      const session = await this.getSession()
+      
+      // Check if assessment already exists
+      const existingAssessment = await prisma.assessmentLesson.findUnique({
+        where: { userId: session.user.id }
+      })
+
+      if (existingAssessment) {
+        return existingAssessment
+      }
+
+      // Create new assessment
+      return await prisma.assessmentLesson.create({
+        data: {
+          userId: session.user.id,
+          description: `${targetLanguage} language assessment`,
+          completed: false,
+          sourceLanguage,
+          targetLanguage,
+          metrics: {
+            accuracy: 0,
+            pronunciationScore: 0,
+            grammarScore: 0,
+            vocabularyScore: 0,
+            overallScore: 0,
+            strengths: [],
+            weaknesses: []
+          },
+          proposedTopics: [],
+          steps: {
+            create: [] // Steps will be added separately
+          }
+        },
+        include: {
+          steps: true
+        }
+      })
+    } catch (error) {
+      logger.error('Error creating user assessment:', error)
+      throw error
+    }
+  }
+
+  async getAssessmentById(id: string): Promise<AssessmentLesson | null> {
     try {
       return await prisma.assessmentLesson.findUnique({
         where: { id },
@@ -146,15 +190,16 @@ export class OnboardingRepository implements IOnboardingRepository {
         }
       })
     } catch (error) {
-      logger.error(`Error fetching assessment lesson with id ${id}:`, error)
+      logger.error(`Error fetching assessment with id ${id}:`, error)
       throw error
     }
   }
 
-  async completeAssessmentLesson(lessonId: string): Promise<AssessmentLesson> {
+  async completeAssessment(): Promise<AssessmentLesson> {
     try {
-      return await prisma.assessmentLesson.update({
-        where: { id: lessonId },
+      const session = await this.getSession()
+      const result = await prisma.assessmentLesson.update({
+        where: { userId: session.user.id },
         data: {
           completed: true
         },
@@ -162,14 +207,36 @@ export class OnboardingRepository implements IOnboardingRepository {
           steps: true
         }
       })
+      
+      // Also update onboarding to mark assessment as completed
+      await prisma.onboarding.update({
+        where: { userId: session.user.id },
+        data: {
+          initialAssessmentCompleted: true
+        }
+      })
+      
+      return result
     } catch (error) {
-      logger.error('Error completing assessment lesson:', error)
+      logger.error('Error completing assessment:', error)
       throw error
     }
   }
 
-  async completeAssessmentStep(stepId: string, userResponse: string, correct: boolean): Promise<AssessmentStep> {
+  async completeAssessmentStep(
+    stepId: string, 
+    userResponse: string, 
+    correct: boolean
+  ): Promise<AssessmentStep> {
     try {
+      const step = await prisma.assessmentStep.findUnique({
+        where: { id: stepId }
+      })
+      
+      if (!step) {
+        throw new Error('Assessment step not found')
+      }
+      
       return await prisma.assessmentStep.update({
         where: { id: stepId },
         data: {
@@ -181,6 +248,155 @@ export class OnboardingRepository implements IOnboardingRepository {
       })
     } catch (error) {
       logger.error('Error completing assessment step:', error)
+      throw error
+    }
+  }
+
+  async updateAssessmentMetrics(
+    metrics: {
+      accuracy?: number;
+      pronunciationScore?: number;
+      grammarScore?: number;
+      vocabularyScore?: number;
+      overallScore?: number;
+      strengths?: string[];
+      weaknesses?: string[];
+    }
+  ): Promise<AssessmentLesson> {
+    try {
+      const session = await this.getSession()
+      return await prisma.assessmentLesson.update({
+        where: { userId: session.user.id },
+        data: {
+          metrics
+        },
+        include: {
+          steps: true
+        }
+      })
+    } catch (error) {
+      logger.error('Error updating assessment metrics:', error)
+      throw error
+    }
+  }
+
+  async updateProposedTopics(topics: string[]): Promise<AssessmentLesson> {
+    try {
+      const session = await this.getSession()
+      return await prisma.assessmentLesson.update({
+        where: { userId: session.user.id },
+        data: {
+          proposedTopics: topics
+        },
+        include: {
+          steps: true
+        }
+      })
+    } catch (error) {
+      logger.error('Error updating proposed topics:', error)
+      throw error
+    }
+  }
+
+  async updateAssessmentSummary(summary: string): Promise<AssessmentLesson> {
+    try {
+      const session = await this.getSession()
+      return await prisma.assessmentLesson.update({
+        where: { userId: session.user.id },
+        data: {
+          summary
+        },
+        include: {
+          steps: true
+        }
+      })
+    } catch (error) {
+      logger.error('Error updating assessment summary:', error)
+      throw error
+    }
+  }
+
+  async addAssessmentStep(step: {
+    stepNumber: number;
+    type: any; // Using any for simplicity, but should match AssessmentStepType
+    content: string;
+    contentAudioUrl?: string;
+    translation?: string;
+    expectedAnswer?: string;
+    expectedAnswerAudioUrl?: string;
+    maxAttempts?: number;
+    feedback?: string;
+  }): Promise<AssessmentStep> {
+    try {
+      const session = await this.getSession()
+      const assessment = await prisma.assessmentLesson.findUnique({
+        where: { userId: session.user.id }
+      })
+      
+      if (!assessment) {
+        throw new Error('Assessment not found')
+      }
+      
+      return await prisma.assessmentStep.create({
+        data: {
+          assessmentId: assessment.id,
+          stepNumber: step.stepNumber,
+          type: step.type,
+          content: step.content,
+          contentAudioUrl: step.contentAudioUrl,
+          translation: step.translation,
+          expectedAnswer: step.expectedAnswer,
+          expectedAnswerAudioUrl: step.expectedAnswerAudioUrl,
+          maxAttempts: step.maxAttempts || 3,
+          feedback: step.feedback,
+          attempts: 0,
+          correct: false
+        }
+      })
+    } catch (error) {
+      logger.error('Error adding assessment step:', error)
+      throw error
+    }
+  }
+
+  async updateStepFeedback(stepId: string, feedback: string): Promise<AssessmentStep> {
+    try {
+      return await prisma.assessmentStep.update({
+        where: { id: stepId },
+        data: {
+          feedback
+        }
+      })
+    } catch (error) {
+      logger.error('Error updating step feedback:', error)
+      throw error
+    }
+  }
+
+  async getNextIncompleteStep(): Promise<AssessmentStep | null> {
+    try {
+      const session = await this.getSession()
+      const assessment = await prisma.assessmentLesson.findUnique({
+        where: { userId: session.user.id },
+        include: {
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            },
+            where: {
+              correct: false
+            }
+          }
+        }
+      })
+      
+      if (!assessment || assessment.steps.length === 0) {
+        return null
+      }
+      
+      return assessment.steps[0]
+    } catch (error) {
+      logger.error('Error getting next incomplete step:', error)
       throw error
     }
   }
