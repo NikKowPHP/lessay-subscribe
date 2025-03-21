@@ -124,6 +124,8 @@ enum LessonStepType {
   user_answer
   new_word
   practice
+  instruction 
+  summary    
 }
 
 model LessonStep {

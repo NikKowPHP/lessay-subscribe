@@ -154,19 +154,36 @@ export default function LessonChat({
   }, [chatHistory])
 
   const handleSubmitStep = async (step: LessonStep, response: string) => {
-    if(!response) {
-      setFeedback('there is no response')
-      throw new Error('there is no response')
-    }
-    if(response.length < 3) {
-      setFeedback('the response is too short')
-      throw new Error('the response is too short')
-    }
-    if (isListening) {
-      pauseListening()
-    }
-    
     try {
+      setFeedback('Processing...')
+      
+      // For instruction and summary steps, just acknowledge them without requiring user response
+      if (step.type === 'instruction' || step.type === 'summary') {
+        // Mark as seen/acknowledged
+        await onStepComplete(step, "Acknowledged");
+        
+        // Move to the next step
+        const nextStepIndex = currentStepIndex + 1;
+        if (nextStepIndex < lesson.steps.length) {
+          setCurrentStepIndex(nextStepIndex);
+          const nextStep = lesson.steps[nextStepIndex];
+          
+          // Add acknowledgment and next prompt to chat history
+          setChatHistory(prev => [
+            ...prev, 
+            { type: 'response', content: 'OK, got it!' },
+            { type: 'prompt', content: nextStep.content }
+          ]);
+          
+          setUserResponse('');
+        } else {
+          // If this was the last step, complete the lesson
+          onComplete();
+        }
+        return;
+      }
+      
+      // Original handling for other step types...
       await onStepComplete(step, response)
       
       // Use step.stepNumber instead of index for reliability

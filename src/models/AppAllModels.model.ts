@@ -91,7 +91,7 @@ export interface LessonStep {
   id: string;
   lessonId: string;
   stepNumber: number;
-  type: 'prompt' | 'model_answer' | 'user_answer' | 'new_word' | 'practice';
+  type: 'prompt' | 'model_answer' | 'user_answer' | 'new_word' | 'practice' | 'instruction' | 'summary';
   content: string;
   contentAudioUrl?: string | null;
   translation?: string | null;

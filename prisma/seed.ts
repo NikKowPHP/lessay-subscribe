@@ -4,10 +4,12 @@ import prisma from '../src/lib/prisma.js';
 
 async function main() {
   // Clear existing data in the correct order
-  await prisma.lesson.deleteMany({}) // Delete lessons first
-  await prisma.assessmentLesson.deleteMany({}) // Then delete assessment lessons
-  await prisma.onboarding.deleteMany({}) // Then delete onboarding
-  await prisma.user.deleteMany({}) // Finally delete users
+  await prisma.lessonStep.deleteMany({}); // Delete lesson steps first
+  await prisma.lesson.deleteMany({}); // Then delete lessons
+  await prisma.assessmentStep.deleteMany({}); // Delete assessment steps
+  await prisma.assessmentLesson.deleteMany({}); // Then delete assessment lessons
+  await prisma.onboarding.deleteMany({}); // Then delete onboarding
+  await prisma.user.deleteMany({}); // Finally delete users
   
   // Create test user (matching the mock auth service)
   const user = await prisma.user.create({
@@ -161,6 +163,14 @@ async function main() {
         create: [
           {
             stepNumber: 1,
+            type: LessonStepType.instruction,
+            content: "Welcome to the 'Basic Greetings' lesson! In this lesson, you'll learn common German greetings and introductions.",
+            attempts: 0,
+            correct: false,
+            errorPatterns: []
+          },
+          {
+            stepNumber: 2,
             type: LessonStepType.new_word,
             content: 'Hallo',
             contentAudioUrl: 'https://example.com/audio/german/hallo.mp3',
@@ -172,7 +182,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 2,
+            stepNumber: 3,
             type: LessonStepType.new_word,
             content: 'Guten Tag',
             contentAudioUrl: 'https://example.com/audio/german/guten_tag.mp3',
@@ -184,7 +194,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 3,
+            stepNumber: 4,
             type: LessonStepType.new_word,
             content: 'Auf Wiedersehen',
             contentAudioUrl: 'https://example.com/audio/german/auf_wiedersehen.mp3',
@@ -196,7 +206,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 4,
+            stepNumber: 5,
             type: LessonStepType.practice,
             content: 'How do you introduce yourself in German saying "My name is John"?',
             contentAudioUrl: null,
@@ -208,7 +218,7 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 5,
+            stepNumber: 6,
             type: LessonStepType.model_answer,
             content: 'Great job! Now let\'s learn how to ask someone\'s name.',
             contentAudioUrl: null,
@@ -220,13 +230,21 @@ async function main() {
             errorPatterns: []
           },
           {
-            stepNumber: 6,
+            stepNumber: 7,
             type: LessonStepType.new_word,
             content: 'Wie heißt du?',
             contentAudioUrl: 'https://example.com/audio/german/wie_heisst_du.mp3',
             translation: 'What is your name?',
             expectedAnswer: 'Wie heißt du',
             expectedAnswerAudioUrl: 'https://example.com/audio/german/wie_heisst_du.mp3',
+            attempts: 0,
+            correct: false,
+            errorPatterns: []
+          },
+          {
+            stepNumber: 8,
+            type: LessonStepType.summary,
+            content: "Congratulations! You've completed the Basic Greetings lesson. You now know how to greet people and introduce yourself in German!",
             attempts: 0,
             correct: false,
             errorPatterns: []
