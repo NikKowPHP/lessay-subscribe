@@ -10,6 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "npx jest",
+    "docker:mac:run": "docker-compose -f docker-compose.mac.yml up",
+    "docker:mac:build": "docker-compose -f docker-compose.mac.yml build",
     "docker:proxy:run": "docker compose -f docker-compose.proxy.yml up",
     "docker:proxy:build": "docker compose -f docker-compose.proxy.yml build",
     "db:seed": "TS_NODE_PROJECT=tsconfig-seed.json node --loader ts-node/esm --require tsconfig-paths/register prisma/seed.ts",
