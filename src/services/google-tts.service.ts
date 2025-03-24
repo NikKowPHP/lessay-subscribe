@@ -13,8 +13,8 @@ export class GoogleTTS implements ITTS {
   public async synthesizeSpeech(text: string, language: string, voice: string): Promise<Buffer> {
     try {
       // Get Google Cloud authentication token
-      const accessToken = await this.getGoogleAccessToken();
-      
+      const accessToken = process.env.GOOGLE_CLOUD_ACCESS_TOKEN;
+      logger.info(`Access token: ${accessToken}`);
       // Prepare request data for Google TTS API
       const requestData = {
         input: {
@@ -54,20 +54,21 @@ export class GoogleTTS implements ITTS {
     }
   }
 
-  private async getGoogleAccessToken(): Promise<string> {
-    try {
-      const execPromise = promisify(exec);
-      const { stdout } = await execPromise('gcloud auth print-access-token');
-      return stdout.trim();
-    } catch (error) {
-      logger.error('Failed to get Google access token:', error);
-      throw new Error('Authentication failed with Google Cloud');
-    }
-  }
+  // private async getGoogleAccessToken(): Promise<string> {
+  //   try {
+  //     const execPromise = promisify(exec);
+  //     const { stdout } = await execPromise('gcloud auth print-access-token');
+  //     return stdout.trim();
+  //   } catch (error) {
+  //     logger.error('Failed to get Google access token:', error);
+  //     throw new Error('Authentication failed with Google Cloud');
+  //   }
+  // }
 
   private validateEnvironment(): void {
     const requiredVars = [
-      'GOOGLE_CLOUD_PROJECT'
+      'GOOGLE_CLOUD_PROJECT',
+      'GOOGLE_CLOUD_ACCESS_TOKEN'
     ];
 
     const missingVars = requiredVars.filter(v => !process.env[v]);
