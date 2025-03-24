@@ -52,6 +52,8 @@ export default function AssessmentChat({
   const [chatHistory, setChatHistory] = useState<
     Array<{ type: 'prompt' | 'response'; content: string }>
   >([]);
+  const [realtimeTranscript, setRealtimeTranscript] = useState('');
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const recognitionRef = useRef<any>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
@@ -123,59 +125,73 @@ export default function AssessmentChat({
     }
   }, [lessons]);
 
-  // Set up speech recognition
-  useEffect(() => {
+  // Function to reset the silence timer
+  const resetSilenceTimer = () => {
+    // Clear any existing timer
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+    
+    // Set new timer for 4 seconds (4000 ms)
+    silenceTimerRef.current = setTimeout(() => {
+      if (isListening) {
+        setRealtimeTranscript('');
+        logger.info('Reset transcript due to 4 seconds of silence');
+      }
+    }, 4000);
+  };
+
+  // Setup speech recognition
+  const setupSpeechRecognition = () => {
     if (!('webkitSpeechRecognition' in window)) {
-      setFeedback('Voice recognition is not supported in your browser');
+      logger.error('Speech recognition not supported in this browser');
       return;
     }
 
-    const SpeechRecognition = window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
-
-    const recognition = recognitionRef.current;
+    const recognition = new window.webkitSpeechRecognition();
     recognition.lang = mapLanguageToCode(targetLanguage);
-    recognition.interimResults = true;
     recognition.continuous = true;
+    recognition.interimResults = true;
 
     recognition.onstart = () => {
+      logger.info('Speech recognition started');
       setIsListening(true);
-      setFeedback('Listening...');
+      resetSilenceTimer(); // Start the silence timer when recognition starts
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = Array.from(event.results)
-        .map((result) => result[0])
-        .map((result) => result.transcript)
+        .map((result) => result[0].transcript)
         .join('');
-
+      
+      setRealtimeTranscript(transcript); // Update realtime transcript
       setUserResponse(transcript);
-
-      const currentLesson = lessons[currentLessonIndex];
-      if (
-        currentLesson &&
-        currentStep &&
-        isResponseCorrect(transcript, currentStep.expectedAnswer ?? null)
-      ) {
-        handleCorrectResponse(currentLesson, currentStep, transcript);
-      }
+      resetSilenceTimer(); // Reset the timer on new speech
     };
 
-    recognition.onerror = (event: Event) => {
-      setIsListening(false);
-      setFeedback(`Error occurred: ${(event as ErrorEvent).error}`);
+    recognition.onerror = (event) => {
+      logger.error('Speech recognition error:', event);
     };
 
     recognition.onend = () => {
+      logger.info('Speech recognition ended');
       setIsListening(false);
-    };
-
-    return () => {
-      if (recognition) {
-        recognition.abort();
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current); // Clear timer when recognition ends
       }
     };
-  }, [currentLessonIndex, lessons, targetLanguage]);
+
+    recognitionRef.current = recognition;
+  };
+
+  // Clean up the silence timer on component unmount
+  useEffect(() => {
+    return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Scroll to bottom when chat history changes
   useEffect(() => {
@@ -431,7 +447,7 @@ export default function AssessmentChat({
       <div className="border-t border-neutral-4 p-4 bg-neutral-1">
         {/* Real-time Transcription Display */}
         <div className="mb-4 min-h-[60px] p-3 border border-neutral-5 rounded-md bg-neutral-2 text-foreground">
-          {userResponse ||
+          {realtimeTranscript ||
             (isListening ? (
               <span className="text-accent-6 flex items-center">
                 <svg
