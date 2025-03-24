@@ -1,4 +1,4 @@
-import { AssessmentLesson, OnboardingModel } from "@/models/AppAllModels.model"
+import { AssessmentLesson, AssessmentStep, OnboardingModel } from "@/models/AppAllModels.model"
 import { LessonModel, GeneratedLesson, LessonStep } from '@/models/AppAllModels.model'
 
 export  interface IOnboardingRepository {
@@ -8,10 +8,10 @@ export  interface IOnboardingRepository {
   completeOnboarding(): Promise<OnboardingModel>
   deleteOnboarding(): Promise<void>
   getStatus(): Promise<boolean>
-  getAssessmentLessons(userId: string): Promise<AssessmentLesson[]>
+  getAssessmentLesson(userId: string): Promise<AssessmentLesson | null>
   completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson>
+  createAssessmentLesson(userId: string, assessment: Omit<AssessmentLesson, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentLesson>
 }
-
 
 
 export interface ILessonRepository {
@@ -40,4 +40,12 @@ export interface ILessonRepository {
 
 export interface ILessonGeneratorService {
   generateLesson: (topic: string, targetLanguage: string, difficultyLevel: string) => Promise<Record<string, unknown>>
+}
+
+export interface IAssessmentGeneratorService {
+  generateAssessmentSteps: (
+    sourceLanguage?: string, 
+    targetLanguage?: string,
+    proficiencyLevel?: string
+  ) => Promise<AssessmentStep[]>
 }

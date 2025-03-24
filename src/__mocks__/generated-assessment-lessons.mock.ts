@@ -107,7 +107,11 @@ export const MockAssessmentGeneratorService = {
     ];
 
     console.log(`Generated assessment with ${assessmentLessonSteps.length} steps`);
-    return assessmentLessonSteps;
+    return {
+      steps: assessmentLessonSteps,
+      targetLanguage,
+      sourceLanguage
+    };
   }
 };
 

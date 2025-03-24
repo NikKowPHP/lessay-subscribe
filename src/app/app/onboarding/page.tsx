@@ -14,7 +14,7 @@ import AssessmentStep from '@/components/onboarding/AssessmentStep'
 export default function OnboardingPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { isOnboardingComplete, markStepComplete, loading, getOnboarding } = useOnboarding()
+  const { isOnboardingComplete, markStepComplete, loading, getOnboarding, getAssessmentLessons } = useOnboarding()
   const [currentStep, setCurrentStep] = useState<string>('welcome')
   const [formData, setFormData] = useState({
     nativeLanguage: '',
@@ -22,6 +22,10 @@ export default function OnboardingPage() {
     learningPurpose: '',
     proficiencyLevel: ''
   })
+  
+  // State to hold the generated assessment lesson and its loading status
+  const [assessmentLesson, setAssessmentLesson] = useState<any>(null)
+  const [assessmentLoading, setAssessmentLoading] = useState<boolean>(false)
 
   // Rehydrate state from onboarding session
   useEffect(() => {
@@ -38,17 +42,16 @@ export default function OnboardingPage() {
           })
 
           // Determine current step based on completed steps
-          const stepsOrder   = ['welcome', 'languages', 'purpose', 'proficiency', 'assessment']
+          const stepsOrder = ['welcome', 'languages', 'purpose', 'proficiency', 'assessment']
           const completedSteps = Object.entries(onboarding.steps || {})
-          .filter(([_, isCompleted]) => isCompleted) // Only include completed steps
-          .map(([step]) => step) // Extract step names
-          .sort((a, b) => stepsOrder.indexOf(a) - stepsOrder.indexOf(b)) // Sort by defined order
+            .filter(([_, isCompleted]) => isCompleted)
+            .map(([step]) => step)
+            .sort((a, b) => stepsOrder.indexOf(a) - stepsOrder.indexOf(b))
           const lastCompletedStep = completedSteps[completedSteps.length - 1]
           if (lastCompletedStep) {
             const nextStep = getNextStep(lastCompletedStep)
             setCurrentStep(nextStep)
           } else {
-            // If no steps are completed, start with the first step
             setCurrentStep(stepsOrder[0])
           }
         }
@@ -86,6 +89,21 @@ export default function OnboardingPage() {
     return steps[currentIndex + 1] || 'assessment'
   }
 
+  // Generate assessment lesson after proficiency is submitted
+  const generateAssessmentLesson = async () => {
+    setAssessmentLoading(true)
+    try {
+      const lessons = await getAssessmentLessons()
+      if (lessons && lessons.length > 0) {
+        setAssessmentLesson(lessons[0])
+      }
+    } catch (error) {
+      logger.error("Error generating assessment lesson:", error)
+    } finally {
+      setAssessmentLoading(false)
+    }
+  }
+
   const renderStep = () => {
     switch (currentStep) {
       case 'welcome':
@@ -110,12 +128,19 @@ export default function OnboardingPage() {
         return (
           <ProficiencyStep 
             onNext={(data) => handleNextStep('proficiency', data)} 
+            onAssessmentGeneration={generateAssessmentLesson}
             formData={formData}
             loading={loading} 
           />
         )
       case 'assessment':
-        return <AssessmentStep onComplete={() => router.push('/app/lessons')} loading={loading} targetLanguage={formData.targetLanguage} />
+        return (
+          <AssessmentStep 
+            onComplete={() => router.push('/app/lessons')} 
+            loading={assessmentLoading} 
+            targetLanguage={formData.targetLanguage} 
+          />
+        )
       default:
         return <WelcomeStep onNext={() => handleNextStep('welcome')} loading={loading} />
     }

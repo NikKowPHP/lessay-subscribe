@@ -135,7 +135,7 @@ export class OnboardingRepository implements IOnboardingRepository {
     }
   }
 
-  async getAssessmentLessons(userId: string): Promise<AssessmentLesson[]> {
+  async getAssessmentLesson(userId: string): Promise<AssessmentLesson | null> {
     try {
       // Validate the user has permission to access this data
       const session = await this.getSession()
@@ -143,7 +143,7 @@ export class OnboardingRepository implements IOnboardingRepository {
         throw new Error('Unauthorized access to assessment lessons')
       }
       
-      return await prisma.assessmentLesson.findMany({
+      return await prisma.assessmentLesson.findUnique({
         where: { userId },
         include: {
           steps: {
@@ -155,7 +155,7 @@ export class OnboardingRepository implements IOnboardingRepository {
       })
     } catch (error) {
       logger.error('Error fetching assessment lessons:', error)
-      return []
+      return null
     }
   }
 
@@ -242,6 +242,58 @@ export class OnboardingRepository implements IOnboardingRepository {
     } catch (error) {
       logger.error('Error creating user assessment:', error)
       throw error
+    }
+  }
+
+  async createAssessmentLesson(
+    userId: string,
+    assessment: Omit<AssessmentLesson, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<AssessmentLesson> {
+    try {
+      // First create the assessment lesson
+      const createdAssessment = await prisma.assessmentLesson.create({
+        data: {
+          userId,
+          description: assessment.description,
+          completed: assessment.completed,
+          sourceLanguage: assessment.sourceLanguage,
+          targetLanguage: assessment.targetLanguage,
+          metrics: assessment.metrics as any, // Type cast to handle Prisma JSON type
+          proposedTopics: assessment.proposedTopics,
+          summary: assessment.summary
+        }
+      });
+      
+      // Then create all the steps associated with it
+      const createdSteps = await Promise.all(
+        assessment.steps.map(step => 
+          prisma.assessmentStep.create({
+            data: {
+              assessmentId: createdAssessment.id,
+              stepNumber: step.stepNumber,
+              type: step.type,
+              content: step.content,
+              contentAudioUrl: step.contentAudioUrl,
+              translation: step.translation,
+              expectedAnswer: step.expectedAnswer,
+              expectedAnswerAudioUrl: step.expectedAnswerAudioUrl,
+              maxAttempts: step.maxAttempts || 3,
+              attempts: step.attempts || 0,
+              correct: step.correct || false,
+              feedback: step.feedback
+            }
+          })
+        )
+      );
+      
+      // Return the assessment with its steps
+      return {
+        ...createdAssessment,
+        steps: createdSteps
+      };
+    } catch (error) {
+      logger.error('Error creating assessment lesson:', error);
+      throw error;
     }
   }
 
