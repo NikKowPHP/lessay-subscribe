@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useOnboarding } from '@/context/onboarding-context'
 import { AssessmentLesson, OnboardingModel } from '@/models/AppAllModels.model'
-import ChatAssessment from '@/components/onboarding/ChatAssessments'
+import AssessmentChat from '@/components/onboarding/AssessmentChat'
 import { toast } from 'react-hot-toast'
 
 interface AssessmentStepProps {
@@ -85,7 +85,7 @@ export default function AssessmentStep({ onComplete, loading, targetLanguage }: 
       </div>
 
       {usingChat ? (
-        <ChatAssessment 
+        <AssessmentChat 
           lessons={lessons}
           onComplete={handleComplete}
           onLessonComplete={handleLessonComplete}

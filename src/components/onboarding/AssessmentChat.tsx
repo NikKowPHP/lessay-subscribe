@@ -28,7 +28,7 @@ declare global {
   }
 }
 
-interface ChatAssessmentProps {
+interface AssessmentChatProps {
   lessons: AssessmentLesson[];
   onComplete: () => void;
   onLessonComplete: (lessonId: string, userResponse: string) => Promise<void>;
@@ -36,13 +36,13 @@ interface ChatAssessmentProps {
   targetLanguage: string;
 }
 
-export default function ChatAssessment({
+export default function AssessmentChat({
   lessons,
   onComplete,
   onLessonComplete,
   loading,
   targetLanguage,
-}: ChatAssessmentProps) {
+}: AssessmentChatProps) {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [userResponse, setUserResponse] = useState('');
@@ -63,6 +63,8 @@ export default function ChatAssessment({
   // Get current lesson and step
   const currentLesson = lessons[currentLessonIndex];
   const currentStep = currentLesson?.steps[currentStepIndex];
+
+  // TODO: dont add message to the chat immediately after the user respond with audio, only after it is correct. 
 
   // Rehydrate the entire UI state
   useEffect(() => {
