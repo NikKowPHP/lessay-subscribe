@@ -1,8 +1,6 @@
 import { ITTS } from '@/interfaces/tts.interface';
 import logger from '@/utils/logger';
 import axios from 'axios';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 
 export class GoogleTTS implements ITTS {
   
