@@ -1,4 +1,8 @@
+// import { AssessmentLesson, AssessmentStepType } from "@prisma/client";
+
 import { AssessmentLesson, AssessmentStepType } from "@prisma/client";
+
+
 
 export const MockAssessmentGeneratorService = {
   generateAssessmentLesson: async function(
@@ -112,16 +116,82 @@ export const MockAssessmentGeneratorService = {
       targetLanguage,
       sourceLanguage
     };
-  }
-
+  },
 
   generateAssessmentResult: async function(
     assessmentLesson: AssessmentLesson,
     userResponse: string
   ) {
+    // Calculate mock scores
+    const correctSteps = assessmentLesson.steps.filter(step => 
+      step.type === AssessmentStepType.question && step.correct
+    );
+    const totalQuestions = assessmentLesson.steps.filter(step => 
+      step.type === AssessmentStepType.question
+    ).length;
+    
+    // Calculate a basic accuracy score based on how many questions were answered correctly
+    const accuracy = totalQuestions > 0 ? (correctSteps.length / totalQuestions) * 100 : 70;
+    
+    // Generate random scores within reasonable ranges
+    const pronunciationScore = Math.floor(Math.random() * 30) + 60; // 60-90
+    const grammarScore = Math.floor(Math.random() * 30) + 60; // 60-90
+    const vocabularyScore = Math.floor(Math.random() * 30) + 60; // 60-90
+    
+    // Overall score is an average of the other scores
+    const overallScore = Math.floor((accuracy + pronunciationScore + grammarScore + vocabularyScore) / 4);
+    
+    // Create mock strengths and weaknesses based on the scores
+    const strengths = [];
+    const weaknesses = [];
+    
+    if (pronunciationScore > 75) strengths.push("Good pronunciation of basic phrases");
+    else weaknesses.push("Pronunciation of certain words needs improvement");
+    
+    if (grammarScore > 75) strengths.push("Understanding of basic grammar structures");
+    else weaknesses.push("Grammar usage in complex sentences");
+    
+    if (vocabularyScore > 75) strengths.push("Good grasp of essential vocabulary");
+    else weaknesses.push("Limited vocabulary range");
+    
+    // Add some general strengths/weaknesses
+    strengths.push("Willingness to communicate");
+    if (Math.random() > 0.5) strengths.push("Good comprehension of simple phrases");
+    
+    weaknesses.push("Confidence in speaking");
+    if (Math.random() > 0.5) weaknesses.push("Word order in questions");
+    
+    // Generate proposed topics based on target language
+    const proposedTopics = [
+      "Basic Greetings and Introductions",
+      "Everyday Conversations",
+      "Travel Vocabulary",
+      "Food and Dining",
+      "Shopping and Numbers"
+    ];
+    
+    // Create a summary
+    const summaryParts = [
+      `Based on your assessment, you've demonstrated ${overallScore > 75 ? "good" : "basic"} proficiency in ${assessmentLesson.targetLanguage}.`,
+      `Your strengths include ${strengths.slice(0, 2).join(" and ")}.`,
+      `Areas for improvement include ${weaknesses.slice(0, 2).join(" and ")}.`,
+      "We recommend starting with focused lessons on basic conversational phrases and gradually expanding your vocabulary."
+    ];
+    
+    const summary = summaryParts.join(" ");
+    
     return {
-      
-      userResponse
+      metrics: {
+        accuracy,
+        pronunciationScore,
+        grammarScore,
+        vocabularyScore,
+        overallScore,
+        strengths,
+        weaknesses
+      },
+      proposedTopics,
+      summary
     };
   }
 };
