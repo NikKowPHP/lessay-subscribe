@@ -4,8 +4,34 @@ import logger from '@/utils/logger';
 import { retryOperation } from '@/utils/retryWithOperation';
 // import { IAssessmentGeneratorService } from '@/lib/interfaces/all-interfaces';
 import { MockAssessmentGeneratorService } from '@/__mocks__/generated-assessment-lessons.mock';
-import { AssessmentStepType, ProficiencyLevel } from '@prisma/client';
-import { IAssessmentGeneratorService } from '@/lib/interfaces/all-interfaces';
+import {
+  AssessmentLesson,
+  AssessmentStep,
+  AssessmentStepType,
+  ProficiencyLevel,
+} from '@prisma/client';
+
+export interface IAssessmentGeneratorService {
+  generateAssessmentSteps: (
+    sourceLanguage?: string,
+    targetLanguage?: string,
+    proficiencyLevel?: string
+  ) => Promise<AssessmentStep[]>;
+}
+
+export interface AiAssessmentResultResponse {
+  metrics: {
+    accuracy: number;
+    pronunciationScore: number;
+    grammarScore: number;
+    vocabularyScore: number;
+    overallScore: number;
+    strengths: string[];
+    weaknesses: string[];
+  };
+  proposedTopics: string[];
+  summary: string;
+}
 
 class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
   private aiService: IAIService;
@@ -13,7 +39,8 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
 
   constructor(
     aiService: IAIService,
-    useMock: boolean = process.env.NEXT_PUBLIC_MOCK_ASSESSMENT_GENERATOR === 'true'
+    useMock: boolean = process.env.NEXT_PUBLIC_MOCK_ASSESSMENT_GENERATOR ===
+      'true'
   ) {
     this.aiService = aiService;
     this.useMock = useMock;
@@ -31,34 +58,38 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
       proficiencyLevel,
     });
 
+    let aiResponse: Record<string, unknown> | Record<string, unknown>[] = [];
     try {
       if (this.useMock) {
         logger.info('Using mock assessment generator');
-        return MockAssessmentGeneratorService.generateAssessmentLesson(
+        const mockLesson =
+          await MockAssessmentGeneratorService.generateAssessmentLesson(
+            sourceLanguage,
+            targetLanguage
+          );
+        logger.info('Mock assessment generated', { mockLesson });
+        aiResponse = mockLesson;
+      } else {
+        const prompts = this.generateAssessmentPrompts(
+          targetLanguage,
           sourceLanguage,
-          targetLanguage
+          proficiencyLevel
+        );
+
+        logger.info('Generated prompts for assessment', { prompts });
+
+        aiResponse = await retryOperation(() =>
+          this.aiService.generateContent(
+            '', // No file URI needed
+            prompts.userPrompt,
+            prompts.systemPrompt,
+            models.gemini_2_pro_exp
+          )
         );
       }
 
-      const prompts = this.generateAssessmentPrompts(
-        targetLanguage,
-        sourceLanguage,
-        proficiencyLevel
-      );
-
-      logger.info('Generated prompts for assessment', { prompts });
-
-      const aiResponse = await retryOperation(() =>
-        this.aiService.generateContent(
-          '', // No file URI needed
-          prompts.userPrompt,
-          prompts.systemPrompt,
-          models.gemini_2_pro_exp
-        )
-      );
-
       logger.info('AI response received', { aiResponse });
-      
+
       return this.formatAssessmentResponse(aiResponse);
     } catch (error) {
       logger.error('Error generating assessment:', {
@@ -71,18 +102,78 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
     }
   }
 
+  public async generateResults(
+    assessmentLesson: AssessmentLesson,
+    userResponse: string
+  ): Promise<AiAssessmentResultResponse> {
+    try {
+      if (this.useMock) {
+        logger.info('Using mock assessment generator');
+        return MockAssessmentGeneratorService.generateAssessmentResult(
+          assessmentLesson,
+          userResponse
+        );
+      }
+
+      const prompts = this.generateAssessmentResultPrompts(
+        assessmentLesson,
+        userResponse
+      );
+
+      logger.info('Generated assessment prompts ', { prompts });
+
+      const aiResponse = await retryOperation(() =>
+        this.aiService.generateContent(
+          '', // No file URI needed
+          prompts.userPrompt,
+          prompts.systemPrompt,
+          models.gemini_2_pro_exp
+        )
+      );
+
+      logger.info('AI response received', { aiResponse });
+
+      return this.constructAiAssessmentResultResponse(aiResponse);
+    } catch (error) {
+      logger.error('Error generating assessment:', {
+        targetLanguage,
+        sourceLanguage,
+        proficiencyLevel,
+        error,
+      });
+      throw error;
+    }
+  }
+  private constructAiAssessmentResultResponse(
+    aiResponse: any
+  ): AiAssessmentResultResponse {
+    return {
+      metrics: {
+        accuracy: aiResponse.accuracy,
+        pronunciationScore: aiResponse.pronunciationScore,
+        grammarScore: aiResponse.grammarScore,
+        vocabularyScore: aiResponse.vocabularyScore,
+        overallScore: aiResponse.overallScore,
+        strengths: aiResponse.strengths,
+        weaknesses: aiResponse.weaknesses,
+      },
+      proposedTopics: aiResponse.proposedTopics,
+      summary: aiResponse.summary,
+    };
+  }
+
   private formatAssessmentResponse(aiResponse: any): any[] {
     // Extract the steps array from the AI response
     // If we can't find it, return an empty array
     try {
       const data = aiResponse.data || aiResponse;
       const steps = data.steps || [];
-      
+
       // Ensure all steps have required properties
       return steps.map((step: any, index: number) => ({
         stepNumber: step.stepNumber || index + 1,
         type: step.type || AssessmentStepType.question,
-        content: step.content || "No content provided",
+        content: step.content || 'No content provided',
         contentAudioUrl: step.contentAudioUrl || null,
         translation: step.translation || null,
         expectedAnswer: step.expectedAnswer || null,
@@ -90,10 +181,13 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
         maxAttempts: step.maxAttempts || 3,
         attempts: 0,
         correct: false,
-        feedback: step.feedback || null
+        feedback: step.feedback || null,
       }));
     } catch (error) {
-      logger.error('Error formatting assessment response', { error, aiResponse });
+      logger.error('Error formatting assessment response', {
+        error,
+        aiResponse,
+      });
       return [];
     }
   }
@@ -107,7 +201,7 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
       systemPrompt: `You are an expert language assessment designer specializing in ${targetLanguage} 
         language proficiency evaluation. Create a comprehensive assessment for ${proficiencyLevel} level 
         learners whose native language is ${sourceLanguage}.`,
-      
+
       userPrompt: `Create a language assessment to evaluate a ${proficiencyLevel} level student of ${targetLanguage}.
         The assessment should:
         1. Include a variety of question types (vocabulary, grammar, comprehension)
@@ -122,7 +216,7 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
         - maxAttempts: Maximum attempts allowed (usually 3)
         - feedback: Helpful feedback to provide after the student attempts the question
         
-        The assessment should have 8-10 steps including introduction and conclusion.`
+        The assessment should have 8-10 steps including introduction and conclusion.`,
     };
   }
 }

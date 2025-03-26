@@ -6,7 +6,7 @@ import ApiKeyGenerator from './generators/apiKeyGenerator';
 import { IUploadableAIService } from '@/interfaces/ai-service.interface';
 
   export const models = {
-    gemini_2_pro_exp: "gemini-2.0-pro-exp-02-05",
+    gemini_2_pro_exp: "gemini-2.5-pro-exp-03-05",
     gemini_2_flash_exp: "gemini-2.0-flash-exp",
     gemini_2_0_thinking_exp: "gemini-2.0-flash-thinking-exp-01-21",
     gemini_2_0_flash: "gemini-2.0-flash",

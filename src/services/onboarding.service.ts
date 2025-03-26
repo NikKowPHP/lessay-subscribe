@@ -1,7 +1,9 @@
 import { OnboardingModel, AssessmentLesson } from "@/models/AppAllModels.model"
-import { IAssessmentGeneratorService, IOnboardingRepository } from "@/lib/interfaces/all-interfaces"
+import {  IOnboardingRepository } from "@/lib/interfaces/all-interfaces"
 import logger from "@/utils/logger"
 import LessonService from "./lesson.service"
+import LessonGeneratorService from "./lesson-generator.service"
+import { IAssessmentGeneratorService } from "./assessment-step-generator.service"
 
 
 export default class OnboardingService {
@@ -94,7 +96,20 @@ export default class OnboardingService {
   }
 
   async completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson> {
+    // get assessment lesson
+    const assessmentLesson = await this.onboardingRepository.getAssessmentLesson(lessonId)
+    if (!assessmentLesson) {
+      throw new Error('Assessment lesson not found')
+    }
 
-    return this.onboardingRepository.completeAssessmentLesson(lessonId, userResponse)
+    const results = this.assessmentGeneratorService.generateResults(assessmentLesson, userResponse)
+
+    assessmentLesson.metrics = results.metrics
+    assessmentLesson.summary = results.summary
+    assessmentLesson.proposedTopics = results.proposedTopics
+
+    // complete assessment lesson
+    return await this.onboardingRepository.completeAssessmentLesson(assessmentLesson, userResponse)
+
   }
 }

@@ -9,7 +9,7 @@ export  interface IOnboardingRepository {
   deleteOnboarding(): Promise<void>
   getStatus(): Promise<boolean>
   getAssessmentLesson(userId: string): Promise<AssessmentLesson | null>
-  completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson>
+  completeAssessmentLesson(assessmentLesson: AssessmentLesson, userResponse: string): Promise<AssessmentLesson>
   createAssessmentLesson(userId: string, assessment: Omit<AssessmentLesson, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentLesson>
 }
 
@@ -42,10 +42,3 @@ export interface ILessonGeneratorService {
   generateLesson: (topic: string, targetLanguage: string, difficultyLevel: string) => Promise<Record<string, unknown>>
 }
 
-export interface IAssessmentGeneratorService {
-  generateAssessmentSteps: (
-    sourceLanguage?: string, 
-    targetLanguage?: string,
-    proficiencyLevel?: string
-  ) => Promise<AssessmentStep[]>
-}

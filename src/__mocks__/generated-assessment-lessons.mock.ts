@@ -1,4 +1,4 @@
-import { AssessmentStepType } from "@prisma/client";
+import { AssessmentLesson, AssessmentStepType } from "@prisma/client";
 
 export const MockAssessmentGeneratorService = {
   generateAssessmentLesson: async function(
@@ -111,6 +111,17 @@ export const MockAssessmentGeneratorService = {
       steps: assessmentLessonSteps,
       targetLanguage,
       sourceLanguage
+    };
+  }
+
+
+  generateAssessmentResult: async function(
+    assessmentLesson: AssessmentLesson,
+    userResponse: string
+  ) {
+    return {
+      
+      userResponse
     };
   }
 };
