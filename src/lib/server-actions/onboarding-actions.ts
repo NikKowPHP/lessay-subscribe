@@ -14,6 +14,7 @@ import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock';
 import LessonService from '@/services/lesson.service';
 import { LessonRepository } from '@/repositories/lesson.repository';
 import AIService from '@/services/ai.service';
+import AssessmentStepGeneratorService from '@/services/assessment-step-generator.service';
 
 function createOnboardingService() {
   const repository = new OnboardingRepository(
@@ -25,8 +26,7 @@ function createOnboardingService() {
   return new OnboardingService(
     repository,
     new LessonService(lessonRepository, MockLessonGeneratorService, repository),
-    // new MockAssessmentGeneratorService()
-    new AssessmentGeneratorService(new AIService(), true)
+    new AssessmentStepGeneratorService(new AIService(), true)
   );
 }
 
@@ -81,9 +81,9 @@ export async function getAssessmentLessonsAction() {
   if (!session) {
     throw new Error('User not authenticated');
   }
-  const lessons = await onboardingService.getAssessmentLessons(session.user.id);
-  logger.log('lessons:', lessons);
-  return lessons;
+  const lesson = await onboardingService.getAssessmentLesson(session.user.id);
+  logger.log('lessons:', lesson);
+  return lesson;
 }
 
 export async function completeAssessmentLessonAction(
