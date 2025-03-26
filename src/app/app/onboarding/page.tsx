@@ -10,11 +10,12 @@ import LanguageSelectionStep from '@/components/onboarding/LanguageSelectionStep
 import LearningPurposeStep from '@/components/onboarding/LearningPurposeStep'
 import ProficiencyStep from '@/components/onboarding/ProficiencyStep'
 import AssessmentStep from '@/components/onboarding/AssessmentStep'
+import { AssessmentLesson } from '@/models/AppAllModels.model'
 
 export default function OnboardingPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { isOnboardingComplete, markStepComplete, loading, getOnboarding, getAssessmentLessons } = useOnboarding()
+  const { isOnboardingComplete, markStepComplete, loading, getOnboarding, getAssessmentLesson } = useOnboarding()
   const [currentStep, setCurrentStep] = useState<string>('welcome')
   const [formData, setFormData] = useState({
     nativeLanguage: '',
@@ -24,7 +25,7 @@ export default function OnboardingPage() {
   })
   
   // State to hold the generated assessment lesson and its loading status
-  const [assessmentLesson, setAssessmentLesson] = useState<any>(null)
+  const [assessmentLesson, setAssessmentLesson] = useState<AssessmentLesson | null>(null)
   const [assessmentLoading, setAssessmentLoading] = useState<boolean>(false)
 
   // Rehydrate state from onboarding session
@@ -93,9 +94,9 @@ export default function OnboardingPage() {
   const generateAssessmentLesson = async () => {
     setAssessmentLoading(true)
     try {
-      const lessons = await getAssessmentLessons()
-      if (lessons && lessons.length > 0) {
-        setAssessmentLesson(lessons[0])
+      const lesson = await getAssessmentLesson()
+      if (lesson) {
+        setAssessmentLesson(lesson)
       }
     } catch (error) {
       logger.error("Error generating assessment lesson:", error)
@@ -139,6 +140,7 @@ export default function OnboardingPage() {
             onComplete={() => router.push('/app/lessons')} 
             loading={assessmentLoading} 
             targetLanguage={formData.targetLanguage} 
+            lesson={assessmentLesson}
           />
         )
       default:
