@@ -5,11 +5,11 @@ import { retryOperation } from '@/utils/retryWithOperation';
 // import { IAssessmentGeneratorService } from '@/lib/interfaces/all-interfaces';
 import { MockAssessmentGeneratorService } from '@/__mocks__/generated-assessment-lessons.mock';
 import {
-  AssessmentLesson,
   AssessmentStep,
   AssessmentStepType,
   ProficiencyLevel,
 } from '@prisma/client';
+import { AssessmentLesson } from '@/models/AppAllModels.model';
 
 export interface IAssessmentGeneratorService {
   generateAssessmentSteps: (
@@ -17,6 +17,10 @@ export interface IAssessmentGeneratorService {
     targetLanguage?: string,
     proficiencyLevel?: string
   ) => Promise<AssessmentStep[]>;
+  generateAssessmentResult: (
+    assessmentLesson: AssessmentLesson,
+    userResponse: string
+  ) => Promise<AiAssessmentResultResponse>;
 }
 
 export interface AiAssessmentResultResponse {
@@ -83,7 +87,7 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
             '', // No file URI needed
             prompts.userPrompt,
             prompts.systemPrompt,
-            models.gemini_2_pro_exp
+            models.gemini_2_5_pro_exp
           )
         );
       }
@@ -102,7 +106,7 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
     }
   }
 
-  public async generateResults(
+  public async generateAssessmentResult(
     assessmentLesson: AssessmentLesson,
     userResponse: string
   ): Promise<AiAssessmentResultResponse> {
@@ -127,7 +131,7 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
           '', // No file URI needed
           prompts.userPrompt,
           prompts.systemPrompt,
-          models.gemini_2_pro_exp
+          models.gemini_2_5_pro_exp
         )
       );
 
@@ -136,9 +140,6 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
       return this.constructAiAssessmentResultResponse(aiResponse);
     } catch (error) {
       logger.error('Error generating assessment:', {
-        targetLanguage,
-        sourceLanguage,
-        proficiencyLevel,
         error,
       });
       throw error;
@@ -217,6 +218,21 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
         - feedback: Helpful feedback to provide after the student attempts the question
         
         The assessment should have 8-10 steps including introduction and conclusion.`,
+    };
+  }
+
+  generateAssessmentResultPrompts(
+    assessmentLesson: AssessmentLesson,
+    userResponse: string
+  ): { userPrompt: string; systemPrompt: string } {
+    return {
+      systemPrompt: `You are an expert language assessment designer specializing in ${assessmentLesson.targetLanguage} 
+        language proficiency evaluation. Create a comprehensive assessment for  level 
+        learners whose native language is ${assessmentLesson.sourceLanguage}.`,
+      userPrompt: `Evaluate the student's response to the following assessment lesson:
+        ${JSON.stringify(assessmentLesson)}
+        The student's response is:
+        ${userResponse}`,
     };
   }
 }

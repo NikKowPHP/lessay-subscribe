@@ -53,7 +53,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
             '', // No file URI needed
             prompts.userPrompt,
             prompts.systemPrompt,
-            models.gemini_2_pro_exp
+            models.gemini_2_5_pro_exp
           )
         );
         logger.info('AI response received', { aiResponse });

@@ -1,8 +1,7 @@
 // import { AssessmentLesson, AssessmentStepType } from "@prisma/client";
 
 import { AssessmentLesson, AssessmentStepType } from "@prisma/client";
-
-
+import { AssessmentLesson as AssessmentLessonModel } from "@/models/AppAllModels.model";
 
 export const MockAssessmentGeneratorService = {
   generateAssessmentLesson: async function(
@@ -119,7 +118,7 @@ export const MockAssessmentGeneratorService = {
   },
 
   generateAssessmentResult: async function(
-    assessmentLesson: AssessmentLesson,
+    assessmentLesson: AssessmentLessonModel,
     userResponse: string
   ) {
     // Calculate mock scores
