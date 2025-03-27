@@ -69,6 +69,11 @@ export default function LessonChat({
   const router = useRouter();
   const recognitionRef = useRef<any>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [shouldPlayAudio, setShouldPlayAudio] = useState(true);
+  const [audioQueue, setAudioQueue] = useState<string[]>([]);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [initialUserInteractionDone, setInitialUserInteractionDone] = useState(false);
 
   useEffect(() => {
     if (
@@ -77,6 +82,7 @@ export default function LessonChat({
       Array.isArray(lesson.steps) &&
       chatHistory.length === 0
     ) {
+	    logger.info('all lesson data', lesson)
       const initialHistory: ChatMessage[] = [];
 
       // Find the last completed step
@@ -114,7 +120,78 @@ export default function LessonChat({
           : lesson.steps.length - 1
       );
     }
+
+    // At the end of this effect, set shouldPlayAudio to true to play initial audio
+    setShouldPlayAudio(true);
   }, [lesson]);
+
+  useEffect(() => {
+    const playNextInQueue = () => {
+      if (audioQueue.length > 0 && !isPlayingAudio) {
+        setIsPlayingAudio(true);
+        const nextAudio = audioQueue[0];
+        
+        if (audioRef.current) {
+          audioRef.current.src = nextAudio;
+          audioRef.current.play()
+            .then(() => {
+              logger.info("Playing audio:", nextAudio);
+            })
+            .catch(error => {
+              logger.error("Failed to play audio:", error);
+              // Move to next audio in queue if current fails
+              setAudioQueue(prevQueue => prevQueue.slice(1));
+              setIsPlayingAudio(false);
+            });
+        }
+      }
+    };
+
+    playNextInQueue();
+  }, [audioQueue, isPlayingAudio]);
+
+  useEffect(() => {
+    const handleAudioEnded = () => {
+      // Remove the played audio from queue and reset playing state
+      setAudioQueue(prevQueue => prevQueue.slice(1));
+      setIsPlayingAudio(false);
+    };
+
+    if (audioRef.current) {
+      audioRef.current.addEventListener('ended', handleAudioEnded);
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('ended', handleAudioEnded);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (shouldPlayAudio && lesson.steps && lesson.steps[currentStepIndex] && initialUserInteractionDone) {
+      const currentStep = lesson.steps[currentStepIndex];
+      const newAudioQueue: string[] = [];
+      
+      // First play content audio for all step types
+      if (currentStep.contentAudioUrl) {
+        newAudioQueue.push(currentStep.contentAudioUrl);
+      }
+      
+      // For practice steps, also queue the expected answer audio
+      if (currentStep.type === 'practice' && currentStep.expectedAnswerAudioUrl) {
+        newAudioQueue.push(currentStep.expectedAnswerAudioUrl);
+      }
+      
+      if (newAudioQueue.length > 0) {
+        setAudioQueue(newAudioQueue);
+        logger.info("Queued audio files:", newAudioQueue);
+      }
+      
+      // Reset the flag after queuing
+      setShouldPlayAudio(false);
+    }
+  }, [currentStepIndex, lesson.steps, shouldPlayAudio, initialUserInteractionDone]);
 
   // Set up speech recognition
   useEffect(() => {
@@ -209,7 +286,6 @@ export default function LessonChat({
     }, 4000);
   };
 
-
   const handleSubmitStep = async (step: LessonStep, response: string) => {
     try {
       setFeedback('Processing...');
@@ -236,6 +312,7 @@ export default function LessonChat({
           ]);
 
           setUserResponse('');
+	  setShouldPlayAudio(true);
         } else {
           // If this was the last step, complete the lesson
           onComplete();
@@ -256,7 +333,6 @@ export default function LessonChat({
         (s) => s.stepNumber === step.stepNumber + 1
       );
 
-
       if (nextStep) {
         setCurrentStepIndex((prev) => prev + 1);
         setUserResponse('');
@@ -266,6 +342,10 @@ export default function LessonChat({
           { type: 'response', content: response },
           { type: 'prompt', content: nextStep.content },
         ]);
+        
+        // Set flag to play audio for the new step (will only play if user interaction happened)
+        setShouldPlayAudio(true);
+        
         startListening();
       } else {
         onComplete();
@@ -293,6 +373,12 @@ export default function LessonChat({
   };
 
   const toggleListening = () => {
+    // Set the user interaction flag to true
+    if (!initialUserInteractionDone) {
+      setInitialUserInteractionDone(true);
+      setShouldPlayAudio(true);
+    }
+
     if (isListening) {
       pauseListening();
     } else {
@@ -302,6 +388,10 @@ export default function LessonChat({
 
   // A wrapper to trigger submission from the input component.
   const handleSubmit = () => {
+    if (!initialUserInteractionDone) {
+      setInitialUserInteractionDone(true);
+    }
+    
     const currentStep = lesson.steps[currentStepIndex] as LessonStep;
     handleSubmitStep(currentStep, userResponse);
   };
@@ -360,6 +450,7 @@ export default function LessonChat({
         <div ref={chatMessagesRef} className="flex-1 overflow-y-auto min-h-0">
           <ChatMessages messages={chatHistory} />
         </div>
+        <audio ref={audioRef} />
 
         {/* Assessment specific realtime transcript display */}
         {/* {realtimeTranscriptEnabled && (
