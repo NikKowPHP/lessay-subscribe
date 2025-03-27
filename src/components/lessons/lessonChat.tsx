@@ -11,7 +11,6 @@ import ChatMessages, { ChatMessage } from './ChatMessages';
 import ChatInput from './ChatInput';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Lesson } from '@prisma/client';
 
 // Add this interface at the top of the file
 interface SpeechRecognitionEvent extends Event {
@@ -364,7 +363,7 @@ export default function LessonChat({
         </div>
 
         {/* Chat Messages */}
-        <div ref={chatMessagesRef} className="flex-1 min-h-0 overflow-y-auto">
+        <div ref={chatMessagesRef} className="flex-1 overflow-y-auto">
           <ChatMessages messages={chatHistory} />
         </div>
 

@@ -28,7 +28,6 @@ export default function AssessmentStep({
   onGoToLessonsButtonClick,
 }: AssessmentStepProps) {
   const { recordAssessmentStepAttempt } = useOnboarding();
-  const [usingChat, setUsingChat] = useState(true); // Default to chat interface
   const [isCompleting, setIsCompleting] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
@@ -324,35 +323,7 @@ export default function AssessmentStep({
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-center mb-6">
-        <div className="inline-flex rounded-md shadow-sm" role="group">
-          <button
-            type="button"
-            onClick={() => setUsingChat(true)}
-            className={`px-4 py-2 text-sm font-medium border transition-colors ${
-              usingChat
-                ? 'bg-accent-6 text-neutral-1 border-accent-6'
-                : 'bg-neutral-1 text-neutral-9 border-neutral-5 hover:bg-neutral-2'
-            } rounded-l-md focus:z-10 focus:ring-2 focus:ring-accent-6 focus:outline-none`}
-          >
-            Chat Mode
-          </button>
-          <button
-            type="button"
-            onClick={() => setUsingChat(false)}
-            className={`px-4 py-2 text-sm font-medium border transition-colors ${
-              !usingChat
-                ? 'bg-accent-6 text-neutral-1 border-accent-6'
-                : 'bg-neutral-1 text-neutral-9 border-neutral-5 hover:bg-neutral-2'
-            } rounded-r-md focus:z-10 focus:ring-2 focus:ring-accent-6 focus:outline-none`}
-          >
-            Standard Mode
-          </button>
-        </div>
-      </div>
-
-      {usingChat ? (
+    <div className="animate-fade-in">
         <LessonChat
           lesson={lesson}
           onComplete={handleComplete}
@@ -362,23 +333,6 @@ export default function AssessmentStep({
           isAssessment={true}
           realtimeTranscriptEnabled={true}
         />
-      ) : (
-        // Original assessment UI code with updated styling
-        <div className="space-y-6 bg-neutral-2 p-4 rounded-lg border border-neutral-4">
-          <div className="text-center py-8">
-            <p className="text-neutral-8">
-              Standard assessment interface has been replaced with Chat Mode
-            </p>
-            <button
-              onClick={() => setUsingChat(true)}
-              className="mt-4 py-2 px-4 bg-accent-6 text-neutral-1 rounded-md transition-colors hover:bg-accent-7
-                        focus:outline-none focus:ring-2 focus:ring-accent-8 focus:ring-offset-2 text-sm font-medium"
-            >
-              Switch to Chat Mode
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
