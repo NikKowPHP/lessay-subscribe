@@ -159,17 +159,9 @@ export class OnboardingRepository implements IOnboardingRepository {
     }
   }
 
-  async completeAssessmentLesson(lessonId: string, userResponse: string): Promise<AssessmentLesson> {
+  async completeAssessmentLesson(assessment: AssessmentLesson, userResponse: string): Promise<AssessmentLesson> {
     try {
-      const session = await this.getSession()
       
-      // First verify the assessment exists and belongs to this user
-      const assessment = await prisma.assessmentLesson.findFirst({
-        where: { 
-          id: lessonId,
-          userId: session.user.id
-        }
-      })
       
       if (!assessment) {
         throw new Error('Assessment lesson not found or unauthorized')
@@ -177,7 +169,7 @@ export class OnboardingRepository implements IOnboardingRepository {
       
       // Mark the assessment as completed
       return await prisma.assessmentLesson.update({
-        where: { id: lessonId },
+        where: { id: assessment.id },
         data: {
           completed: true,
           summary: userResponse, // Store the user's response as the summary
@@ -536,4 +528,69 @@ export class OnboardingRepository implements IOnboardingRepository {
       throw error
     }
   }
+
+
+  async recordStepAttempt(
+    lessonId: string,
+    stepId: string,
+    data: {
+      userResponse: string;
+      correct: boolean;
+      attemptNumber?: number;
+    }
+  ): Promise<AssessmentLesson> {
+    try {
+      const session = await this.getSession();
+      
+      // First verify this assessment belongs to the current user
+      const assessment = await prisma.assessmentLesson.findFirst({
+        where: {
+          id: lessonId,
+          userId: session.user.id
+        },
+        include: {
+          steps: true
+        }
+      });
+      
+      if (!assessment) {
+        throw new Error('Assessment lesson not found or unauthorized');
+      }
+      
+      // Find the step
+      const step = assessment.steps.find(s => s.id === stepId);
+      if (!step) {
+        throw new Error('Step not found in the assessment');
+      }
+      
+      // Update the step with the attempt data
+      await prisma.assessmentStep.update({
+        where: { id: stepId },
+        data: {
+          userResponse: data.userResponse,
+          attempts: { increment: 1 },
+          correct: data.correct,
+          lastAttemptAt: new Date()
+        }
+      });
+      
+      // Return the updated assessment with all steps
+      return await prisma.assessmentLesson.findUnique({
+        where: { id: lessonId },
+        include: {
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
+        }
+      }) as AssessmentLesson;
+    } catch (error) {
+      logger.error('Error recording assessment step attempt:', error);
+      throw error;
+    }
+  }
+
+
+
 }
