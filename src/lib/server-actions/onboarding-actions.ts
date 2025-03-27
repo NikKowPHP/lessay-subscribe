@@ -74,13 +74,15 @@ export async function getStatusAction() {
   return status;
 }
 
-export async function getAssessmentLessonsAction() {
-  const onboardingService = createOnboardingService();
+export async function getAssessmentLessonAction() {
   const authService = getAuthServiceBasedOnEnvironment();
   const session = await authService.getSession();
   if (!session) {
     throw new Error('User not authenticated');
   }
+
+  const onboardingService = createOnboardingService();
+
   const lesson = await onboardingService.getAssessmentLesson(session.user.id);
   logger.log('lessons:', lesson);
   return lesson;
@@ -98,3 +100,17 @@ export async function completeAssessmentLessonAction(
   logger.log('completed lesson:', completedLesson);
   return completedLesson;
 }
+
+export async function recordAssessmentStepAttemptAction(
+  lessonId: string,
+  stepId: string,
+  userResponse: string
+) {
+  if (!lessonId || !stepId) {
+    throw new Error('Lesson ID and Step ID are required');
+  }
+  const onboardingService = createOnboardingService();
+
+  return await onboardingService.recordStepAttempt(lessonId, stepId, userResponse);
+}
+

@@ -133,4 +133,89 @@ export default class OnboardingService {
       userResponse
     );
   }
+
+  async recordStepAttempt(
+    lessonId: string,
+    stepId: string,
+    userResponse: string
+  ): Promise<AssessmentLesson> {
+
+    try {
+      const lesson = await this.onboardingRepository.getAssessmentLesson(
+        lessonId
+      );
+      if (!lesson) {
+        throw new Error('Assessment lesson not found');
+      }
+      const step = lesson.steps.find((s) => s.id === stepId);
+      if (!step) {
+        throw new Error('Step not found');
+      }
+      // Validate user response for most step types
+      if (
+        step.type !== 'instruction' &&
+        step.type !== 'summary' &&
+        step.type !== 'feedback'
+      ) {
+        if (!userResponse) {
+          throw new Error('No response provided');
+        }
+        if (userResponse.length < 3) {
+          throw new Error('Response is too short');
+        }
+      }
+      let correct = false;
+
+      logger.info('processing the step attempt', { step, userResponse });
+
+      // Handle different assessment step types
+      switch (step.type) {
+        case 'question':
+          // For questions, compare with the expectedAnswer if available
+          if (step.expectedAnswer) {
+            correct =
+              userResponse.trim().toLowerCase() ===
+              step.expectedAnswer.trim().toLowerCase();
+          } else {
+            // If no expected answer, consider it correct (open-ended question)
+            correct = true;
+          }
+          break;
+
+        case 'instruction':
+        case 'summary':
+        case 'feedback':
+          // These types just need acknowledgment
+          correct = true;
+          // For these types, we use a default "Acknowledged" response if none provided
+          userResponse = userResponse || 'Acknowledged';
+          break;
+
+        case 'user_response':
+          // For user_response types, generally considered correct with any valid response
+          correct = true;
+          break;
+
+        default:
+          logger.warn(`Unknown assessment step type: ${step.type}`);
+          correct = false;
+      }
+
+      // Record the attempt
+      const updatedLesson = await this.onboardingRepository.recordStepAttempt(
+        lessonId,
+        stepId,
+        {
+          userResponse,
+          correct,
+          attemptNumber: step.attempts + 1,
+        }
+      );
+
+      return updatedLesson;
+    } catch (error) {
+      logger.error('Error recording step attempt:', error);
+      throw new Error('Failed to record step attempt');
+    }
+  }
 }
