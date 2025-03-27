@@ -5,12 +5,14 @@ import { useRouter, useParams } from 'next/navigation';
 import { useLesson } from '@/context/lesson-context';
 import { useOnboarding } from '@/context/onboarding-context';
 import {
+  AssessmentStep as AssessmentStepModel,
   LessonModel,
   LessonStep,
   isPerformanceMetrics,
 } from '@/models/AppAllModels.model';
 import LessonChat from '@/components/lessons/lessonChat';
 import logger from '@/utils/logger';
+import { AssessmentStep } from '@prisma/client';
 
 export default function LessonDetailPage() {
   const router = useRouter();
@@ -31,66 +33,77 @@ export default function LessonDetailPage() {
     init();
   }, [id]);
 
-  const handleStepComplete = async (step: LessonStep, userResponse: string) => {
+  const handleStepComplete = async (step: LessonStep | AssessmentStepModel, userResponse: string): Promise<LessonStep | AssessmentStepModel> => {
     logger.info('handleStepComplete', { step, userResponse });
     
-    // Basic validation
-    if (!userResponse) {
-      throw new Error('there is no response');
-    }
-    if (userResponse.length < 3) {
-      throw new Error('the response is too short');
-    }
-
-    let correct = false;
-
-    // Handle different step types
-    switch (step.type) {
-      case 'practice':
-        // For practice steps, compare with the content directly
-        correct = userResponse.trim().toLowerCase() === step.content.trim().toLowerCase();
-        break;
-        
-      case 'new_word':
-      case 'model_answer':
-        // For these types, compare with the translation if available
-        if (step.translation) {
-          correct = userResponse.trim().toLowerCase() === step.translation.trim().toLowerCase();
-        } else {
-          // If no translation, compare with content
-          correct = userResponse.trim().toLowerCase() === step.content.trim().toLowerCase();
-        }
-        break;
-        
-      case 'prompt':
-      case 'user_answer':
-        // These types might not need strict comparison
-        // Consider them correct if there's any response
-        correct = true;
-        break;
-        
-      default:
-        correct = false;
-    }
-
     try {
-      await recordStepAttempt(lesson!.id, String(step.stepNumber), {
-        userResponse,
-        correct,
-      });
-
-      setLesson((prev) =>
-        prev
-          ? {
-              ...prev,
-              steps: prev.steps.map((s) =>
-                s.stepNumber === step.stepNumber ? { ...s, userResponse } : s
-              ),
-            }
-          : null
+      if (!lesson) {
+        throw new Error('Lesson is not loaded');
+      }
+      // Record the step attempt, similar to how lessons work
+      return await recordStepAttempt(
+        lesson.id,
+        step.id,
+        userResponse
       );
+    // Basic validation
+    // if (!userResponse) {
+    //   throw new Error('there is no response');
+    // }
+    // if (userResponse.length < 3) {
+    //   throw new Error('the response is too short');
+    // }
+
+    // let correct = false;
+
+    // // Handle different step types
+    // switch (step.type) {
+    //   case 'practice':
+    //     // For practice steps, compare with the content directly
+    //     correct = userResponse.trim().toLowerCase() === step.content.trim().toLowerCase();
+    //     break;
+        
+    //   case 'new_word':
+    //   case 'model_answer':
+    //     // For these types, compare with the translation if available
+    //     if (step.translation) {
+    //       correct = userResponse.trim().toLowerCase() === step.translation.trim().toLowerCase();
+    //     } else {
+    //       // If no translation, compare with content
+    //       correct = userResponse.trim().toLowerCase() === step.content.trim().toLowerCase();
+    //     }
+    //     break;
+        
+    //   case 'prompt':
+    //   case 'user_answer':
+    //     // These types might not need strict comparison
+    //     // Consider them correct if there's any response
+    //     correct = true;
+    //     break;
+        
+    //   default:
+    //     correct = false;
+    // }
+
+    // try {
+    //   await recordStepAttempt(lesson!.id, String(step.stepNumber), {
+    //     userResponse,
+    //     correct,
+    //   });
+
+    //   setLesson((prev) =>
+    //     prev
+    //       ? {
+    //           ...prev,
+    //           steps: prev.steps.map((s) =>
+    //             s.stepNumber === step.stepNumber ? { ...s, userResponse } : s
+    //           ),
+    //         }
+    //       : null
+    //   );
     } catch (error) {
       logger.error('Failed to record step attempt:', error);
+      throw error
     }
   };
 

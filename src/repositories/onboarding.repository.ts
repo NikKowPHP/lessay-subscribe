@@ -536,9 +536,8 @@ export class OnboardingRepository implements IOnboardingRepository {
     data: {
       userResponse: string;
       correct: boolean;
-      attemptNumber?: number;
     }
-  ): Promise<AssessmentLesson> {
+  ): Promise<AssessmentStep> {
     try {
       const session = await this.getSession();
       
@@ -564,7 +563,7 @@ export class OnboardingRepository implements IOnboardingRepository {
       }
       
       // Update the step with the attempt data
-      await prisma.assessmentStep.update({
+      return await prisma.assessmentStep.update({
         where: { id: stepId },
         data: {
           userResponse: data.userResponse,
@@ -574,17 +573,6 @@ export class OnboardingRepository implements IOnboardingRepository {
         }
       });
       
-      // Return the updated assessment with all steps
-      return await prisma.assessmentLesson.findUnique({
-        where: { id: lessonId },
-        include: {
-          steps: {
-            orderBy: {
-              stepNumber: 'asc'
-            }
-          }
-        }
-      }) as AssessmentLesson;
     } catch (error) {
       logger.error('Error recording assessment step attempt:', error);
       throw error;

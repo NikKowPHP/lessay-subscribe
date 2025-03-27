@@ -29,21 +29,20 @@ declare global {
 }
 
 interface AssessmentChatProps {
-  lessons: AssessmentLesson[];
+  lesson: AssessmentLesson;
   onComplete: () => void;
-  onLessonComplete: (lessonId: string, userResponse: string) => Promise<void>;
   loading: boolean;
   targetLanguage: string;
+  onStepComplete: (step: AssessmentStep, userResponse: string) => Promise<void>;
 }
 
 export default function AssessmentChat({
-  lessons,
+  lesson,
   onComplete,
-  onLessonComplete,
   loading,
   targetLanguage,
+  onStepComplete,
 }: AssessmentChatProps) {
-  const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [userResponse, setUserResponse] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -62,51 +61,30 @@ export default function AssessmentChat({
     return process.env.NEXT_PUBLIC_MOCK_USER_RESPONSES === 'true';
   }, []);
 
-  // Get current lesson and step
-  const currentLesson = lessons[currentLessonIndex];
-  const currentStep = currentLesson?.steps[currentStepIndex];
-
-  // TODO: dont add message to the chat immediately after the user respond with audio, only after it is correct. 
+  // Get current step from the single lesson
+  const currentStep = lesson?.steps[currentStepIndex];
 
   // Rehydrate the entire UI state
   useEffect(() => {
-    if (lessons.length > 0) {
-      // Find the first lesson with incomplete steps
-      const firstIncompleteLessonIndex = lessons.findIndex(
-        (lesson) => !lesson.completed
+    if (lesson) {
+      // Find the first incomplete step
+      const firstIncompleteStepIndex = lesson.steps.findIndex(
+        (step) => !step.correct && step.attempts < step.maxAttempts
       );
-      const currentIndex =
-        firstIncompleteLessonIndex !== -1 ? firstIncompleteLessonIndex : 0;
-
-      // Set current lesson index
-      setCurrentLessonIndex(currentIndex);
-
-      const currentLesson = lessons[currentIndex];
-
-      // Find the first incomplete step in the current lesson
-      let stepIndex = 0;
-      if (currentLesson?.steps) {
-        stepIndex = currentLesson.steps.findIndex(
-          (step) => !step.correct && step.attempts < step.maxAttempts
-        );
-        stepIndex = stepIndex !== -1 ? stepIndex : 0;
-        setCurrentStepIndex(stepIndex);
-      }
+      const stepIndex = firstIncompleteStepIndex !== -1 ? firstIncompleteStepIndex : 0;
+      setCurrentStepIndex(stepIndex);
 
       // Build chat history
-      const history: Array<{ type: 'prompt' | 'response'; content: string }> =
-        [];
+      const history: Array<{ type: 'prompt' | 'response'; content: string }> = [];
 
       // Add all completed steps and the next incomplete one
-      if (currentLesson?.steps) {
-        for (let i = 0; i <= stepIndex; i++) {
-          const step = currentLesson.steps[i];
-          if (step) {
-            history.push({ type: 'prompt', content: step.content });
+      for (let i = 0; i <= stepIndex; i++) {
+        const step = lesson.steps[i];
+        if (step) {
+          history.push({ type: 'prompt', content: step.content });
 
-            if (step.userResponse) {
-              history.push({ type: 'response', content: step.userResponse });
-            }
+          if (step.userResponse) {
+            history.push({ type: 'response', content: step.userResponse });
           }
         }
       }
@@ -115,15 +93,21 @@ export default function AssessmentChat({
 
       // Start listening if on an unanswered step
       if (
-        currentLesson?.steps &&
-        currentLesson.steps[stepIndex] &&
-        !currentLesson.steps[stepIndex].userResponse &&
+        lesson.steps[stepIndex] &&
+        !lesson.steps[stepIndex].userResponse &&
         recognitionRef.current
       ) {
         startListening();
       }
     }
-  }, [lessons]);
+  }, [lesson]);
+
+
+  useEffect(() => {
+
+    setupSpeechRecognition()
+
+  }, [currentStepIndex, lesson, targetLanguage])
 
   // Function to reset the silence timer
   const resetSilenceTimer = () => {
@@ -210,8 +194,7 @@ export default function AssessmentChat({
     return response.toLowerCase().includes(expectedAnswer.toLowerCase());
   };
 
-  const handleCorrectResponse = async (
-    lesson: AssessmentLesson,
+  const handleSubmit = async (
     step: AssessmentStep,
     response: string
   ) => {
@@ -220,6 +203,31 @@ export default function AssessmentChat({
     }
 
     try {
+      setFeedback('Processing...')
+      if (step.type === 'instruction' || step.type === 'summary') {
+        // Mark as seen/acknowledged
+        await onStepComplete(step, "Acknowledged");
+        
+        // Move to the next step
+        const nextStepIndex = currentStepIndex + 1;
+        if (nextStepIndex < lesson.steps.length) {
+          setCurrentStepIndex(nextStepIndex);
+          const nextStep = lesson.steps[nextStepIndex];
+          
+          // Add acknowledgment and next prompt to chat history
+          setChatHistory(prev => [
+            ...prev, 
+            { type: 'response', content: 'OK, got it!' },
+            { type: 'prompt', content: nextStep.content }
+          ]);
+          
+          setUserResponse('');
+        } else {
+          // If this was the last step, complete the lesson
+          onComplete();
+        }
+        return;
+      }
       // Add response to chat history
       setChatHistory((prev) => [
         ...prev,
@@ -227,11 +235,10 @@ export default function AssessmentChat({
       ]);
 
       // Mark step as correct
-      await onLessonComplete(lesson.id, response);
 
       // Check if current lesson is complete or move to next step
       if (currentStepIndex < lesson.steps.length - 1) {
-        // Move to next step in current lesson
+        // Move to next step
         const nextStepIndex = currentStepIndex + 1;
         setCurrentStepIndex(nextStepIndex);
         setUserResponse('');
@@ -247,26 +254,8 @@ export default function AssessmentChat({
             startListening();
           }
         }, 1000);
-      } else if (currentLessonIndex < lessons.length - 1) {
-        // Move to next lesson
-        const nextLessonIndex = currentLessonIndex + 1;
-        setCurrentLessonIndex(nextLessonIndex);
-        setCurrentStepIndex(0);
-        setUserResponse('');
-
-        // Add next lesson's first step to chat history
-        setTimeout(() => {
-          const nextLesson = lessons[nextLessonIndex];
-          if (nextLesson && nextLesson.steps.length > 0) {
-            setChatHistory((prev) => [
-              ...prev,
-              { type: 'prompt', content: nextLesson.steps[0].content },
-            ]);
-            startListening();
-          }
-        }, 1000);
       } else {
-        // All lessons complete
+        // All steps complete
         setAssessmentComplete(true);
       }
     } catch (error) {
@@ -299,7 +288,7 @@ export default function AssessmentChat({
   };
 
   const handleMockResponse = (matchesModel: boolean) => {
-    if (!currentLesson || !currentStep) return;
+    if (!lesson || !currentStep) return;
 
     const response = matchesModel
       ? currentStep.expectedAnswer || 'Correct mock answer'
@@ -308,11 +297,11 @@ export default function AssessmentChat({
     setUserResponse(response);
 
     if (matchesModel) {
-      handleCorrectResponse(currentLesson, currentStep, response);
+      handleSubmit(currentStep, response);
     }
   };
 
-  if (lessons.length === 0) {
+  if (!lesson) {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="animate-spin mr-3 h-5 w-5 text-accent-6">
@@ -411,10 +400,8 @@ export default function AssessmentChat({
           </svg>
           Language Assessment
           
-          {/* - Step {currentStepIndex + 1}/
-          {currentLesson?.steps.length || 0}
-          {currentLesson &&
-            ` (Lesson ${currentLessonIndex + 1}/${lessons.length})`} */}
+          {/* Step progress indicator */}
+          {currentStep && ` - Step ${currentStepIndex + 1}/${lesson.steps.length}`}
         </h2>
       </div>
 
@@ -542,8 +529,7 @@ export default function AssessmentChat({
             type="button"
             onClick={() =>
               currentStep &&
-              currentLesson &&
-              handleCorrectResponse(currentLesson, currentStep, userResponse)
+              handleSubmit(currentStep, userResponse)
             }
             disabled={!userResponse || loading || !currentStep}
             className="flex-1 py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-neutral-1 bg-primary hover:bg-accent-7 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-8 disabled:opacity-50 flex items-center justify-center"
@@ -571,16 +557,7 @@ export default function AssessmentChat({
         <div
           className="bg-accent-6 h-1.5 transition-all duration-300"
           style={{
-            width: `${
-              ((currentLessonIndex * (currentLesson?.steps.length || 1) +
-                currentStepIndex +
-                1) /
-                lessons.reduce(
-                  (total, lesson) => total + (lesson.steps.length || 1),
-                  0
-                )) *
-              100
-            }%`,
+            width: `${((currentStepIndex + 1) / lesson.steps.length) * 100}%`,
           }}
         ></div>
       </div>

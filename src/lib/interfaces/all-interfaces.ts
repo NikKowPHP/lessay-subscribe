@@ -11,7 +11,7 @@ export  interface IOnboardingRepository {
   getAssessmentLesson(userId: string): Promise<AssessmentLesson | null>
   completeAssessmentLesson(assessment: AssessmentLesson, userResponse: string): Promise<AssessmentLesson>
   createAssessmentLesson(userId: string, assessment: Omit<AssessmentLesson, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentLesson>
-  recordStepAttempt(lessonId: string, stepId: string, data:{userResponse: string, correct: boolean, attemptNumber?: number}): Promise<AssessmentLesson>
+  recordStepAttempt(lessonId: string, stepId: string, data:{userResponse: string, correct: boolean}): Promise<AssessmentStep>
 }
 
 export interface ILessonRepository {
@@ -32,7 +32,6 @@ export interface ILessonRepository {
   recordStepAttempt: (lessonId: string, stepId: string, data: {
     userResponse: string
     correct: boolean
-    errorPatterns?: string[]
   }) => Promise<LessonStep>
   getStepHistory: (lessonId: string, stepId: string) => Promise<LessonStep[]>
 }

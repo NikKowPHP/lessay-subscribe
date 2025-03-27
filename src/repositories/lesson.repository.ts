@@ -170,7 +170,6 @@ export class LessonRepository implements ILessonRepository {
   async recordStepAttempt(lessonId: string, stepId: string, data: {
     userResponse: string
     correct: boolean
-    errorPatterns?: string[]
   }): Promise<LessonStep> {
     // Convert stepId to number and find by stepNumber
     const stepNumber = parseInt(stepId)
@@ -198,7 +197,6 @@ export class LessonRepository implements ILessonRepository {
         attempts: { increment: 1 },
         userResponse: data.userResponse,
         correct: data.correct,
-        errorPatterns: data.errorPatterns,
         lastAttemptAt: new Date()
       }
     })

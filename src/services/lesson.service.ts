@@ -10,7 +10,7 @@ import {
 } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 
-export default class LessonService implements ILessonRepository {
+export default class LessonService {
   private lessonRepository: ILessonRepository;
   private lessonGeneratorService: ILessonGeneratorService;
   private onboardingRepository: IOnboardingRepository;
@@ -220,16 +220,63 @@ export default class LessonService implements ILessonRepository {
     return lessonsNested.flat();
   }
 
+
   async recordStepAttempt(
     lessonId: string,
     stepId: string,
-    data: {
-      userResponse: string;
-      correct: boolean;
-      errorPatterns?: string[];
-    }
+    userResponse: string
   ): Promise<LessonStep> {
-    return this.lessonRepository.recordStepAttempt(lessonId, stepId, data);
+    const lesson = await this.getLessonById(lessonId);
+    if (!lesson) {
+      throw new Error('Assessment lesson not found');
+    }
+    const step = lesson?.steps.find((s) => s.id === stepId);
+    if (!step) {
+      throw new Error('Step not found');
+    }
+
+    // Validate user response for most step types
+    if (
+      step.type !== 'instruction' &&
+      step.type !== 'summary' &&
+      step.type !== 'model_answer'
+    ) {
+      if (!userResponse) {
+        throw new Error('No response provided');
+      }
+      if (userResponse.length < 3) {
+        throw new Error('Response is too short');
+      }
+      if (!step.expectedAnswer) {
+        throw new Error('Expected answer not found');
+      }
+    }
+    let correct = false;
+    switch (step.type) {
+      case 'model_answer':
+      case 'instruction':
+      case 'summary':
+      case 'user_answer':
+        correct = true;
+        userResponse = userResponse || 'Acknowledged';
+        break;
+
+      case 'practice':
+      case 'prompt':
+      case 'new_word':
+        // For practice steps, compare with the content directly
+        correct =
+          userResponse.trim().toLowerCase() ===
+          step.expectedAnswer!.trim().toLowerCase();
+        break;
+
+      default:
+        correct = false;
+    }
+    return this.lessonRepository.recordStepAttempt(lessonId, stepId, {
+      userResponse,
+      correct,
+    });
   }
 
   async getStepHistory(
@@ -263,42 +310,47 @@ export default class LessonService implements ILessonRepository {
 
   async generateNewLessonsBasedOnProgress(): Promise<LessonModel[]> {
     // Get all completed lessons to analyze performance
-    const allLessons = await this.getLessons()
-    const completedLessons = allLessons.filter(lesson => lesson.completed)
-    
+    const allLessons = await this.getLessons();
+    const completedLessons = allLessons.filter((lesson) => lesson.completed);
+
     if (completedLessons.length === 0) {
-      throw new Error('No completed lessons found to analyze')
+      throw new Error('No completed lessons found to analyze');
     }
-    
+
     // Get user onboarding data for base preferences
-    const onboardingData = await this.onboardingRepository.getOnboarding()
+    const onboardingData = await this.onboardingRepository.getOnboarding();
 
     if (!onboardingData) {
-      throw new Error('User onboarding data not found')
+      throw new Error('User onboarding data not found');
     }
-    
+
     // Extract base preferences
-    const targetLanguage = onboardingData.targetLanguage || 'English'
-    const proficiencyLevel = onboardingData.proficiencyLevel?.toLowerCase() || 'beginner'
-    
+    const targetLanguage = onboardingData.targetLanguage || 'English';
+    const proficiencyLevel =
+      onboardingData.proficiencyLevel?.toLowerCase() || 'beginner';
+
     // Aggregate performance metrics from completed lessons
-    const errorPatterns = this.aggregateErrorPatterns(completedLessons)
-    const avgAccuracy = this.calculateAverageAccuracy(completedLessons)
-    
+    const errorPatterns = this.aggregateErrorPatterns(completedLessons);
+    const avgAccuracy = this.calculateAverageAccuracy(completedLessons);
+
     // Determine focus areas based on performance
-    const focusAreas = this.determineFocusAreas(errorPatterns, avgAccuracy, proficiencyLevel)
-    
+    const focusAreas = this.determineFocusAreas(
+      errorPatterns,
+      avgAccuracy,
+      proficiencyLevel
+    );
+
     // Generate new lessons for each focus area
     const lessonPromises = focusAreas.map(async (topic) => {
       const generatedResult = await this.lessonGeneratorService.generateLesson(
         topic,
         targetLanguage,
         proficiencyLevel
-      )
-      
+      );
+
       const lessonItems = Array.isArray(generatedResult.data)
         ? generatedResult.data
-        : [generatedResult.data]
+        : [generatedResult.data];
 
       // Create lessons from generated content
       const createdLessons = await Promise.all(
@@ -307,88 +359,102 @@ export default class LessonService implements ILessonRepository {
             focusArea: lessonItem.focusArea,
             targetSkills: lessonItem.targetSkills,
             steps: lessonItem.steps as LessonStep[],
-          }
-          return this.createLesson(lessonData)
+          };
+          return this.createLesson(lessonData);
         })
-      )
+      );
 
-      return createdLessons
-    })
+      return createdLessons;
+    });
 
     // Flatten and return all new lessons
-    const lessonsNested = await Promise.all(lessonPromises)
-    return lessonsNested.flat()
+    const lessonsNested = await Promise.all(lessonPromises);
+    return lessonsNested.flat();
   }
-  
+
   // Helper methods for analyzing performance and determining new focus areas
-  
+
   private aggregateErrorPatterns(completedLessons: LessonModel[]): string[] {
     // Collect all error patterns from completed lessons
-    const allErrorPatterns: string[] = []
-    
-    completedLessons.forEach(lesson => {
-      if (lesson.performanceMetrics && typeof lesson.performanceMetrics === 'object' && 
-          !Array.isArray(lesson.performanceMetrics) && 
-          'errorPatterns' in lesson.performanceMetrics && 
-          Array.isArray(lesson.performanceMetrics.errorPatterns)) {
-        allErrorPatterns.push(...lesson.performanceMetrics.errorPatterns as string[])
+    const allErrorPatterns: string[] = [];
+
+    completedLessons.forEach((lesson) => {
+      if (
+        lesson.performanceMetrics &&
+        typeof lesson.performanceMetrics === 'object' &&
+        !Array.isArray(lesson.performanceMetrics) &&
+        'errorPatterns' in lesson.performanceMetrics &&
+        Array.isArray(lesson.performanceMetrics.errorPatterns)
+      ) {
+        allErrorPatterns.push(
+          ...(lesson.performanceMetrics.errorPatterns as string[])
+        );
       }
-    })
-    
+    });
+
     // Count occurrences
-    const patternCount: Record<string, number> = {}
-    allErrorPatterns.forEach(pattern => {
+    const patternCount: Record<string, number> = {};
+    allErrorPatterns.forEach((pattern) => {
       if (pattern) {
-        patternCount[pattern] = (patternCount[pattern] || 0) + 1
+        patternCount[pattern] = (patternCount[pattern] || 0) + 1;
       }
-    })
-    
+    });
+
     // Return top patterns sorted by frequency
     return Object.entries(patternCount)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
-      .map(([pattern]) => pattern)
+      .map(([pattern]) => pattern);
   }
-  
+
   private calculateAverageAccuracy(completedLessons: LessonModel[]): number {
-    const accuracies: number[] = []
-    
-    completedLessons.forEach(lesson => {
-      if (lesson.performanceMetrics && typeof lesson.performanceMetrics === 'object' && 
-          !Array.isArray(lesson.performanceMetrics) && 
-          'accuracy' in lesson.performanceMetrics && 
-          typeof lesson.performanceMetrics.accuracy === 'number') {
-        accuracies.push(lesson.performanceMetrics.accuracy)
+    const accuracies: number[] = [];
+
+    completedLessons.forEach((lesson) => {
+      if (
+        lesson.performanceMetrics &&
+        typeof lesson.performanceMetrics === 'object' &&
+        !Array.isArray(lesson.performanceMetrics) &&
+        'accuracy' in lesson.performanceMetrics &&
+        typeof lesson.performanceMetrics.accuracy === 'number'
+      ) {
+        accuracies.push(lesson.performanceMetrics.accuracy);
       }
-    })
-    
-    if (accuracies.length === 0) return 0
-    
-    return Math.round(accuracies.reduce((sum, acc) => sum + acc, 0) / accuracies.length)
+    });
+
+    if (accuracies.length === 0) return 0;
+
+    return Math.round(
+      accuracies.reduce((sum, acc) => sum + acc, 0) / accuracies.length
+    );
   }
-  
-  private determineFocusAreas(errorPatterns: string[], avgAccuracy: number, proficiencyLevel: string): string[] {
+
+  private determineFocusAreas(
+    errorPatterns: string[],
+    avgAccuracy: number,
+    proficiencyLevel: string
+  ): string[] {
     // Map error patterns to appropriate topics
-    const topicsFromErrors = errorPatterns.map(pattern => {
+    const topicsFromErrors = errorPatterns.map((pattern) => {
       // Map common error patterns to specific topics
       // This is a simplified example - in a real app, you'd have more sophisticated mapping
-      if (pattern.includes('pronunciation')) return 'Pronunciation Practice'
-      if (pattern.includes('grammar')) return 'Grammar Rules'
-      if (pattern.includes('vocabulary')) return 'Vocabulary Building'
-      return 'General Practice'
-    })
-    
+      if (pattern.includes('pronunciation')) return 'Pronunciation Practice';
+      if (pattern.includes('grammar')) return 'Grammar Rules';
+      if (pattern.includes('vocabulary')) return 'Vocabulary Building';
+      return 'General Practice';
+    });
+
     // Add topics based on accuracy and proficiency
     if (avgAccuracy < 50) {
       // If accuracy is low, focus on fundamentals
-      // TODO: change to more dynamic 
-      topicsFromErrors.push('Vocabulary Building')
+      // TODO: change to more dynamic
+      topicsFromErrors.push('Vocabulary Building');
     } else if (avgAccuracy > 80 && proficiencyLevel === 'beginner') {
       // If doing well as a beginner, add slightly more advanced topics
-      topicsFromErrors.push('General Practice')
+      topicsFromErrors.push('General Practice');
     }
-    
+
     // Remove duplicates and limit to 3 topics
-    return [...new Set(topicsFromErrors)].slice(0, 3)
+    return [...new Set(topicsFromErrors)].slice(0, 3);
   }
 }

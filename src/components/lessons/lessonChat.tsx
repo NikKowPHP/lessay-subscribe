@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
+import { AssessmentLesson, AssessmentStep, LessonModel, LessonStep } from '@/models/AppAllModels.model'
 import logger from '@/utils/logger'
 import { mapLanguageToCode } from '@/utils/map-language-to-code.util'
 import ChatMessages, { ChatMessage } from './ChatMessages'
 import ChatInput from './ChatInput'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Lesson } from '@prisma/client'
 
 // Add this interface at the top of the file
 interface SpeechRecognitionEvent extends Event {
@@ -33,11 +34,13 @@ declare global {
 }
 
 interface LessonChatProps {
-  lesson: LessonModel;
+  lesson: LessonModel | AssessmentLesson;
   onComplete: () => void;
-  onStepComplete: (step: LessonStep, userResponse: string) => Promise<void>;
+  onStepComplete: (step: LessonStep | AssessmentStep, userResponse: string) => Promise<AssessmentStep | LessonStep>;
   loading: boolean;
   targetLanguage: string;
+  isAssessment?: boolean; // Add this flag to differentiate between lesson and assessment
+  realtimeTranscriptEnabled?: boolean; // Optional feature for assessment mode
 }
 
 export default function LessonChat({
@@ -45,16 +48,24 @@ export default function LessonChat({
   onComplete,
   onStepComplete,
   loading,
-  targetLanguage
+  targetLanguage,
+  isAssessment = false,
+  realtimeTranscriptEnabled = false
 }: LessonChatProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [userResponse, setUserResponse] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+  const [realtimeTranscript, setRealtimeTranscript] = useState('')
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter();
   const recognitionRef = useRef<any>(null)
   const chatMessagesRef = useRef<HTMLDivElement>(null)
+
+
+
+
 
   useEffect(() => {
     if (lesson && lesson.steps && Array.isArray(lesson.steps) && chatHistory.length === 0) {
@@ -91,6 +102,10 @@ export default function LessonChat({
     }
 }, [lesson]);
 
+  
+  
+
+
   // Set up speech recognition
   useEffect(() => {
     if (!('webkitSpeechRecognition' in window)) {
@@ -110,6 +125,11 @@ export default function LessonChat({
       setIsListening(true)
       setFeedback('Listening...')
       logger.info("LessonChat: Speech recognition started")
+      
+      // Reset silence timer for assessment mode
+      if (realtimeTranscriptEnabled && silenceTimerRef.current) {
+        resetSilenceTimer();
+      }
     }
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -118,11 +138,19 @@ export default function LessonChat({
         .map((result) => result[0])
         .map((result) => result.transcript)
         .join('');
+      
       setUserResponse(transcript)
+      
+      // Set realtime transcript for assessment mode
+      if (realtimeTranscriptEnabled) {
+        setRealtimeTranscript(transcript);
+        resetSilenceTimer();
+      }
+      
       logger.info("LessonChat: Recognized speech", { transcript })
 
       // For lessons, you might accept any non-empty answer or compare with an expected answer if available.
-      const currentStep = lesson.steps[currentStepIndex] as LessonStep
+      const currentStep = lesson.steps[currentStepIndex]
       if (currentStep && currentStep.type === 'prompt' && transcript.trim().length > 3) {
         handleSubmitStep(currentStep, transcript)
       }
@@ -143,8 +171,27 @@ export default function LessonChat({
       if (recognition) {
         recognition.abort()
       }
+      
+      // Clear silence timer on unmount
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
     }
-  }, [currentStepIndex, lesson, targetLanguage])
+  }, [currentStepIndex, lesson, targetLanguage, realtimeTranscriptEnabled])
+
+  // Function to reset the silence timer (for assessment mode)
+  const resetSilenceTimer = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+    
+    silenceTimerRef.current = setTimeout(() => {
+      if (isListening) {
+        setRealtimeTranscript('');
+        logger.info('Reset transcript due to 4 seconds of silence');
+      }
+    }, 4000);
+  };
 
   // Scroll to bottom when chat history changes
   useEffect(() => {
@@ -160,7 +207,7 @@ export default function LessonChat({
       // For instruction and summary steps, just acknowledge them without requiring user response
       if (step.type === 'instruction' || step.type === 'summary') {
         // Mark as seen/acknowledged
-        await onStepComplete(step, "Acknowledged");
+       await onStepComplete(step, "Acknowledged");
         
         // Move to the next step
         const nextStepIndex = currentStepIndex + 1;
@@ -184,12 +231,12 @@ export default function LessonChat({
       }
       
       // Original handling for other step types...
-      await onStepComplete(step, response)
+      const updatedStep = await onStepComplete(step, response)
       
       // Use step.stepNumber instead of index for reliability
       const nextStep = lesson.steps.find(s => s.stepNumber === step.stepNumber + 1)
       
-      if (nextStep) {
+      if (updatedStep && nextStep && updatedStep.userResponse && updatedStep.correct) {
         setCurrentStepIndex(prev => prev + 1)
         setUserResponse('')
         // Add next prompt immediately
@@ -247,22 +294,22 @@ export default function LessonChat({
     handleSubmitStep(currentStep, response)
   }
 
-  const progressPercentage = lesson && (((currentStepIndex + 1) / lesson.steps.length) * 100);
-
   return lesson && (
     <div className="flex flex-col h-full border rounded-[4px] bg-neutral-2 overflow-hidden">
       {/* Chat Header */}
       <div className="p-4 bg-neutral-12 text-white shrink-0 flex justify-between items-center">
         <button
-          onClick={() => router.push('/app/lessons')}
+          onClick={() => router.push(isAssessment ? '/app/onboarding' : '/app/lessons')}
           className="flex items-center text-sm font-medium text-white hover:text-neutral-3 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Lessons
+          {isAssessment ? 'Back to Assessment' : 'Back to Lessons'}
         </button>
         <h2 className="text-xl font-semibold flex items-center justify-center">
-          Lesson: {lesson.focusArea}
-          {/* - Step {currentStepIndex + 1}/{lesson.steps.length} */}
+          {isAssessment 
+            ? 'Language Assessment' 
+            : `Lesson: ${'focusArea' in lesson ? lesson.focusArea : ''}`
+          }
         </h2>
       </div>
 
@@ -271,7 +318,7 @@ export default function LessonChat({
         <div
           className="bg-accent-6 h-1.5 transition-all duration-300"
           style={{
-            width: `${progressPercentage}%`
+            width: `${((currentStepIndex + 1) / lesson.steps.length) * 100}%`
           }}
         ></div>
       </div>
@@ -280,6 +327,28 @@ export default function LessonChat({
       <div ref={chatMessagesRef} className="flex-1 min-h-0 overflow-y-auto">
         <ChatMessages messages={chatHistory} />
       </div>
+
+      {/* Assessment specific realtime transcript display */}
+      {realtimeTranscriptEnabled && (
+        <div className="mb-4 min-h-[60px] p-3 border border-neutral-5 rounded-md mx-4 bg-neutral-2 text-foreground">
+          {realtimeTranscript ||
+            (isListening ? (
+              <span className="text-accent-6 flex items-center">
+                <svg
+                  className="animate-pulse w-4 h-4 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                </svg>
+                Listening...
+              </span>
+            ) : (
+              <span className="text-neutral-8">Ready to speak...</span>
+            ))}
+        </div>
+      )}
 
       {/* User Input Area */}
       <ChatInput
@@ -290,6 +359,8 @@ export default function LessonChat({
         onSubmit={handleSubmit}
         disableSubmit={!userResponse || loading}
       />
+      
+      {/* Mock buttons */}
       {process.env.NEXT_PUBLIC_MOCK_USER_RESPONSES === 'true' && (
         <div className="flex space-x-2 mt-4 p-4">
           <button

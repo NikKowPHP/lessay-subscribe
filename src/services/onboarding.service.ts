@@ -1,4 +1,4 @@
-import { OnboardingModel, AssessmentLesson } from '@/models/AppAllModels.model';
+import { OnboardingModel, AssessmentLesson, AssessmentStep } from '@/models/AppAllModels.model';
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 import LessonService from './lesson.service';
@@ -134,11 +134,12 @@ export default class OnboardingService {
     );
   }
 
+
   async recordStepAttempt(
     lessonId: string,
     stepId: string,
     userResponse: string
-  ): Promise<AssessmentLesson> {
+  ): Promise<AssessmentStep> {
 
     try {
       const lesson = await this.onboardingRepository.getAssessmentLesson(
@@ -202,17 +203,17 @@ export default class OnboardingService {
       }
 
       // Record the attempt
-      const updatedLesson = await this.onboardingRepository.recordStepAttempt(
+      const updatedStep = await this.onboardingRepository.recordStepAttempt(
         lessonId,
         stepId,
         {
           userResponse,
           correct,
-          attemptNumber: step.attempts + 1,
         }
       );
+      logger.info('updatedStep', { updatedStep });
 
-      return updatedLesson;
+      return updatedStep;
     } catch (error) {
       logger.error('Error recording step attempt:', error);
       throw new Error('Failed to record step attempt');

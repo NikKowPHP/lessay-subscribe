@@ -3,7 +3,7 @@
 import { createContext, useContext, useState } from 'react'
 import { getLessonsAction, getLessonByIdAction, createLessonAction, updateLessonAction, completeLessonAction, deleteLessonAction, recordStepAttemptAction, getStepHistoryAction, generateNewLessonsAction } from '@/lib/server-actions/lesson-actions'
 import logger from '@/utils/logger'
-import { LessonModel, LessonStep } from '@/models/AppAllModels.model'
+import { LessonModel, LessonStep, AssessmentStep as AssessmentStepModel } from '@/models/AppAllModels.model'
 import toast from 'react-hot-toast'
 
 interface LessonContextType {
@@ -26,11 +26,11 @@ interface LessonContextType {
     errorPatterns?: string[]
   }) => Promise<LessonModel>
   deleteLesson: (lessonId: string) => Promise<void>
-  recordStepAttempt: (lessonId: string, stepId: string, data: {
-    userResponse: string
-    correct: boolean
-    errorPatterns?: string[]
-  }) => Promise<LessonStep>
+  recordStepAttempt: (lessonId: string, stepId: string, 
+    userResponse: string,
+    // correct: boolean
+    // errorPatterns?: string[]
+  ) => Promise<LessonStep | AssessmentStepModel>
   getStepHistory: (lessonId: string, stepId: string) => Promise<LessonStep[]>
   setCurrentLesson: (lesson: LessonModel | null) => void
   checkAndGenerateNewLessons: () => Promise<void>
@@ -144,11 +144,13 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   const recordStepAttempt = async (
     lessonId: string,
     stepId: string,
-    data: { userResponse: string; correct: boolean; errorPatterns?: string[] }
+    userResponse: string,
+    // correct: boolean,
+    // errorPatterns?: string[]
   ) => {
     return withLoadingAndErrorHandling(async () => {
-      logger.info('recordStepAttempt in context', { lessonId, stepId, data })
-      const updatedStep = await recordStepAttemptAction(lessonId, stepId, data)
+      logger.info('recordStepAttempt in context', { lessonId, stepId, userResponse })
+      const updatedStep = await recordStepAttemptAction(lessonId, stepId, userResponse)
       logger.info('recordStepAttempt after updation', { updatedStep })
       // Optionally update the current lesson's step response locally:
       setCurrentLesson(prev => {

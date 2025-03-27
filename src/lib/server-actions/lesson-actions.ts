@@ -86,17 +86,17 @@ export async function generateInitialLessonsAction(onboardingData: OnboardingMod
 export async function recordStepAttemptAction(
   lessonId: string,
   stepId: string,
-  data: {
+  // data: {
     userResponse: string
-    correct: boolean
-    errorPatterns?: string[]
-  }
+    // correct: boolean
+    // errorPatterns?: string[]
+  // }
 ) {
   if (!lessonId || !stepId) {
     throw new Error('Lesson ID and Step ID are required')
   }
   const lessonService = createLessonService()
-  return await lessonService.recordStepAttempt(lessonId, stepId, data)
+  return await lessonService.recordStepAttempt(lessonId, stepId, userResponse)
 }
 
 export async function getStepHistoryAction(lessonId: string, stepId: string) {
