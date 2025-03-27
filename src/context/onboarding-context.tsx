@@ -5,10 +5,11 @@ import {
   createOnboardingAction,
   updateOnboardingAction,
   getStatusAction,
-  getAssessmentLessonsAction,
+  getAssessmentLessonAction,
   completeAssessmentLessonAction,
   getOnboardingAction,
   completeOnboardingAction,
+  recordAssessmentStepAttemptAction,
 } from '@/lib/server-actions/onboarding-actions';
 import logger from '@/utils/logger';
 import { AssessmentLesson, OnboardingModel } from '@/models/AppAllModels.model';
@@ -24,13 +25,19 @@ interface OnboardingContextType {
   error: string | null;
   clearError: () => void;
   getOnboarding: () => Promise<OnboardingModel | null>;
-  getAssessmentLessons: () => Promise<AssessmentLesson[]>;
+  getAssessmentLesson: () => Promise<AssessmentLesson>;
   completeAssessmentLesson: (
     lessonId: string,
     userResponse: string
   ) => Promise<AssessmentLesson>;
   completeOnboardingWithLessons: () => Promise<void>;
   onboarding: OnboardingModel | null;
+  recordAssessmentStepAttempt: (
+    lessonId: string,
+    stepId: string,
+    userResponse: string,
+    correct?: boolean
+  ) => Promise<AssessmentLesson>;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(
@@ -92,9 +99,9 @@ export function OnboardingProvider({
 
   const clearError = () => setError(null);
 
-  const getAssessmentLessons = async () => {
+  const getAssessmentLesson = async () => {
     return withLoadingAndErrorHandling(async () => {
-      return await getAssessmentLessonsAction();
+      return await getAssessmentLessonAction();
     });
   };
 
@@ -126,6 +133,18 @@ export function OnboardingProvider({
     });
   };
 
+  const recordAssessmentStepAttempt = async (
+    lessonId: string,
+    stepId: string,
+    userResponse: string
+  ) => {
+    return withLoadingAndErrorHandling(async () => {
+      return await recordAssessmentStepAttemptAction(lessonId, stepId, userResponse);
+    });
+  };
+
+
+
   // Check onboarding status on initial load
   useEffect(() => {
     const initializeOnboarding = async () => {
@@ -156,10 +175,11 @@ export function OnboardingProvider({
         error,
         clearError,
         getOnboarding,
-        getAssessmentLessons,
+        getAssessmentLesson,
         completeAssessmentLesson,
         completeOnboardingWithLessons,
         onboarding,
+        recordAssessmentStepAttempt,
       }}
     >
       {children}
