@@ -139,9 +139,10 @@ export class OnboardingRepository implements IOnboardingRepository {
     try {
       // Validate the user has permission to access this data
       const session = await this.getSession()
-      if (session.user.id !== userId) {
-        throw new Error('Unauthorized access to assessment lessons')
+      if(!session.user.id) {
+        throw new Error('Unauthorized')
       }
+   
       
       return await prisma.assessmentLesson.findUnique({
         where: { userId },

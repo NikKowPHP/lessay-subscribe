@@ -79,6 +79,7 @@ export default function AssessmentStep({
 
   // Check if the assessment was already completed previously
   useEffect(() => {
+    console.log('lesson', lesson);
     if (lesson && lesson.completed) {
       setShowResults(true);
     }

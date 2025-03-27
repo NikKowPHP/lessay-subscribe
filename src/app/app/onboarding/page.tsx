@@ -48,9 +48,12 @@ export default function OnboardingPage() {
             .filter(([_, isCompleted]) => isCompleted)
             .map(([step]) => step)
             .sort((a, b) => stepsOrder.indexOf(a) - stepsOrder.indexOf(b))
+          logger.info('completedSteps', completedSteps)
           const lastCompletedStep = completedSteps[completedSteps.length - 1]
+          logger.info('lastCompletedStep', lastCompletedStep)
           if (lastCompletedStep) {
             const nextStep = getNextStep(lastCompletedStep)
+            logger.info('nextStep', nextStep)
             setCurrentStep(nextStep)
           } else {
             setCurrentStep(stepsOrder[0])
@@ -70,6 +73,15 @@ export default function OnboardingPage() {
       router.push('/app/lessons')
     }
   }, [isOnboardingComplete, user, router])
+
+  useEffect(() => {
+    console.log('assessmentLesson', assessmentLesson)
+    console.log('currentStep', currentStep)
+    if(currentStep === 'assessment' && !assessmentLesson) {
+      generateAssessmentLesson()
+    }
+
+  }, [assessmentLesson, currentStep])
 
   const handleNextStep = async (step: string, data?: any) => {
     if (data) {
