@@ -10,6 +10,7 @@ import {
   ProficiencyLevel,
 } from '@prisma/client';
 import { AssessmentLesson } from '@/models/AppAllModels.model';
+import { ITTS } from '@/interfaces/tts.interface';
 
 export interface IAssessmentGeneratorService {
   generateAssessmentSteps: (
@@ -21,6 +22,10 @@ export interface IAssessmentGeneratorService {
     assessmentLesson: AssessmentLesson,
     userResponse: string
   ) => Promise<AiAssessmentResultResponse>;
+  generateAudioForSteps: (
+    steps: AssessmentStep[],
+    language: string
+  ) => Promise<AssessmentStep[]>;
 }
 
 export interface AiAssessmentResultResponse {
@@ -40,14 +45,17 @@ export interface AiAssessmentResultResponse {
 class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
   private aiService: IAIService;
   private useMock: boolean;
+  private ttsService: ITTS;
 
   constructor(
     aiService: IAIService,
     useMock: boolean = process.env.NEXT_PUBLIC_MOCK_ASSESSMENT_GENERATOR ===
-      'true'
+      'true',
+    ttsService: ITTS
   ) {
     this.aiService = aiService;
     this.useMock = useMock;
+    this.ttsService = ttsService;
     logger.info('AssessmentGeneratorService initialized', { useMock });
   }
 
@@ -145,6 +153,67 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
       throw error;
     }
   }
+
+  public async generateAudioForSteps(
+    steps: AssessmentStep[],
+    language: string
+  ): Promise<AssessmentStep[]> {
+    logger.info('Generating audio for assessment lesson', {
+      steps,
+    });
+
+    try {
+      if (this.useMock) {
+        logger.info('Using mock assessment generator');
+
+        for (const step of steps) {
+          const audio =
+            await MockAssessmentGeneratorService.generateAudioForStep(
+              step.content,
+              language
+            );
+          step.contentAudioUrl = audio;
+          if (step.expectedAnswer) {
+            const audio =
+              await MockAssessmentGeneratorService.generateAudioForStep(
+                step.expectedAnswer!,
+                language
+              );
+            step.expectedAnswerAudioUrl = audio;
+          }
+        }
+        logger.info('Mock assessment generated', { steps });
+      } else {
+        // get appropriate voice
+        const voice = this.ttsService.getVoice(language);
+
+        for (const step of steps) {
+          const audio = await retryOperation(() =>
+            this.ttsService.synthesizeSpeech(step.content, language, voice)
+          );
+          step.contentAudioUrl = audio.toString('base64');
+          if (step.expectedAnswer) {
+            const audio = await retryOperation(() =>
+              this.ttsService.synthesizeSpeech(
+                step.expectedAnswer!,
+                language,
+                voice
+              )
+            );
+            step.expectedAnswerAudioUrl = audio.toString('base64');
+          }
+        }
+      }
+
+      return steps;
+    } catch (error) {
+      logger.error('Error generating audio for assessment:', {
+        error,
+      });
+      throw error;
+    }
+  }
+
   private constructAiAssessmentResultResponse(
     aiResponse: any
   ): AiAssessmentResultResponse {

@@ -71,9 +71,21 @@ export default class OnboardingService {
           onboarding?.proficiencyLevel || 'beginner'
         );
 
-      logger.info(`Generated ${steps} assessment steps`);
+      logger.info(`Generated ${steps} assessment steps without audio`);
 
-      // Construct complete assessment lesson object
+      //TODO: generate audios for the steps
+
+      const audioSteps = await this.assessmentGeneratorService.generateAudioForSteps(steps, onboarding?.targetLanguage || 'English');
+
+      // merge the steps with the audio steps
+      // const mergedSteps = steps.map((step, index) => ({
+      //   ...step,
+      //   ...audioSteps[index],
+      // }));
+
+
+
+
       const assessmentLesson = {
         userId,
         description: `Comprehensive ${
@@ -93,7 +105,7 @@ export default class OnboardingService {
         },
         proposedTopics: [],
         summary: null,
-        steps: steps,
+        steps: audioSteps,
       };
 
       logger.info(`Assessment lesson: ${JSON.stringify(assessmentLesson)}`);

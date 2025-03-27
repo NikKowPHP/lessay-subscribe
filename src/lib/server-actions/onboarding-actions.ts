@@ -15,6 +15,8 @@ import LessonService from '@/services/lesson.service';
 import { LessonRepository } from '@/repositories/lesson.repository';
 import AIService from '@/services/ai.service';
 import AssessmentStepGeneratorService from '@/services/assessment-step-generator.service';
+import { MockAssessmentGeneratorService } from '@/__mocks__/generated-assessment-lessons.mock';
+import { GoogleTTS } from '@/services/google-tts.service';
 
 function createOnboardingService() {
   const repository = new OnboardingRepository(
@@ -26,7 +28,7 @@ function createOnboardingService() {
   return new OnboardingService(
     repository,
     new LessonService(lessonRepository, MockLessonGeneratorService, repository),
-    new AssessmentStepGeneratorService(new AIService(), true)
+    new AssessmentStepGeneratorService(new AIService(), true, new GoogleTTS())
   );
 }
 

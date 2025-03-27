@@ -2,8 +2,16 @@
 
 import { AssessmentLesson, AssessmentStepType } from "@prisma/client";
 import { AssessmentLesson as AssessmentLessonModel } from "@/models/AppAllModels.model";
+import logger from "@/utils/logger";
 
 export const MockAssessmentGeneratorService = {
+  generateAudioForStep: async function(
+    content: string,
+    language: string = "English"
+  ) {
+    logger.info(`Generating audio for step and language: ${content} ${language}`);
+    return "/audio-test.mp3";
+  },
   generateAssessmentLesson: async function(
     sourceLanguage: string = "English",
     targetLanguage: string = "German"
@@ -18,7 +26,7 @@ export const MockAssessmentGeneratorService = {
         stepNumber: 1,
         type: AssessmentStepType.instruction,
         content: "Welcome to your language assessment. I'll ask you a series of questions to evaluate your current knowledge of German. This will help me create a personalized learning plan for you. Let's begin!",
-        contentAudioUrl: "/audio-test.mp3",
+        // contentAudioUrl: "/audio-test.mp3",
         maxAttempts: 1,
         attempts: 0,
         correct: false
@@ -27,10 +35,10 @@ export const MockAssessmentGeneratorService = {
         stepNumber: 2,
         type: AssessmentStepType.question,
         content: "How do you say 'Hello, my name is...' in German?",
-        contentAudioUrl: "/audio-test.mp3",
+        // contentAudioUrl: "/audio-test.mp3",
         translation: "Wie sagt man 'Hallo, mein Name ist...' auf Deutsch?",
         expectedAnswer: "Hallo, ich heiße...",
-        expectedAnswerAudioUrl: "/audio-test.mp3",
+        // expectedAnswerAudioUrl: "/audio-test.mp3",
         maxAttempts: 3,
         attempts: 0,
         correct: false
@@ -39,7 +47,7 @@ export const MockAssessmentGeneratorService = {
         stepNumber: 3,
         type: AssessmentStepType.feedback,
         content: "Great job! You answered correctly. 'Hallo, ich heiße...' is how you introduce yourself in German. Let's try another phrase.",
-        contentAudioUrl: "/audio-test.mp3",
+        // contentAudioUrl: "/audio-test.mp3",
         maxAttempts: 1,
         attempts: 0,
         correct: true
@@ -48,10 +56,10 @@ export const MockAssessmentGeneratorService = {
         stepNumber: 4,
         type: AssessmentStepType.question,
         content: "How do you ask 'Where is the bathroom?' in German?",
-        contentAudioUrl: "/audio-test.mp3",
+        // contentAudioUrl: "/audio-test.mp3",
         translation: "Wie fragt man 'Wo ist die Toilette?' auf Deutsch?",
         expectedAnswer: "Wo ist die Toilette?",
-        expectedAnswerAudioUrl: "/audio-test.mp3",
+        // expectedAnswerAudioUrl: "/audio-test.mp3",
         maxAttempts: 3,
         attempts: 0,
         correct: false
@@ -60,7 +68,7 @@ export const MockAssessmentGeneratorService = {
         stepNumber: 5,
         type: AssessmentStepType.feedback,
         content: "Excellent! 'Wo ist die Toilette?' is the correct way to ask where the bathroom is in German. Now, let's move on to ordering.",
-        contentAudioUrl: "/audio-test.mp3",
+        // contentAudioUrl: "/audio-test.mp3",
         maxAttempts: 1,
         attempts: 0,
         correct: true
@@ -69,10 +77,10 @@ export const MockAssessmentGeneratorService = {
         stepNumber: 6, 
         type: AssessmentStepType.question,
         content: "How would you order a coffee in German?",
-        contentAudioUrl: "/audio-test.mp3",
+        // contentAudioUrl: "/audio-test.mp3",
         translation: "Wie bestellt man einen Kaffee auf Deutsch?",
         expectedAnswer: "Einen Kaffee, bitte.",
-        expectedAnswerAudioUrl: "/audio-test.mp3",
+        // expectedAnswerAudioUrl: "/audio-test.mp3",
         maxAttempts: 3,
         attempts: 0,
         correct: false
@@ -81,7 +89,7 @@ export const MockAssessmentGeneratorService = {
         stepNumber: 7,
         type: AssessmentStepType.feedback,
         content: "Perfect! 'Einen Kaffee, bitte' is exactly how you would order a coffee in German. Let's move on to asking about time.",
-        contentAudioUrl: "/audio-test.mp3",
+        // contentAudioUrl: "/audio-test.mp3",
         maxAttempts: 1,
         attempts: 0,
         correct: true
@@ -90,10 +98,10 @@ export const MockAssessmentGeneratorService = {
         stepNumber: 8,
         type: AssessmentStepType.question,
         content: "How do you ask for the time in German?",
-        contentAudioUrl: "/audio-test.mp3",
+        // contentAudioUrl: "/audio-test.mp3",
         translation: "Wie fragt man nach der Uhrzeit auf Deutsch?",
         expectedAnswer: "Wie spät ist es?",
-        expectedAnswerAudioUrl: "/audio-test.mp3",
+        // expectedAnswerAudioUrl: "/audio-test.mp3",
         maxAttempts: 3,
         attempts: 0,
         correct: false
@@ -102,7 +110,7 @@ export const MockAssessmentGeneratorService = {
         stepNumber: 9,
         type: AssessmentStepType.summary,
         content: "Great work on completing the assessment! Based on your responses, we'll create a personalized learning plan to help you improve your German skills.",
-        contentAudioUrl: "/audio-test.mp3",
+        // contentAudioUrl: "/audio-test.mp3",
         maxAttempts: 1,
         attempts: 0,
         correct: false

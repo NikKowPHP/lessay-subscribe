@@ -8,6 +8,7 @@ export class GoogleTTS implements ITTS {
     this.validateEnvironment();
   }
 
+
   public async synthesizeSpeech(text: string, language: string, voice: string): Promise<Buffer> {
     try {
       // Get Google Cloud authentication token
@@ -50,6 +51,13 @@ export class GoogleTTS implements ITTS {
       logger.error('Google TTS synthesis error:', error);
       throw new Error('Failed to synthesize speech with Google TTS');
     }
+
+
+
+  }
+  public getVoice(language: string): string {
+    logger.info(`Getting voice for language: ${language}`);
+    return 'en-US-Wavenet-1';
   }
 
   // private async getGoogleAccessToken(): Promise<string> {
@@ -74,4 +82,5 @@ export class GoogleTTS implements ITTS {
       throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
     }
   }
+
 }
