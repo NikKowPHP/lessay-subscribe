@@ -159,6 +159,30 @@ export class OnboardingRepository implements IOnboardingRepository {
       return null
     }
   }
+  async getAssessmentLessonById(lessonId: string): Promise<AssessmentLesson | null> {
+    try {
+      // Validate the user has permission to access this data
+      const session = await this.getSession()
+      if(!session.user.id) {
+        throw new Error('Unauthorized')
+      }
+   
+      
+      return await prisma.assessmentLesson.findUnique({
+        where: { id: lessonId },
+        include: {
+          steps: {
+            orderBy: {
+              stepNumber: 'asc'
+            }
+          }
+        }
+      })
+    } catch (error) {
+      logger.error('Error fetching assessment lessons:', error)
+      return null
+    }
+  }
 
   async completeAssessmentLesson(assessment: AssessmentLesson, userResponse: string): Promise<AssessmentLesson> {
     try {

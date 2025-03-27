@@ -110,7 +110,7 @@ export default class OnboardingService {
   ): Promise<AssessmentLesson> {
     // get assessment lesson
     const assessmentLesson =
-      await this.onboardingRepository.getAssessmentLesson(lessonId);
+      await this.onboardingRepository.getAssessmentLessonById(lessonId);
     if (!assessmentLesson) {
       throw new Error('Assessment lesson not found');
     }
@@ -140,9 +140,10 @@ export default class OnboardingService {
     stepId: string,
     userResponse: string
   ): Promise<AssessmentStep> {
+    logger.info('recordStepAttempt', { lessonId, stepId, userResponse });
 
     try {
-      const lesson = await this.onboardingRepository.getAssessmentLesson(
+      const lesson = await this.onboardingRepository.getAssessmentLessonById(
         lessonId
       );
       if (!lesson) {
