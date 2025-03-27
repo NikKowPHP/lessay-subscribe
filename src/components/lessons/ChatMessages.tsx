@@ -1,4 +1,5 @@
-import React from 'react';
+import logger from '@/utils/logger';
+import React, { useEffect, useRef } from 'react';
 
 export interface ChatMessage {
   type: 'prompt' | 'response';
@@ -10,8 +11,23 @@ interface ChatMessagesProps {
 }
 
 const ChatMessages = React.memo(function ChatMessages({ messages }: ChatMessagesProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    logger.info('ChatMessages: Attempting to scroll to bottom');
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+      logger.info('ChatMessages: Scrolled to bottom', {
+        scrollTop: containerRef.current.scrollTop,
+        scrollHeight: containerRef.current.scrollHeight
+      });
+    }
+  }, [messages]);
+
   return (
-    <div className="h-full p-4 space-y-4 overflow-y-auto">
+    <div ref={containerRef} className="h-full p-4 space-y-4 overflow-y-auto">
       {messages.map((msg, index) => {
         const isSpecialMessage = 
           msg.type === 'prompt' && 
@@ -39,6 +55,7 @@ const ChatMessages = React.memo(function ChatMessages({ messages }: ChatMessages
           </div>
         );
       })}
+      <div ref={messagesEndRef} />
     </div>
   );
 });

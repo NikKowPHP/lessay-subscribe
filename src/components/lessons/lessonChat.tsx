@@ -209,14 +209,6 @@ export default function LessonChat({
     }, 4000);
   };
 
-  // Scroll to bottom when chat history changes
-  useEffect(() => {
-    if (chatMessagesRef.current) {
-      logger.info('LessonChat: Scroll to bottom');
-      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
-      logger.info('LessonChat: Scroll to bottom done', chatMessagesRef.current.scrollTop, chatMessagesRef.current.scrollHeight);
-    }
-  }, [chatHistory]);
 
   const handleSubmitStep = async (step: LessonStep, response: string) => {
     try {

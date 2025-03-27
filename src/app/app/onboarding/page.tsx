@@ -226,7 +226,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center bg-gray-50  px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex justify-center items-center bg-gray-50  px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full h-full space-y-8">{renderStep()}</div>
     </div>
   );
