@@ -323,7 +323,7 @@ export default function AssessmentStep({
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in h-screen flex flex-col">
         <LessonChat
           lesson={lesson}
           onComplete={handleComplete}

@@ -212,7 +212,9 @@ export default function LessonChat({
   // Scroll to bottom when chat history changes
   useEffect(() => {
     if (chatMessagesRef.current) {
+      logger.info('LessonChat: Scroll to bottom');
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+      logger.info('LessonChat: Scroll to bottom done', chatMessagesRef.current.scrollTop, chatMessagesRef.current.scrollHeight);
     }
   }, [chatHistory]);
 
@@ -363,12 +365,12 @@ export default function LessonChat({
         </div>
 
         {/* Chat Messages */}
-        <div ref={chatMessagesRef} className="flex-1 overflow-y-auto">
+        <div ref={chatMessagesRef} className="flex-1 overflow-y-auto min-h-0">
           <ChatMessages messages={chatHistory} />
         </div>
 
         {/* Assessment specific realtime transcript display */}
-        {realtimeTranscriptEnabled && (
+        {/* {realtimeTranscriptEnabled && (
           <div className="mb-4 min-h-[60px] p-3 border border-neutral-5 rounded-md mx-4 bg-neutral-2 text-foreground">
             {realtimeTranscript ||
               (isListening ? (
@@ -387,9 +389,10 @@ export default function LessonChat({
                 <span className="text-neutral-8">Ready to speak...</span>
               ))}
           </div>
-        )}
+        )} */}
 
         {/* User Input Area */}
+
         <ChatInput
           userResponse={userResponse}
           isListening={isListening}
