@@ -356,11 +356,12 @@ export default class LessonService {
 
       // Create lessons from generated content
       const createdLessons = await Promise.all(
-        lessonItems.map((lessonItem: any) => {
+        lessonItems.map(async (lessonItem: any) => {
+          const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(lessonItem.steps as LessonStep[], targetLanguage);
           const lessonData = {
             focusArea: lessonItem.focusArea,
             targetSkills: lessonItem.targetSkills,
-            steps: lessonItem.steps as LessonStep[],
+            steps: audioSteps,
           };
           return this.createLesson(lessonData);
         })
