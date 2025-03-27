@@ -202,11 +202,13 @@ export default class LessonService {
 
       // For each lesson item, create a lesson record
       const createdLessons = await Promise.all(
-        lessonItems.map((lessonItem: any) => {
+        lessonItems.map(async (lessonItem: any) => {
+          const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(lessonItem.steps as LessonStep[], targetLanguage);
+          // TODO: Seperate into 2 promises, one will be sent to user to update the loading screen while fetching the audio . 
           const lessonData = {
             focusArea: lessonItem.focusArea,
             targetSkills: lessonItem.targetSkills,
-            steps: lessonItem.steps as LessonStep[],
+            steps: audioSteps,
           };
           return this.createLesson(lessonData);
         })

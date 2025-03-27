@@ -5,17 +5,22 @@ import { retryOperation } from '@/utils/retryWithOperation';
 import { ILessonGeneratorService } from '@/lib/interfaces/all-interfaces';
 import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock';
 import { GeneratedLesson, LessonStep } from '@/models/AppAllModels.model';
+import { MockAssessmentGeneratorService } from '@/__mocks__/generated-assessment-lessons.mock';
+import { ITTS } from '@/interfaces/tts.interface';
 
 class LessonGeneratorService implements ILessonGeneratorService {
   private aiService: IAIService;
   private useMock: boolean;
+  private ttsService: ITTS;
 
   constructor(
     aiService: IAIService,
-    useMock: boolean = process.env.NEXT_PUBLIC_MOCK_LESSON_GENERATOR === 'true'
+    useMock: boolean = process.env.NEXT_PUBLIC_MOCK_LESSON_GENERATOR === 'true',
+    ttsService: ITTS
   ) {
     this.aiService = aiService;
     this.useMock = useMock;
+    this.ttsService = ttsService;
     logger.info('LessonGeneratorService initialized', { useMock });
   }
 
@@ -73,6 +78,68 @@ class LessonGeneratorService implements ILessonGeneratorService {
         topic,
         targetLanguage,
         difficultyLevel,
+        error,
+      });
+      throw error;
+    }
+  }
+
+
+  public async generateAudioForSteps(
+    steps: LessonStep[],
+    language: string
+  ): Promise<LessonStep[]> {
+    logger.info('Generating audio for assessment lesson', {
+      steps,
+    });
+
+    try {
+      if (this.useMock) {
+        logger.info('Using mock assessment generator');
+
+        for (const step of steps) {
+          const audio =
+            await MockLessonGeneratorService.generateAudioForStep(
+              step.content,
+              language
+            );
+          step.contentAudioUrl = audio;
+          if (step.expectedAnswer) {
+            const audio =
+              await MockLessonGeneratorService.generateAudioForStep(
+                step.expectedAnswer!,
+                language
+              );
+            step.expectedAnswerAudioUrl = audio;
+          }
+        }
+        logger.info('Mock assessment generated', { steps });
+      } else {
+        // get appropriate voice
+        const voice = this.ttsService.getVoice(language);
+
+        for (const step of steps) {
+          const audio = await retryOperation(() =>
+            this.ttsService.synthesizeSpeech(step.content, language, voice)
+          );
+          step.contentAudioUrl = audio.toString('base64');
+          if (step.expectedAnswer) {
+            const audio = await retryOperation(() =>
+              this.ttsService.synthesizeSpeech(
+                step.expectedAnswer!,
+                language,
+                voice
+              )
+            );
+            step.expectedAnswerAudioUrl = audio.toString('base64');
+            // TODO: keep audio in buffer, download to vercel blob and get the link, attach link here. 
+          }
+        }
+      }
+
+      return steps;
+    } catch (error) {
+      logger.error('Error generating audio for assessment:', {
         error,
       });
       throw error;
