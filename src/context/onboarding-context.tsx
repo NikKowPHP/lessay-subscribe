@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;
+  goToLessonsWithOnboardingComplete: () => Promise<void>;
   checkOnboardingStatus: () => Promise<boolean>;
   markStepComplete: (step: string) => Promise<void>;
   loading: boolean;
@@ -116,7 +117,6 @@ export function OnboardingProvider({
   const completeOnboardingWithLessons = async () => {
     return withLoadingAndErrorHandling(async () => {
       const completedOnboarding = await completeOnboardingAction();
-      setIsOnboardingComplete(true);
       setOnboarding(completedOnboarding);
       toast.success(
         'Onboarding completed! Generating your personalized lessons...'
@@ -142,9 +142,13 @@ export function OnboardingProvider({
     });
   };
 
+  const goToLessonsWithOnboardingComplete = async () => {
+    setIsOnboardingComplete(true);
+    router.push('/app/lessons');
+  };
 
 
-  // Check onboarding status on initial load
+
   useEffect(() => {
     const initializeOnboarding = async () => {
       try {
@@ -179,6 +183,7 @@ export function OnboardingProvider({
         completeOnboardingWithLessons,
         onboarding,
         recordAssessmentStepAttempt,
+        goToLessonsWithOnboardingComplete
       }}
     >
       {children}

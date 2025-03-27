@@ -23,6 +23,7 @@ export default function OnboardingPage() {
     getAssessmentLesson,
     completeOnboardingWithLessons,
     completeAssessmentLesson,
+    goToLessonsWithOnboardingComplete,
   } = useOnboarding();
   const [currentStep, setCurrentStep] = useState<string>('welcome');
   const [formData, setFormData] = useState({
@@ -166,7 +167,7 @@ export default function OnboardingPage() {
   };
 
   const handleGoToLessonsButtonClick = async () => {
-    router.push('/app/lessons');
+    goToLessonsWithOnboardingComplete();
   };
 
   const renderStep = () => {
