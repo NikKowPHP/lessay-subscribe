@@ -15,7 +15,6 @@ import logger from '@/utils/logger';
 import { AssessmentLesson, AssessmentStep, OnboardingModel } from '@/models/AppAllModels.model';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import { useLesson } from './lesson-context';
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;

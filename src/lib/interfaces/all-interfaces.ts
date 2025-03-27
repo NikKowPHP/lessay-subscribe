@@ -10,7 +10,11 @@ export  interface IOnboardingRepository {
   getStatus(): Promise<boolean>
   getAssessmentLesson(userId: string): Promise<AssessmentLesson | null>
   getAssessmentLessonById(lessonId: string): Promise<AssessmentLesson | null>
-  completeAssessmentLesson(assessment: AssessmentLesson, userResponse: string): Promise<AssessmentLesson>
+  completeAssessmentLesson(assessment: AssessmentLesson, data: {
+    summary: string;
+    metrics: any;
+    proposedTopics: string[];
+  }): Promise<AssessmentLesson>
   createAssessmentLesson(userId: string, assessment: Omit<AssessmentLesson, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentLesson>
   recordStepAttempt(lessonId: string, stepId: string, data:{userResponse: string, correct: boolean}): Promise<AssessmentStep>
 }

@@ -54,7 +54,8 @@ export async function updateOnboardingAction(step: string) {
 
 export async function completeOnboardingAction() {
   const onboardingService = createOnboardingService();
-  const completedOnboarding = await onboardingService.completeOnboarding();
+  const completedOnboarding =
+    await onboardingService.completeOnboardingWithLessons();
 
   logger.log('completed onboarding:', completedOnboarding);
   return completedOnboarding;
@@ -111,6 +112,9 @@ export async function recordAssessmentStepAttemptAction(
   }
   const onboardingService = createOnboardingService();
 
-  return await onboardingService.recordStepAttempt(lessonId, stepId, userResponse);
+  return await onboardingService.recordStepAttempt(
+    lessonId,
+    stepId,
+    userResponse
+  );
 }
-

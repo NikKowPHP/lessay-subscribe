@@ -1,4 +1,8 @@
-import { OnboardingModel, AssessmentLesson, AssessmentStep } from '@/models/AppAllModels.model';
+import {
+  OnboardingModel,
+  AssessmentLesson,
+  AssessmentStep,
+} from '@/models/AppAllModels.model';
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 import LessonService from './lesson.service';
@@ -33,7 +37,7 @@ export default class OnboardingService {
     return this.onboardingRepository.updateOnboarding(step);
   };
 
-  completeOnboarding = async (): Promise<OnboardingModel> => {
+  completeOnboardingWithLessons = async (): Promise<OnboardingModel> => {
     const onboarding = await this.onboardingRepository.completeOnboarding();
     await this.lessonService.generateInitialLessons();
     return onboarding;
@@ -128,12 +132,21 @@ export default class OnboardingService {
     logger.info(`Assessment lesson: ${JSON.stringify(assessmentLesson)}`);
 
     // complete assessment lesson
-    return await this.onboardingRepository.completeAssessmentLesson(
-      assessmentLesson,
-      userResponse
-    );
+    const completedLesson =
+      await this.onboardingRepository.completeAssessmentLesson(
+        assessmentLesson,
+        {
+          summary: results.summary,
+          metrics: results.metrics,
+          proposedTopics: results.proposedTopics,
+        }
+      );
+    const completedOnboarding =
+      await this.onboardingRepository.completeOnboarding();
+    logger.info('completed onboarding', completedOnboarding);
+    logger.info('completed lesson', completedLesson);
+    return completedLesson;
   }
-
 
   async recordStepAttempt(
     lessonId: string,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useOnboarding } from '@/context/onboarding-context';
 import {
   AssessmentLesson,
@@ -8,25 +8,26 @@ import {
 } from '@/models/AppAllModels.model';
 import { toast } from 'react-hot-toast';
 import LessonChat from '@/components/lessons/lessonChat';
+import router from 'next/router';
 
 interface AssessmentStepProps {
-  onComplete: () => void;
+  areMetricsGenerated: boolean;
   loading: boolean;
   targetLanguage: string;
   lesson: AssessmentLesson | null;
+  onAssessmentComplete: () => void;
+  onGoToLessonsButtonClick: () => void;
 }
 
 export default function AssessmentStep({
-  onComplete,
+  areMetricsGenerated,
   loading,
   targetLanguage,
   lesson,
+  onAssessmentComplete,
+  onGoToLessonsButtonClick,
 }: AssessmentStepProps) {
-  const {
-    completeAssessmentLesson,
-    completeOnboardingWithLessons,
-    recordAssessmentStepAttempt,
-  } = useOnboarding();
+  const { recordAssessmentStepAttempt } = useOnboarding();
   const [usingChat, setUsingChat] = useState(true); // Default to chat interface
   const [isCompleting, setIsCompleting] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -61,8 +62,9 @@ export default function AssessmentStep({
       if (!lesson) {
         throw new Error('Lesson is not loaded');
       }
-      await completeAssessmentLesson(lesson.id, 'Assessment completed');
       setShowResults(true);
+      // const result = await completeAssessmentLesson(lesson.id, 'Assessment completed');
+      onAssessmentComplete();
       // After completion, show results instead of immediately navigating
     } catch (error) {
       toast.error('Something went wrong completing your assessment');
@@ -73,17 +75,18 @@ export default function AssessmentStep({
 
   // Navigate to lessons after viewing results
   const handleFinishAndGoToLessons = () => {
-    completeOnboardingWithLessons();
-    onComplete();
+    // completeOnboardingWithLessons();
+    // onComplete();
+    onGoToLessonsButtonClick();
   };
 
   // Check if the assessment was already completed previously
-  useEffect(() => {
-    console.log('lesson', lesson);
-    if (lesson && lesson.completed) {
-      setShowResults(true);
-    }
-  }, [lesson]);
+  // useEffect(() => {
+  //   console.log('lesson', lesson);
+  //   if (lesson && lesson.completed) {
+  //     setShowResults(true);
+  //   }
+  // }, [lesson]);
 
   if (!lesson) {
     return (
@@ -113,9 +116,22 @@ export default function AssessmentStep({
       </div>
     );
   }
+  if (areMetricsGenerated) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="bg-neutral-1 border border-neutral-4 rounded-lg overflow-hidden shadow-sm">
+          <div className="bg-accent-6 text-neutral-1 p-5">
+            <h2 className="text-xl font-semibold text-center">
+              Analysing your responses...
+            </h2>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Results view after assessment is completed
-  if (showResults) {
+  if (showResults && !areMetricsGenerated) {
     const metrics =
       lesson.metrics && isAssessmentMetrics(lesson.metrics)
         ? lesson.metrics
