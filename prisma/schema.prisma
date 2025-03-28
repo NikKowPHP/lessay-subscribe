@@ -75,7 +75,7 @@ model AssessmentLesson {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   steps             AssessmentStep[]
-
+  audioMetrics      AudioMetrics?
   @@map("assessment_lessons")
 }
 
@@ -114,6 +114,7 @@ model Lesson {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   steps               LessonStep[]
+  audioMetrics        AudioMetrics?
 
   @@map("lessons")
 }
@@ -148,4 +149,98 @@ model LessonStep {
   updatedAt       DateTime @updatedAt
 
   @@map("lesson_steps")
+}
+
+enum LearningTrajectory {
+  steady
+  accelerating
+  plateauing
+}
+
+enum LanguageInfluenceLevel {
+  minimal
+  moderate
+  strong
+}
+
+enum SpeechRateEvaluation {
+  slow
+  appropriate
+  fast
+}
+
+enum HesitationFrequency {
+  rare
+  occasional
+  frequent
+}
+
+enum PriorityLevel {
+  low
+  medium
+  high
+}
+
+enum SeverityLevel {
+  minor
+  moderate
+  major
+}
+
+enum VocabularyRange {
+  limited
+  adequate
+  extensive
+}
+
+enum ComprehensionLevel {
+  poor
+  fair
+  good
+  excellent
+}
+
+model AudioMetrics {
+  id                    String   @id @default(cuid())
+  // Relationships
+  lessonId              String?  @unique
+  lesson                Lesson?  @relation(fields: [lessonId], references: [id])
+  assessmentLessonId    String?  @unique
+  assessmentLesson      AssessmentLesson? @relation(fields: [assessmentLessonId], references: [id])
+  
+  // Top-level metrics for easy querying
+  pronunciationScore    Float
+  fluencyScore          Float
+  grammarScore          Float
+  vocabularyScore       Float
+  overallPerformance    Float
+  
+  // CEFR level and trajectory
+  proficiencyLevel      String    // CEFR level: A1-C2 (keeping as String for flexibility)
+  learningTrajectory    LearningTrajectory
+  
+  // Detailed analysis sections as JSON
+  pronunciationAssessment Json    // Full pronunciation analysis
+  fluencyAssessment      Json    // Full fluency analysis
+  grammarAssessment      Json    // Full grammar analysis
+  vocabularyAssessment   Json    // Full vocabulary analysis
+  exerciseCompletion     Json    // Exercise-specific analysis
+  
+  // Learning recommendations
+  suggestedTopics       String[]
+  grammarFocusAreas     String[]
+  vocabularyDomains     String[]
+  nextSkillTargets      String[]
+  
+  // Learning style observations
+  preferredPatterns     String[]
+  effectiveApproaches   String[]
+  
+  // Metadata
+  audioRecordingUrl     String?  // Optional URL to the audio file
+  recordingDuration     Float?   // Optional duration in seconds
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("audio_metrics")
 }
