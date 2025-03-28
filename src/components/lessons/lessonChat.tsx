@@ -75,6 +75,16 @@ export default function LessonChat({
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [initialUserInteractionDone, setInitialUserInteractionDone] = useState(false);
 
+  // recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartTimeRef = useRef<number>(0);
+  const recordingPausedTimeRef = useRef<number>(0);
+  const [fullSessionRecording, setFullSessionRecording] = useState<Blob | null>(null);
+  
+
+  // Rehydrate chat history
   useEffect(() => {
     if (
       lesson &&
@@ -125,6 +135,9 @@ export default function LessonChat({
     setShouldPlayAudio(true);
   }, [lesson]);
 
+
+
+  // Audio playback
   useEffect(() => {
     const playNextInQueue = () => {
       if (audioQueue.length > 0 && !isPlayingAudio) {
@@ -150,6 +163,8 @@ export default function LessonChat({
     playNextInQueue();
   }, [audioQueue, isPlayingAudio]);
 
+
+  // Audio playback
   useEffect(() => {
     const handleAudioEnded = () => {
       // Remove the played audio from queue and reset playing state
@@ -168,6 +183,7 @@ export default function LessonChat({
     };
   }, []);
 
+  // Audio playback
   useEffect(() => {
     if (shouldPlayAudio && lesson.steps && lesson.steps[currentStepIndex] && initialUserInteractionDone) {
       const currentStep = lesson.steps[currentStepIndex];
@@ -193,7 +209,7 @@ export default function LessonChat({
     }
   }, [currentStepIndex, lesson.steps, shouldPlayAudio, initialUserInteractionDone]);
 
-  // Set up speech recognition
+  // Set up real time speech recognition
   useEffect(() => {
     if (!('webkitSpeechRecognition' in window)) {
       setFeedback('Voice recognition is not supported in your browser');
@@ -285,6 +301,108 @@ export default function LessonChat({
       }
     }, 4000);
   };
+
+
+  useEffect(() => {
+    const initializeRecorder = async () => {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          logger.error('Media devices API not supported in this browser');
+          return;
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: false,
+        });
+
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+
+        mediaRecorderRef.current = new MediaRecorder(stream, {
+          mimeType: mimeType,
+        });
+
+        audioChunksRef.current = [];
+
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorderRef.current.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+          setFullSessionRecording(audioBlob);
+          logger.info('Full session recording completed', {
+            size: audioBlob.size,
+            duration: Date.now() - recordingStartTimeRef.current,
+          });
+
+          // Optionally save or process the recording here
+          // const url = URL.createObjectURL(audioBlob);
+          // setAudioURL(url); // If you want to store the URL for playback
+        };
+      } catch (error) {
+        logger.error('Error initializing media recorder:', error);
+      }
+    };
+
+    initializeRecorder();
+
+    return () => {
+      // Clean up the recorder and stream on unmount
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  // Start session recording function
+  const startRecording = () => {
+    try {
+      if (!mediaRecorderRef.current) {
+        logger.warn('Media recorder not initialized');
+        return;
+      }
+
+      if (mediaRecorderRef.current.state === 'inactive') {
+        recordingStartTimeRef.current = Date.now();
+        mediaRecorderRef.current.start(1000); // Collect data every second
+        setIsRecording(true);
+        logger.info('Recording started');
+      } else if (mediaRecorderRef.current.state === 'paused') {
+        mediaRecorderRef.current.resume();
+        recordingPausedTimeRef.current += (Date.now() - recordingPausedTimeRef.current);
+        setIsRecording(true);
+        logger.info('Recording resumed');
+      }
+    } catch (error) {
+      logger.error('Error starting recording:', error);
+    }
+  };
+
+  // Pause recording function
+  const pauseRecording = () => {
+    try {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.pause();
+        recordingPausedTimeRef.current = Date.now();
+        setIsRecording(false);
+        logger.info('Recording paused');
+      }
+    } catch (error) {
+      logger.error('Error pausing recording:', error);
+    }
+  };
+
+
+
 
   const handleSubmitStep = async (step: LessonStep, response: string) => {
     try {
@@ -381,8 +499,10 @@ export default function LessonChat({
 
     if (isListening) {
       pauseListening();
+      pauseRecording(); 
     } else {
       startListening();
+      startRecording();
     }
   };
 
