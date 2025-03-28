@@ -5,6 +5,8 @@ import MetricsService from './metrics.service';
 import { retryOperation } from '@/utils/retryWithOperation';
 import { LanguageDetectionResponse } from '@/models/Language-detection.model';
 import { IUploadableAIService } from '@/interfaces/ai-service.interface';
+import { DetailedAIResponse } from '@/models/AiResponse.model';
+import { LessonModel } from '@/models/AppAllModels.model';
 
 class RecordingService {
   private aiService: IUploadableAIService;
@@ -29,9 +31,9 @@ class RecordingService {
   }
 
   async submitRecording(
-    userIP: string, 
+    userIP: string,
     fileUri: string,  // File URI returned from the upload
-    recordingTime: number, 
+    recordingTime: number,
     recordingSize: number,
     isDeepAnalysis: boolean
   ): Promise<Record<string, unknown>> {
@@ -40,7 +42,7 @@ class RecordingService {
       // Generate content using AI service with retry logic.
       const startTime = Date.now();
 
-      const detectedTargetLanguage= await retryOperation(() => this.detectTargetLanguage(fileUri));
+      const detectedTargetLanguage = await retryOperation(() => this.detectTargetLanguage(fileUri));
 
       logger.log("Detected Target Language:", detectedTargetLanguage);
 
@@ -51,10 +53,10 @@ class RecordingService {
       let aiResponse: Record<string, unknown>;
       try {
 
-      aiResponse = await retryOperation(() =>
-        this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_pro_exp)
-      );
-      logger.log("AI Response:", aiResponse);
+        aiResponse = await retryOperation(() =>
+          this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_5_pro_exp)
+        );
+        logger.log("AI Response:", aiResponse);
       } catch (error) {
         logger.error("Error generating content with the error:", error);
         aiResponse = await retryOperation(() => this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_0_flash));
@@ -66,11 +68,11 @@ class RecordingService {
       // Collect interaction data with retry logic.
       await retryOperation(() =>
         this.metricsService.collectInteractionData(
-          userIP, 
-          fileUri, 
-          aiResponse, 
-          recordingTime, 
-          responseTime, 
+          userIP,
+          fileUri,
+          aiResponse,
+          recordingTime,
+          responseTime,
           recordingSize,
           detectedTargetLanguage
         )
@@ -83,12 +85,69 @@ class RecordingService {
     }
   }
 
+    async submitLessonRecordingSession(
+    fileUri: string,  
+    recordingTime: number,
+      recordingSize: number, 
+      languages: { targetLanguage: string, nativeLanguage: string },
+      lessonData: LessonModel
+  ): Promise<Record<string, unknown>> {
+    try {
+
+      // Generate content using AI service with retry logic.
+      const startTime = Date.now();
+
+
+
+      // detailed analysis
+      const personalizedPrompts = this.messageGenerator.generateLessonRecordingAnalysisPrompts(languages.targetLanguage, languages.nativeLanguage, lessonData);
+
+      logger.log("Personalized Prompts:", personalizedPrompts);
+
+      let aiResponse: Record<string, unknown>;
+      try {
+
+        aiResponse = await retryOperation(() =>
+          this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_5_pro_exp)
+        );
+        logger.log("AI Response:", aiResponse);
+      } catch (error) {
+        logger.error("Error generating content with the error:", error);
+        aiResponse = await retryOperation(() => this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_0_flash));
+      }
+
+      // TODO: create metrics for ai logging
+      // const endTime = Date.now();
+      // const responseTime = endTime - startTime;
+
+      // Collect interaction data with retry logic.
+      // await retryOperation(() =>
+      //   this.metricsService.collectInteractionData(
+      //     userIP,
+      //     fileUri,
+      //     aiResponse,
+      //     recordingTime,
+      //     responseTime,
+      //     recordingSize,
+      //     detectedTargetLanguage
+      //   )
+      // );
+
+      return aiResponse;
+    } catch (error) {
+      logger.error("Error submitting recording:", error);
+      throw error;
+    }
+    }
+  
 
   private async detectTargetLanguage(fileUri: string): Promise<LanguageDetectionResponse> {
     const { userPrompt, systemPrompt } = this.messageGenerator.generateTargetLanguageDetectionPrompt();
     const response = await this.aiService.generateContent(fileUri, userPrompt, systemPrompt, models.gemini_2_0_flash);
     return response as unknown as LanguageDetectionResponse;
   }
-}
 
+
+ 
+}
 export default RecordingService;
