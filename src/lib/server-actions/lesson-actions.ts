@@ -13,6 +13,7 @@ import AIService from '@/services/ai.service'
 import { GoogleTTS } from '@/services/google-tts.service'
 
 
+
 // TODO: Convert to container
 function createLessonService() {
   const repository = new LessonRepository(getAuthServiceBasedOnEnvironment())
@@ -118,5 +119,33 @@ export async function generateNewLessonsAction(): Promise<LessonModel[]> {
     const message = error instanceof Error ? error.message : 'An error occurred while generating new lessons'
     logger.error(message)
     throw new Error(message)
+  }
+}
+// TODO: Add recording time and size
+export async function processLessonRecordingAction(sessionRecording: Blob, recordingTime: number, recordingSize: number, lesson: LessonModel) {
+  try {
+
+    validateLessonRecording(sessionRecording, recordingTime, recordingSize, lesson)
+    const lessonService = createLessonService()
+    return await lessonService.processLessonRecording(sessionRecording, recordingTime, recordingSize, lesson)
+  } catch (error) {
+    throw new Error("Error processing lesson recording: " + error)
+
+  }
+
+}
+
+function validateLessonRecording(sessionRecording: Blob, recordingTime: number, recordingSize: number, lesson: LessonModel) {
+  if (!sessionRecording) {
+    throw new Error("No session recording provided");
+  }
+  if (!lesson) {
+    throw new Error("No lesson provided");
+  }
+  if (!recordingTime) {
+    throw new Error("No recording time provided");
+  }
+  if (!recordingSize) {
+    throw new Error("No recording size provided");
   }
 }
