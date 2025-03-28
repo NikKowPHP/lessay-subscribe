@@ -39,7 +39,7 @@ declare global {
 
 interface LessonChatProps {
   lesson: LessonModel | AssessmentLesson;
-  onComplete: () => void;
+  onComplete: (recording: Blob | null) => void;
   onStepComplete: (
     step: LessonStep | AssessmentStep,
     userResponse: string
@@ -500,8 +500,10 @@ export default function LessonChat({
         } else {
           // If this was the last step, complete the lesson
 
+          stopRecordingCompletely(); 
+
           if (!isMockMode) {
-            onComplete();
+            onComplete(fullSessionRecording);
             
           } else {
             setLessonReadyToComplete(true);
@@ -557,9 +559,9 @@ export default function LessonChat({
           ]);
         } else {
           // Normal completion
-          if (!isMockMode) {
-            onComplete();
-          }
+         
+            onComplete(fullSessionRecording);
+          
         }
       }
     } catch (error) {
@@ -796,7 +798,7 @@ export default function LessonChat({
             {lessonReadyToComplete && (
               <button
                 type="button"
-                onClick={onComplete}
+                onClick={() => onComplete(fullSessionRecording)}
                 className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-accent-6 hover:bg-accent-7"
               >
                 Complete Lesson

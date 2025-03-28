@@ -13,16 +13,27 @@ import {
 import LessonChat from '@/components/lessons/lessonChat';
 import logger from '@/utils/logger';
 import { AssessmentStep } from '@prisma/client';
+import { toast } from 'react-hot-toast';
 
 export default function LessonDetailPage() {
   const router = useRouter();
   const { id } = useParams();
 
   const { onboarding } = useOnboarding();
-  const { getLessonById, completeLesson, recordStepAttempt, loading } =
-    useLesson();
+  const {
+    getLessonById,
+    completeLesson,
+    recordStepAttempt,
+    loading,
+    processLessonRecording,
+  } = useLesson();
   const [lesson, setLesson] = useState<LessonModel | null>(null);
   const [results, setResults] = useState<LessonModel | null>(null);
+  const [pronunciationResults, setPronunciationResults] =
+    useState<LessonModel | null>(null);
+  const [pronunciationResultsLoading, setPronunciationResultsLoading] =
+    useState<boolean>(false);
+  const [sessionRecording, setSessionRecording] = useState<Blob | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -34,87 +45,47 @@ export default function LessonDetailPage() {
     init();
   }, [id]);
 
-  const handleStepComplete = async (step: LessonStep | AssessmentStepModel, userResponse: string): Promise<LessonStep | AssessmentStepModel> => {
+  useEffect(() => {
+    const processPronunciation = async () => {
+      if (sessionRecording) {
+        try {
+          const lessonWithAudioMetrics = await processLessonRecording(
+            sessionRecording,
+            lesson
+          );
+          setPronunciationResults(lessonWithAudioMetrics.audioMetrics);
+        } catch (error) {
+          logger.error('Failed to process pronunciation:', error);
+          toast.error('Failed to process pronunciation');
+        }
+      }
+    };
+    processPronunciation();
+  }, [sessionRecording]);
+
+  const handleStepComplete = async (
+    step: LessonStep | AssessmentStepModel,
+    userResponse: string
+  ): Promise<LessonStep | AssessmentStepModel> => {
     logger.info('handleStepComplete', { step, userResponse });
-    
+
     try {
       if (!lesson) {
         throw new Error('Lesson is not loaded');
       }
-      // Record the step attempt, similar to how lessons work
-      return await recordStepAttempt(
-        lesson.id,
-        step.id,
-        userResponse
-      );
-    // Basic validation
-    // if (!userResponse) {
-    //   throw new Error('there is no response');
-    // }
-    // if (userResponse.length < 3) {
-    //   throw new Error('the response is too short');
-    // }
-
-    // let correct = false;
-
-    // // Handle different step types
-    // switch (step.type) {
-    //   case 'practice':
-    //     // For practice steps, compare with the content directly
-    //     correct = userResponse.trim().toLowerCase() === step.content.trim().toLowerCase();
-    //     break;
-        
-    //   case 'new_word':
-    //   case 'model_answer':
-    //     // For these types, compare with the translation if available
-    //     if (step.translation) {
-    //       correct = userResponse.trim().toLowerCase() === step.translation.trim().toLowerCase();
-    //     } else {
-    //       // If no translation, compare with content
-    //       correct = userResponse.trim().toLowerCase() === step.content.trim().toLowerCase();
-    //     }
-    //     break;
-        
-    //   case 'prompt':
-    //   case 'user_answer':
-    //     // These types might not need strict comparison
-    //     // Consider them correct if there's any response
-    //     correct = true;
-    //     break;
-        
-    //   default:
-    //     correct = false;
-    // }
-
-    // try {
-    //   await recordStepAttempt(lesson!.id, String(step.stepNumber), {
-    //     userResponse,
-    //     correct,
-    //   });
-
-    //   setLesson((prev) =>
-    //     prev
-    //       ? {
-    //           ...prev,
-    //           steps: prev.steps.map((s) =>
-    //             s.stepNumber === step.stepNumber ? { ...s, userResponse } : s
-    //           ),
-    //         }
-    //       : null
-    //   );
+      return await recordStepAttempt(lesson.id, step.id, userResponse);
     } catch (error) {
       logger.error('Failed to record step attempt:', error);
-      throw error
+      throw error;
     }
   };
 
-  const handleLessonComplete = async () => {
+  const handleLessonComplete = async (sessionRecording: Blob | null) => {
     if (lesson) {
-      const results = await completeLesson(lesson.id);
+      setSessionRecording(sessionRecording);
+      const results = await completeLesson(lesson.id, sessionRecording);
       logger.info('lesson complete results', { results });
       setResults(results);
-      // Don't navigate away immediately so user can see results
-      // router.push('/app/lessons')
     }
   };
 
@@ -144,7 +115,8 @@ export default function LessonDetailPage() {
                 Performance Summary
               </h3>
 
-              {results.performanceMetrics && isPerformanceMetrics(results.performanceMetrics) ? (
+              {results.performanceMetrics &&
+              isPerformanceMetrics(results.performanceMetrics) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Accuracy */}
                   <div className="bg-gray-50 p-4 rounded-lg">
@@ -180,7 +152,9 @@ export default function LessonDetailPage() {
                       <div
                         className="bg-green-600 h-2.5 rounded-full"
                         style={{
-                          width: `${results.performanceMetrics.pronunciationScore || 0}%`,
+                          width: `${
+                            results.performanceMetrics.pronunciationScore || 0
+                          }%`,
                         }}
                       ></div>
                     </div>
@@ -275,17 +249,19 @@ export default function LessonDetailPage() {
     );
   }
 
-  return lesson && (
-    <div className="container mx-auto h-screen flex flex-col py-4 px-4 overflow-hidden">
-      <div className="flex-1 min-h-0">
-        <LessonChat
-          lesson={lesson as LessonModel}
-          onComplete={handleLessonComplete}
-          onStepComplete={handleStepComplete}
-          loading={loading}
-          targetLanguage={onboarding?.targetLanguage || 'English'}
-        />
+  return (
+    lesson && (
+      <div className="container mx-auto h-screen flex flex-col py-4 px-4 overflow-hidden">
+        <div className="flex-1 min-h-0">
+          <LessonChat
+            lesson={lesson as LessonModel}
+            onComplete={handleLessonComplete}
+            onStepComplete={handleStepComplete}
+            loading={loading}
+            targetLanguage={onboarding?.targetLanguage || 'English'}
+          />
+        </div>
       </div>
-    </div>
+    )
   );
 }
