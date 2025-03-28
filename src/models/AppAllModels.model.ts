@@ -141,3 +141,57 @@ export function isPerformanceMetrics(obj: JsonValue): obj is {
 } {
   return typeof obj === 'object' && obj !== null && !Array.isArray(obj);
 }
+
+
+
+
+// Structure for sending to lesson generation
+export interface AdaptiveLessonGenerationRequest {
+  // User profile data
+  userInfo: {
+    nativeLanguage: string,
+    targetLanguage: string,
+    proficiencyLevel: string, // Derived from CEFR in analysis
+    learningPurpose?: string
+  },
+  
+  // Key performance metrics
+  performanceMetrics: {
+    pronunciationScore: number,
+    fluencyScore: number,
+    grammarAccuracy: number,
+    vocabularyScore: number,
+    overallPerformance: number
+  },
+  
+  // Specific areas needing improvement
+  improvementAreas: {
+    pronunciation: string[], // Problematic sounds
+    grammar: {  
+      rulesToFocus: Array<{rule: string, priority: string}>,
+      commonErrors: Array<{category: string, description: string}>
+    },
+    vocabulary: Array<{topic: string, suggestedVocabulary: string[]}>
+  },
+  
+  // Learning suggestions from analysis
+  learningRecommendations: {
+    suggestedTopics: string[],
+    focusAreas: string[],
+    nextSkillTargets: string[]
+  },
+  
+  // Learning style insights
+  learningStyle: {
+    effectiveApproaches: string[],
+    preferredPatterns: string[]
+  },
+  
+  // Previous lesson data
+  previousLesson: {
+    id: string,
+    focusArea: string,
+    targetSkills: string[],
+    completionSuccessRate: number // Calculated from exercise completion
+  }
+}
