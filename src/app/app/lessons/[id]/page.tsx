@@ -13,7 +13,9 @@ import {
 import LessonChat from '@/components/lessons/lessonChat';
 import logger from '@/utils/logger';
 import { AssessmentStep } from '@prisma/client';
+import { AudioMetrics } from '@/models/AppAllModels.model';
 import { toast } from 'react-hot-toast';
+import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 
 export default function LessonDetailPage() {
   const router = useRouter();
@@ -30,10 +32,10 @@ export default function LessonDetailPage() {
   const [lesson, setLesson] = useState<LessonModel | null>(null);
   const [results, setResults] = useState<LessonModel | null>(null);
   const [pronunciationResults, setPronunciationResults] =
-    useState<LessonModel | null>(null);
+    useState<AudioMetrics | null>(null);
   const [pronunciationResultsLoading, setPronunciationResultsLoading] =
     useState<boolean>(false);
-  const [sessionRecording, setSessionRecording] = useState<Blob | null>(null);
+  const [sessionRecording, setSessionRecording] = useState<RecordingBlob | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -47,16 +49,31 @@ export default function LessonDetailPage() {
 
   useEffect(() => {
     const processPronunciation = async () => {
-      if (sessionRecording) {
+      if (sessionRecording && lesson) {
+        if (!sessionRecording.lastModified || !sessionRecording.size) {
+          return
+        }
         try {
+          const recordingTime = sessionRecording.lastModified - sessionRecording.lastModified;
+          const recordingSize = sessionRecording.size;
+        
           const lessonWithAudioMetrics = await processLessonRecording(
             sessionRecording,
-            lesson
+            lesson,
+            recordingTime,
+            recordingSize
           );
+          if (!lessonWithAudioMetrics.audioMetrics) {
+            throw new Error('No audio metrics found');
+          }
           setPronunciationResults(lessonWithAudioMetrics.audioMetrics);
+          // TODO: render the pronunciation resuilts metrics
+
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
           toast.error('Failed to process pronunciation');
+        } finally {
+          setPronunciationResultsLoading(false);
         }
       }
     };

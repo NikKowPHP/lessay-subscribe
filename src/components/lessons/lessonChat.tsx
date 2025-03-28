@@ -11,6 +11,7 @@ import ChatMessages, { ChatMessage } from './ChatMessages';
 import ChatInput from './ChatInput';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 
 // Add this interface at the top of the file
 interface SpeechRecognitionEvent extends Event {
@@ -85,7 +86,7 @@ export default function LessonChat({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number>(0);
   const recordingPausedTimeRef = useRef<number>(0);
-  const [fullSessionRecording, setFullSessionRecording] = useState<Blob | null>(
+  const [fullSessionRecording, setFullSessionRecording] = useState<RecordingBlob | null>(
     null
   );
 
@@ -365,7 +366,20 @@ export default function LessonChat({
           const audioBlob = new Blob(audioChunksRef.current, {
             type: mimeType,
           });
-          setFullSessionRecording(audioBlob);
+
+          // Calculate recording metrics
+          const recordingDuration =
+            Date.now() -
+            recordingStartTimeRef.current -
+            recordingPausedTimeRef.current;
+          const recordingSize = audioBlob.size;
+
+          // Include these values with the Blob
+          const recordingWithMetadata = audioBlob;
+          (recordingWithMetadata as any).recordingTime = recordingDuration;
+          (recordingWithMetadata as any).recordingSize = recordingSize;
+
+          setFullSessionRecording(recordingWithMetadata as RecordingBlob);
 
           // Create URL for playback in mock mode
           if (isMockMode) {
@@ -374,8 +388,8 @@ export default function LessonChat({
           }
 
           logger.info('Full session recording completed', {
-            size: audioBlob.size,
-            duration: Date.now() - recordingStartTimeRef.current,
+            size: recordingSize,
+            duration: recordingDuration,
           });
         };
       } catch (error) {
@@ -463,7 +477,13 @@ export default function LessonChat({
       ) {
         mediaRecorderRef.current.stop();
         setIsRecording(false);
-        logger.info('Recording stopped completely');
+        const recordingTime =
+          Date.now() -
+          recordingStartTimeRef.current -
+          recordingPausedTimeRef.current;
+        logger.info('Recording stopped completely', {
+          duration: recordingTime,
+        });
       }
     } catch (error) {
       logger.error('Error stopping recording:', error);
@@ -500,11 +520,10 @@ export default function LessonChat({
         } else {
           // If this was the last step, complete the lesson
 
-          stopRecordingCompletely(); 
+          stopRecordingCompletely();
 
           if (!isMockMode) {
             onComplete(fullSessionRecording);
-            
           } else {
             setLessonReadyToComplete(true);
             stopRecordingCompletely();
@@ -559,9 +578,8 @@ export default function LessonChat({
           ]);
         } else {
           // Normal completion
-         
-            onComplete(fullSessionRecording);
-          
+
+          onComplete(fullSessionRecording);
         }
       }
     } catch (error) {
@@ -706,7 +724,6 @@ export default function LessonChat({
           <audio ref={audioRef} />
           <audio ref={recordingAudioRef} src={recordingAudioURL || ''} />
         </div>
-      
 
         {/* Assessment specific realtime transcript display */}
         {/* {realtimeTranscriptEnabled && (

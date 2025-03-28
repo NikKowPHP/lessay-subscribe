@@ -42,3 +42,9 @@ export interface ILessonRepository {
 }
 
 
+
+export interface RecordingBlob extends Blob {
+  recordingTime?: number;
+  recordingSize?: number;
+  lastModified?: number;
+}

@@ -32,6 +32,7 @@ export interface AssessmentLesson {
     weaknesses?: string[];
   };
   audioMetrics?: AudioMetrics | null;
+  sessionRecordingUrl?: string | null;
   proposedTopics: string[]; 
   summary?: string | null;
   createdAt: Date;
@@ -84,6 +85,7 @@ export interface LessonModel {
     errorPatterns?: string[];
   };
   audioMetrics?: AudioMetrics | null;
+  sessionRecordingUrl?: string | null;
   completed: boolean;
   createdAt: Date;
   updatedAt: Date;

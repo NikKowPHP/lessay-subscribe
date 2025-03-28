@@ -36,3 +36,8 @@ Update Content: Regularly update lesson content and AI models to keep the app re
 
 add profile where user can remove its data. 
 add basic statistics
+
+track user progress
+track topics and skills
+track words
+track lessons
