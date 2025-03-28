@@ -31,6 +31,7 @@ export interface AssessmentLesson {
     strengths?: string[];
     weaknesses?: string[];
   };
+  audioMetrics?: AudioMetrics | null;
   proposedTopics: string[]; 
   summary?: string | null;
   createdAt: Date;
@@ -82,6 +83,7 @@ export interface LessonModel {
     pronunciationScore?: number;
     errorPatterns?: string[];
   };
+  audioMetrics?: AudioMetrics | null;
   completed: boolean;
   createdAt: Date;
   updatedAt: Date;
