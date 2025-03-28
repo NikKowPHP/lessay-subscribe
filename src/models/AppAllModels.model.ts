@@ -368,3 +368,95 @@ export interface AdaptiveLessonGenerationRequest {
     completionSuccessRate: number // Calculated from exercise completion
   }
 }
+
+/**
+ * Builds an AdaptiveLessonGenerationRequest from existing application data
+ * @param userProfile User profile information
+ * @param audioMetrics Latest audio analysis metrics
+ * @param previousLesson Most recent completed lesson
+ * @returns Formatted request for adaptive lesson generation
+ */
+export function buildAdaptiveLessonRequest(
+  userProfile: UserProfileModel,
+  audioMetrics: AudioMetrics,
+  previousLesson?: LessonModel
+): AdaptiveLessonGenerationRequest {
+  
+  // Extract grammar rules to focus on
+  const grammarRulesToFocus = audioMetrics.grammarAssessment.grammar_rules_to_review.map(rule => ({
+    rule: rule.rule,
+    priority: rule.priority.toString()
+  }));
+  
+  // Extract common grammar errors
+  const grammarCommonErrors = audioMetrics.grammarAssessment.error_patterns.map(pattern => ({
+    category: pattern.category,
+    description: pattern.description
+  }));
+  
+  // Extract vocabulary areas for improvement
+  const vocabularyAreas = audioMetrics.vocabularyAssessment.areas_for_expansion.map(area => ({
+    topic: area.topic,
+    suggestedVocabulary: area.suggested_vocabulary
+  }));
+  
+  // Calculate completion success rate if we have previous lesson data
+  const completionSuccessRate = previousLesson 
+    ? audioMetrics.exerciseCompletion.overall_score 
+    : 0;
+  
+  return {
+    // User profile information
+    userInfo: {
+      nativeLanguage: userProfile.nativeLanguage || 'English',
+      targetLanguage: userProfile.targetLanguage || 'English',
+      proficiencyLevel: audioMetrics.proficiencyLevel,
+      learningPurpose: userProfile.learningPurpose
+    },
+    
+    // Performance metrics from audio analysis
+    performanceMetrics: {
+      pronunciationScore: audioMetrics.pronunciationScore,
+      fluencyScore: audioMetrics.fluencyScore,
+      grammarAccuracy: audioMetrics.grammarScore,
+      vocabularyScore: audioMetrics.vocabularyScore,
+      overallPerformance: audioMetrics.overallPerformance
+    },
+    
+    // Areas needing improvement
+    improvementAreas: {
+      pronunciation: audioMetrics.pronunciationAssessment.problematic_sounds,
+      grammar: {
+        rulesToFocus: grammarRulesToFocus,
+        commonErrors: grammarCommonErrors
+      },
+      vocabulary: vocabularyAreas
+    },
+    
+    // Learning recommendations
+    learningRecommendations: {
+      suggestedTopics: audioMetrics.suggestedTopics,
+      focusAreas: audioMetrics.grammarFocusAreas,
+      nextSkillTargets: audioMetrics.nextSkillTargets
+    },
+    
+    // Learning style insights
+    learningStyle: {
+      effectiveApproaches: audioMetrics.effectiveApproaches,
+      preferredPatterns: audioMetrics.preferredPatterns
+    },
+    
+    // Previous lesson data (if available)
+    previousLesson: previousLesson ? {
+      id: previousLesson.id,
+      focusArea: previousLesson.focusArea,
+      targetSkills: previousLesson.targetSkills,
+      completionSuccessRate: completionSuccessRate
+    } : {
+      id: '',
+      focusArea: '',
+      targetSkills: [],
+      completionSuccessRate: 0
+    }
+  };
+}
