@@ -104,15 +104,12 @@ export const MockLessonGeneratorService = {
             stepNumber: 1,
             type: LessonStepType.instruction,
             content: 'Welcome to the Hotel Booking lesson! In this lesson, you\'ll learn essential phrases for making hotel reservations and requesting services.',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Willkommen zur Hotelbuchungslektion! In dieser Lektion lernen Sie wichtige Sätze für Hotelbuchungen und das Anfordern von Dienstleistungen.'
           },
           {
             stepNumber: 2,
             type: LessonStepType.new_word,
             content: 'das Hotel',
-            // // contentAudioUrl: '/audio-test.mp3',
-            // // expectedAnswerAudioUrl: '/audio-test.mp3',
             translation: 'the hotel',
             expectedAnswer: 'das Hotel'
           },
@@ -298,52 +295,37 @@ export const MockLessonGeneratorService = {
           stepNumber: 1,
           type: LessonStepType.instruction,
           content: 'Welcome to the General Conversation lesson! In this lesson, you\'ll learn basic phrases for everyday conversations in your target language.',
-          // contentAudioUrl: '/audio-test.mp3',
           translation: 'Willkommen zur Lektion über allgemeine Konversation! In dieser Lektion lernen Sie grundlegende Sätze für alltägliche Gespräche in Ihrer Zielsprache.'
         },
         {
           stepNumber: 2,
-          type: LessonStepType.prompt,
-          content: 'To start, say "ready to start"',
-          // contentAudioUrl: '/audio-test.mp3',
-          translation: `To start, say "ready to start"`
-        },
-        {
-          stepNumber: 3,
           type: LessonStepType.new_word,
-          content: 'Hello',
-          // contentAudioUrl: '/audio-test.mp3',
-          // expectedAnswerAudioUrl: '/audio-test.mp3',
+          content: 'Hallo',
           translation: 'Hello',
           expectedAnswer: 'Hello'
         },
         {
-          stepNumber: 4,
+          stepNumber: 3,
           type: LessonStepType.model_answer,
           content: 'Excellent! Now let\'s practice saying "Hello".',
-          // contentAudioUrl: '/audio-test.mp3',
           translation: 'Ausgezeichnet! Jetzt üben wir, "Hello" zu sagen.'
         },
         {
-          stepNumber: 5,
+          stepNumber: 4,
           type: LessonStepType.practice,
           content: 'Repeat: Hello',
-          // contentAudioUrl: '/audio-test.mp3',
-          // expectedAnswerAudioUrl: '/audio-test.mp3',
           expectedAnswer: 'Hello'
         },
         {
-          stepNumber: 6,
+          stepNumber: 5,
           type: LessonStepType.model_answer,
           content: 'Perfect pronunciation! You\'re making great progress.',
-          // contentAudioUrl: '/audio-test.mp3',
           translation: 'Perfekte Aussprache! Sie machen große Fortschritte.'
         },
         {
-          stepNumber: 7,
+          stepNumber: 6,
           type: LessonStepType.summary,
           content: 'Great job! You\'ve completed the General Conversation lesson. You can now use basic phrases for everyday interactions.',
-          // contentAudioUrl: '/audio-test.mp3',
           translation: 'Gut gemacht! Sie haben die Lektion zur allgemeinen Konversation abgeschlossen. Sie können jetzt grundlegende Sätze für alltägliche Interaktionen verwenden.'
         }
       ]
