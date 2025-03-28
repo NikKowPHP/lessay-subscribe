@@ -1,4 +1,6 @@
+import { AssessmentLesson, LessonModel } from "@/models/AppAllModels.model";
 import { LanguageDetectionResponse } from "@/models/Language-detection.model";
+
 
 class MessageGenerator {
   constructor() { }
@@ -29,7 +31,251 @@ class MessageGenerator {
   }
 
 
+  // TODO: finish the generation of prompts for lesson recording analysis
+  public generateLessonRecordingAnalysisPrompts
+  (targetLanguage: string, nativeLanguage: string, lessonData: LessonModel | AssessmentLesson): {
+    userPrompt: string;
+      systemPrompt: string;
+  } {
+    const userMessage = this.generateLessonRecordingUserPrompt(targetLanguage, nativeLanguage, lessonData)
+    const systemMessage = this.generateLessonRecordingSystemPrompt(targetLanguage, nativeLanguage, lessonData)
 
+    return {
+      userPrompt: userMessage,
+      systemPrompt: systemMessage
+    }
+  }
+  private generateLessonRecordingUserPrompt(targetLanguage: string, nativeLanguage: string, lessonData: LessonModel | AssessmentLesson): string {
+    // Extract lesson specifics to focus the analysis
+    const lessonType = 'id' in lessonData && 'lessonId' in lessonData ? 'practice lesson' : 'assessment';
+    const focusArea = 'focusArea' in lessonData ? lessonData.focusArea : '';
+    const targetSkills = 'targetSkills' in lessonData ? lessonData.targetSkills.join(', ') : '';
+    
+    const specificInstructions = lessonType === 'assessment' 
+      ? `This is an assessment to evaluate the learner's overall language proficiency.` 
+      : `This is a practice lesson focused on "${focusArea}" targeting: ${targetSkills}.`;
+    
+    return `
+      Analyze this ${targetLanguage} language recording from a ${lessonType}. ${specificInstructions}
+      
+      The user's native language is ${nativeLanguage}. Provide a comprehensive analysis including:
+      
+      1. Pronunciation accuracy assessment:
+         - Phoneme-level analysis with specific examples
+         - Accent characteristics and influence of ${nativeLanguage}
+         - Key pronunciation patterns or errors that need attention
+      
+      2. Fluency and rhythm evaluation:
+         - Speech rate and natural flow
+         - Hesitations and pausing patterns
+         - Intonation and stress placement accuracy
+      
+      3. Grammar and structure analysis:
+         - Grammatical patterns and errors
+         - Common mistakes related to ${nativeLanguage} interference
+         - ${lessonType === 'practice lesson' ? 'Progress on targeted grammar points from the lesson' : 'Overall grammar proficiency assessment'}
+      
+      4. Vocabulary usage:
+         - Appropriateness and accuracy of vocabulary
+         - Range and diversity relative to ${lessonType === 'practice lesson' ? 'the lesson topic' : 'expected proficiency level'}
+         - Word choice precision and naturalness
+      
+      5. Task completion assessment:
+         - How well the user completed the ${lessonType === 'practice lesson' ? 'practice exercises' : 'assessment questions'}
+         - Comprehension of instructions and questions
+         - Appropriateness of responses to prompts
+      
+      6. Detailed metrics and scoring (0-100 scale):
+         - Pronunciation score
+         - Fluency score
+         - Grammar accuracy
+         - Vocabulary appropriateness
+         - Overall performance
+      
+      7. Learning progression insights:
+         - ${lessonType === 'practice lesson' ? '3-5 suggested topics that build on this lesson' : '3-5 recommended focus areas based on this assessment'}
+         - Specific grammar rules that need further practice
+         - Vocabulary domains to expand
+         - Next skill targets for improvement
+      
+      8. Personalized learning strategy:
+         - Patterns in learning style observed
+         - Most effective practice approaches for this learner
+         - Estimated proficiency level (CEFR: A1-C2)
+         - Prioritized improvement plan
+      
+      Format your analysis in clear, structured JSON according to the specified format.
+    `;
+  }
+
+  private generateLessonRecordingSystemPrompt(targetLanguage: string, nativeLanguage: string, lessonData: LessonModel | AssessmentLesson): string {
+    // Extract expected answers to compare against
+    const lessonSteps = lessonData.steps;
+    const isAssessment = !('lessonId' in lessonData);
+    
+    // Extract different types of exercises to better focus the analysis
+    const expectedAnswers = lessonSteps
+      .filter(step => step.expectedAnswer)
+      .map(step => {
+        const stepType = 'type' in step ? 
+          (step.type as string) : 
+          (isAssessment ? 'question' : 'prompt');
+        
+        return {
+          type: stepType,
+          prompt: step.content || '',
+          expected: step.expectedAnswer || '',
+          translation: step.translation || null
+        };
+      });
+    
+    const previousMetrics = 'performanceMetrics' in lessonData && lessonData.performanceMetrics 
+      ? JSON.stringify(lessonData.performanceMetrics) 
+      : null;
+    
+    return `
+      You are Dr. Sarah Chen-Martinez, PhD in Applied Linguistics and Phonetics from Cambridge University,
+      with 20 years of expertise in language acquisition, pronunciation training, and adaptive learning technologies.
+      
+      Your task is to analyze this ${targetLanguage} language recording from a learner whose native language is ${nativeLanguage}.
+      ${isAssessment ? 'This is an assessment to evaluate the learner\'s overall language proficiency.' : 
+        'This is a practice lesson focused on specific skills and topics.'}
+      
+      Expected exercises in this ${isAssessment ? 'assessment' : 'lesson'} included:
+      ${JSON.stringify(expectedAnswers, null, 2)}
+      
+      ${previousMetrics ? `Previous performance metrics:\n${previousMetrics}` : ''}
+      
+      Provide your analysis as a valid JSON object with the following structure:
+      
+      \`\`\`json
+      {
+        "pronunciation_assessment": {
+          "overall_score": number (0-100),
+          "native_language_influence": {
+            "level": "string (minimal|moderate|strong)",
+            "specific_features": ["array of string descriptions"]
+          },
+          "phoneme_analysis": [
+            {
+              "phoneme": "string (IPA symbol)",
+              "target_realization": "string (IPA for standard ${targetLanguage})",
+              "user_realization": "string (IPA for user's pronunciation)",
+              "accuracy": number (0-100),
+              "examples": ["array of words/phrases from the recording"]
+            }
+          ],
+          "problematic_sounds": ["array of IPA symbols"],
+          "strengths": ["array of string descriptions"],
+          "areas_for_improvement": ["array of string descriptions"]
+        },
+        "fluency_assessment": {
+          "overall_score": number (0-100),
+          "speech_rate": {
+            "words_per_minute": number,
+            "evaluation": "string (slow|appropriate|fast)"
+          },
+          "hesitation_patterns": {
+            "frequency": "string (rare|occasional|frequent)",
+            "average_pause_duration": number (seconds),
+            "typical_contexts": ["array of string descriptions"]
+          },
+          "rhythm_and_intonation": {
+            "naturalness": number (0-100),
+            "sentence_stress_accuracy": number (0-100),
+            "intonation_pattern_accuracy": number (0-100)
+          }
+        },
+        "grammar_assessment": {
+          "overall_score": number (0-100),
+          "error_patterns": [
+            {
+              "category": "string (e.g., verb tense, word order)",
+              "description": "string",
+              "examples": ["array of examples from recording"],
+              "frequency": "string (rare|occasional|frequent)",
+              "severity": "string (minor|moderate|major)"
+            }
+          ],
+          "grammar_rules_to_review": [
+            {
+              "rule": "string",
+              "priority": "string (high|medium|low)",
+              "examples": ["array of examples"]
+            }
+          ],
+          "grammar_strengths": ["array of string descriptions"]
+        },
+        "vocabulary_assessment": {
+          "overall_score": number (0-100),
+          "range": "string (limited|adequate|extensive)",
+          "appropriateness": number (0-100),
+          "precision": number (0-100),
+          "areas_for_expansion": [
+            {
+              "topic": "string",
+              "suggested_vocabulary": ["array of words/phrases"]
+            }
+          ]
+        },
+        "exercise_completion": {
+          "overall_score": number (0-100),
+          "exercises_analyzed": [
+            {
+              "prompt": "string (the exercise/question)",
+              "expected_answer": "string",
+              "user_response": "string (what was detected in audio)",
+              "accuracy": number (0-100),
+              "error_analysis": "string (if applicable)"
+            }
+          ],
+          "comprehension_level": "string (excellent|good|fair|poor)"
+        },
+        "performance_metrics": {
+          "pronunciation_score": number (0-100),
+          "fluency_score": number (0-100),
+          "grammar_accuracy": number (0-100),
+          "vocabulary_score": number (0-100),
+          "overall_performance": number (0-100),
+          "strengths": ["array of string descriptions"],
+          "weaknesses": ["array of string descriptions"]
+        },
+        "adaptive_learning_suggestions": {
+          "suggested_topics": ["array of 3-5 topics for future lessons"],
+          "grammar_focus_areas": ["array of grammar rules to practice"],
+          "vocabulary_domains": ["array of vocabulary areas to expand"],
+          "next_skill_targets": ["array of skills to focus on next"],
+          "learning_style_observations": {
+            "preferred_patterns": ["array of observed learning patterns"],
+            "effective_approaches": ["array of approaches that seem effective for this learner"]
+          }
+        },
+        "progress_tracking": {
+          "improvement_since_last_assessment": ${previousMetrics ? "\"string assessment of improvement\"" : "null"},
+          "learning_trajectory": "string (steady|accelerating|plateauing)",
+          "estimated_proficiency_level": "string (CEFR level: A1|A2|B1|B2|C1|C2)",
+          "time_to_next_level_estimate": "string"
+        }
+      }
+      \`\`\`
+      
+      Important guidelines:
+      1. Base all assessments on concrete evidence from the audio recording
+      2. Compare user's responses against the expected answers provided
+      3. Be specific and actionable in your feedback
+      4. Use IPA symbols for phonetic transcriptions
+      5. Include examples from the user's speech when possible
+      6. For practice lessons, focus more on the specific skills being targeted
+      7. For assessments, provide a broader evaluation of overall proficiency
+      8. Ensure the JSON is valid and properly formatted
+      
+      Your analysis will directly inform this learner's personalized curriculum, so your detailed assessment is crucial for their language learning journey.
+    `;
+  }
+
+
+
+  
 
   private getPromptsBasedOnLanguageAndAnalysis(detectedLanguage: LanguageDetectionResponse, isDeepAnalysis: boolean): {
     userMessage: string;
