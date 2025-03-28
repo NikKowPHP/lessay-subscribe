@@ -29,6 +29,7 @@ export default function LessonDetailPage() {
       logger.info('init', { id });
       const fetchedLesson = await getLessonById(id as string);
       setLesson(fetchedLesson);
+      logger.info('fetchedLesson', { fetchedLesson });
     };
     init();
   }, [id]);
@@ -274,7 +275,7 @@ export default function LessonDetailPage() {
     );
   }
 
-  return (
+  return lesson && (
     <div className="container mx-auto h-screen flex flex-col py-4 px-4 overflow-hidden">
       <div className="flex-1 min-h-0">
         <LessonChat

@@ -54,8 +54,10 @@ export default class LessonService {
       const createdLesson = await this.lessonRepository.createLesson(
         lessonData
       );
+
       logger.info('Lesson created successfully', {
         lessonId: createdLesson.id,
+        steps: createdLesson.steps,
         userId: createdLesson.userId,
       });
       return createdLesson;
@@ -204,12 +206,14 @@ export default class LessonService {
       const createdLessons = await Promise.all(
         lessonItems.map(async (lessonItem: any) => {
           const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(lessonItem.steps as LessonStep[], targetLanguage);
+          
           // TODO: Seperate into 2 promises, one will be sent to user to update the loading screen while fetching the audio . 
           const lessonData = {
             focusArea: lessonItem.focusArea,
             targetSkills: lessonItem.targetSkills,
-            steps: audioSteps,
+            steps:audioSteps
           };
+          logger.info('lessonData in initial lesson generation  with steps: ', {lessonData},{steps: lessonData.steps})
           return this.createLesson(lessonData);
         })
       );
@@ -358,10 +362,11 @@ export default class LessonService {
       const createdLessons = await Promise.all(
         lessonItems.map(async (lessonItem: any) => {
           const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(lessonItem.steps as LessonStep[], targetLanguage);
+          logger.info('generating audio for  LESSON steps', {audioSteps})
           const lessonData = {
             focusArea: lessonItem.focusArea,
             targetSkills: lessonItem.targetSkills,
-            steps: audioSteps,
+            steps: audioSteps
           };
           return this.createLesson(lessonData);
         })

@@ -3,20 +3,15 @@ import OnboardingService from '@/services/onboarding.service';
 import { OnboardingRepository } from '@/repositories/onboarding.repository';
 import {
   getAuthServiceBasedOnEnvironment,
-  SupabaseAuthService,
 } from '@/services/supabase-auth.service';
-import { getSession } from '@/repositories/supabase/supabase';
 import 'server-only';
-import { MockAuthService } from '@/services/mock-auth-service.service';
 import logger from '@/utils/logger';
-import { generateInitialLessonsAction } from './lesson-actions';
-import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock';
 import LessonService from '@/services/lesson.service';
 import { LessonRepository } from '@/repositories/lesson.repository';
 import AIService from '@/services/ai.service';
 import AssessmentStepGeneratorService from '@/services/assessment-step-generator.service';
-import { MockAssessmentGeneratorService } from '@/__mocks__/generated-assessment-lessons.mock';
 import { GoogleTTS } from '@/services/google-tts.service';
+import LessonGeneratorService from '@/services/lesson-generator.service';
 
 function createOnboardingService() {
   const repository = new OnboardingRepository(
@@ -27,7 +22,7 @@ function createOnboardingService() {
   );
   return new OnboardingService(
     repository,
-    new LessonService(lessonRepository, MockLessonGeneratorService, repository),
+    new LessonService(lessonRepository, new LessonGeneratorService(new AIService(), true, new GoogleTTS()), repository),
     new AssessmentStepGeneratorService(new AIService(), true, new GoogleTTS())
   );
 }

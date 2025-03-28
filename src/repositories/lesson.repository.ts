@@ -70,7 +70,9 @@ export class LessonRepository implements ILessonRepository {
               translation: step.translation,
               attempts: step.attempts || 0,
               correct: step.correct || false,
-              errorPatterns: step.errorPatterns || []
+              errorPatterns: step.errorPatterns || [],
+              expectedAnswerAudioUrl: step.expectedAnswerAudioUrl || null,
+              contentAudioUrl: step.contentAudioUrl || null
             }))
           },
           completed: false,

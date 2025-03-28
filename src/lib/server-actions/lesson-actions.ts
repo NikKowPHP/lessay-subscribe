@@ -10,12 +10,13 @@ import { OnboardingRepository } from '@/repositories/onboarding.repository'
 import logger from '@/utils/logger'
 import LessonGeneratorService from '@/services/lesson-generator.service'
 import AIService from '@/services/ai.service'
+import { GoogleTTS } from '@/services/google-tts.service'
 
 
 // TODO: Convert to container
 function createLessonService() {
   const repository = new LessonRepository(getAuthServiceBasedOnEnvironment())
-  return new LessonService(repository, new LessonGeneratorService(new AIService(), true), new OnboardingRepository(getAuthServiceBasedOnEnvironment()))
+  return new LessonService(repository, new LessonGeneratorService(new AIService(), true, new GoogleTTS()), new OnboardingRepository(getAuthServiceBasedOnEnvironment()))
 }
 
 export async function getLessonsAction() {
