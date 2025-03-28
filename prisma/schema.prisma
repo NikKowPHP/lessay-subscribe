@@ -76,6 +76,7 @@ model AssessmentLesson {
   updatedAt         DateTime @updatedAt
   steps             AssessmentStep[]
   audioMetrics      AudioMetrics?
+  sessionRecordingUrl String?
   @@map("assessment_lessons")
 }
 
@@ -115,6 +116,7 @@ model Lesson {
   updatedAt           DateTime  @updatedAt
   steps               LessonStep[]
   audioMetrics        AudioMetrics?
+  sessionRecordingUrl String?
 
   @@map("lessons")
 }
