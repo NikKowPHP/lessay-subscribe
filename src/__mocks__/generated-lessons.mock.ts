@@ -36,54 +36,48 @@ export const MockLessonGeneratorService = {
           {
             stepNumber: 2,
             type: LessonStepType.prompt,
-            content: 'To start, say "ready to start"',
-            // // contentAudioUrl: '/audio-test.mp3',
-            translation: 'Um zu beginnen, sagen Sie "bereit zu starten"'
+            content: 'How to say "where is" in German?',
+            translation: 'wo ist',
+            expectedAnswer: 'wo ist'
           },
           {
             stepNumber: 3,
-            type: LessonStepType.new_word,
-            content: 'der Flughafen',
-            // // contentAudioUrl: '/audio-test.mp3',
-            // // expectedAnswerAudioUrl: '/audio-test.mp3',
-            translation: 'the airport',
-            expectedAnswer: 'der Flughafen'
+            type: LessonStepType.model_answer,
+            content: 'Great job!',
+            translation: 'Gut gemacht!'
           },
           {
             stepNumber: 4,
-            type: LessonStepType.model_answer,
-            content: 'Great job! "der Flughafen" means "the airport" in German. Let\'s practice this word.',
-            // // contentAudioUrl: '/audio-test.mp3',
-            translation: 'Gut gemacht! "der Flughafen" bedeutet "the airport" auf Deutsch. Lassen Sie uns dieses Wort üben.'
-          },
-          {
-            stepNumber: 5,
-            type: LessonStepType.practice,
-            content: 'Repeat the word for airport: der Flughafen',
-            // // contentAudioUrl: '/audio-test.mp3',
-            // // expectedAnswerAudioUrl: '/audio-test.mp3',
+            type: LessonStepType.prompt,
+            content: 'How to say "the airport" in German?',
             expectedAnswer: 'der Flughafen'
           },
           {
-            stepNumber: 6,
+            stepNumber: 5,
             type: LessonStepType.model_answer,
             content: 'Excellent pronunciation! Now, let\'s learn how to ask for directions.',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Ausgezeichnete Aussprache! Lassen Sie uns nun lernen, wie man nach dem Weg fragt.'
           },
           {
-            stepNumber: 7,
+            stepNumber: 6,
             type: LessonStepType.prompt,
-            content: 'How do you ask "Where is the gate?" in German?',
+            content: 'How do you ask "Where is the airport?" in German?',
+            expectedAnswer: 'wo ist der Flughafen',
+            translation: 'Wie fragt man "Wo ist der Flughafen?" auf Deutsch?'
+          },
+          {
+            stepNumber: 7,
+            type: LessonStepType.model_answer,
+            content: 'Lets add some more words to our vocabulary',
             // // contentAudioUrl: '/audio-test.mp3',
-            translation: 'Wie fragt man "Wo ist das Gate?" auf Deutsch?'
+            translation: ''
           },
           {
             stepNumber: 8,
-            type: LessonStepType.model_answer,
-            content: 'To ask "Where is the gate?" in German, you say "Wo ist das Gate?"',
+            type: LessonStepType.new_word,
+            content: 'Das Gate',
             // // contentAudioUrl: '/audio-test.mp3',
-            translation: 'Um "Where is the gate?" auf Deutsch zu fragen, sagt man "Wo ist das Gate?"'
+            translation: 'das Gate'
           },
           {
             stepNumber: 9,
