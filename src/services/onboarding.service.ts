@@ -6,7 +6,6 @@ import {
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 import LessonService from './lesson.service';
-import LessonGeneratorService from './lesson-generator.service';
 import { IAssessmentGeneratorService } from './assessment-step-generator.service';
 
 export default class OnboardingService {

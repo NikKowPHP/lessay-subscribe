@@ -111,43 +111,36 @@ export const MockLessonGeneratorService = {
             stepNumber: 3,
             type: LessonStepType.model_answer,
             content: 'Very good! "das Hotel" is "the hotel" in German. Now let\'s practice this word.',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Sehr gut! "das Hotel" ist "the hotel" auf Deutsch. Lassen Sie uns jetzt dieses Wort üben.'
           },
           {
             stepNumber: 4,
             type: LessonStepType.practice,
             content: 'Repeat the word for hotel: das Hotel',
-            // // contentAudioUrl: '/audio-test.mp3',
-            // // expectedAnswerAudioUrl: '/audio-test.mp3',
             expectedAnswer: 'das Hotel'
           },
           {
             stepNumber: 5,
             type: LessonStepType.model_answer,
             content: 'Well done! Now, let\'s learn how to make a reservation.',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Gut gemacht! Jetzt lernen wir, wie man eine Reservierung macht.'
           },
           {
             stepNumber: 6,
             type: LessonStepType.prompt,
             content: 'How do you say "I have a reservation" in German?',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Wie sagt man "Ich habe eine Reservierung" auf Deutsch?'
           },
           {
             stepNumber: 7,
             type: LessonStepType.model_answer,
             content: 'To say "I have a reservation" in German, you say "Ich habe eine Reservierung"',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Um "I have a reservation" auf Deutsch zu sagen, sagt man "Ich habe eine Reservierung"'
           },
           {
             stepNumber: 8,
             type: LessonStepType.summary,
             content: 'Great job! You\'ve completed the Hotel Booking lesson. You can now make reservations and request services in German hotels.',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Gut gemacht! Sie haben die Hotel-Buchungslektion abgeschlossen. Sie können jetzt Reservierungen vornehmen und Dienstleistungen in deutschen Hotels anfordern.'
           }
         ]
@@ -161,22 +154,18 @@ export const MockLessonGeneratorService = {
             stepNumber: 1,
             type: LessonStepType.instruction,
             content: 'Welcome to the Pronunciation Practice lesson! In this lesson, you\'ll work on perfecting your German pronunciation and reducing your accent.',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Willkommen zur Ausspracheübungslektion! In dieser Lektion werden Sie an der Verbesserung Ihrer deutschen Aussprache arbeiten und Ihren Akzent reduzieren.'
           },
           {
             stepNumber: 2,
             type: LessonStepType.prompt,
             content: 'To start, say "ready to practice pronunciation"',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Um zu beginnen, sagen Sie "bereit für die Ausspracheübung"'
           },
           {
             stepNumber: 3,
             type: LessonStepType.new_word,
             content: 'die Aussprache',
-            // // contentAudioUrl: '/audio-test.mp3',
-            // // expectedAnswerAudioUrl: '/audio-test.mp3',
             translation: 'the pronunciation',
             expectedAnswer: 'die Aussprache'
           },
@@ -184,16 +173,12 @@ export const MockLessonGeneratorService = {
             stepNumber: 4,
             type: LessonStepType.practice,
             content: 'die Aussprache',
-            // contentAudioUrl: '/audio-test.mp3',
-            // // expectedAnswerAudioUrl: '/audio-test.mp3',
             expectedAnswer: 'die Aussprache'
           },
           {
             stepNumber: 5,
             type: LessonStepType.new_word,
             content: 'schwierig',
-            // // contentAudioUrl: '/audio-test.mp3',
-            // // expectedAnswerAudioUrl: '/audio-test.mp3',
             translation: 'difficult',
             expectedAnswer: 'schwierig'
           },
@@ -201,8 +186,6 @@ export const MockLessonGeneratorService = {
             stepNumber: 6,
             type: LessonStepType.model_answer,
             content: 'Die Aussprache ist manchmal schwierig',
-            // contentAudioUrl: '/audio-test.mp3',
-            // expectedAnswerAudioUrl: '/audio-test.mp3',
             translation: 'The pronunciation is sometimes difficult',
             expectedAnswer: 'Die Aussprache ist manchmal schwierig'
           },

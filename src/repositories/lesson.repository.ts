@@ -71,6 +71,7 @@ export class LessonRepository implements ILessonRepository {
               attempts: step.attempts || 0,
               correct: step.correct || false,
               errorPatterns: step.errorPatterns || [],
+              expectedAnswer: step.expectedAnswer || null,
               expectedAnswerAudioUrl: step.expectedAnswerAudioUrl || null,
               contentAudioUrl: step.contentAudioUrl || null
             }))
