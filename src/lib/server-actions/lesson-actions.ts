@@ -121,7 +121,7 @@ export async function generateNewLessonsAction(): Promise<LessonModel[]> {
     throw new Error(message)
   }
 }
-// TODO: Add recording time and size
+
 export async function processLessonRecordingAction(sessionRecording: Blob, recordingTime: number, recordingSize: number, lesson: LessonModel) {
   try {
 

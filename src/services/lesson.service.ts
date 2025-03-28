@@ -539,6 +539,7 @@ export default class LessonService {
     const audioMetrics = this.convertAiResponseToAudioMetrics(aiResponse)
 
     // 4. update lesson with sessionRecordingMetrics, lesson should have a foreign key to audioMetrics
+    // TODO: Check repo if everything is ok
     return this.lessonRepository.updateLesson(lesson.id, { audioMetrics })
   }
 

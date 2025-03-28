@@ -268,7 +268,6 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       const uploadedAudioUrl = await uploadFilesToStorage(sessionRecording);
       lesson.sessionRecordingUrl = uploadedAudioUrl;
   
-      // TODO: update lesson with sessionRecordingUrl
       updateLessonAction(lesson.id, { sessionRecordingUrl: uploadedAudioUrl });
     }
     const lessonWithAudioMetrics = await processLessonRecordingAction(
@@ -279,6 +278,8 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     );
     logger.info('lessonWithAudioMetrics', { lessonWithAudioMetrics });
     return lessonWithAudioMetrics;
+    // TODO: sync when generating new lessons
+    // TODO: each target langauge should have its own onboarding, and data
   };
 
   // Upload file for slider items – only processes the image file.

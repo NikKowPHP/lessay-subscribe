@@ -6,7 +6,7 @@ import { retryOperation } from '@/utils/retryWithOperation';
 import { LanguageDetectionResponse } from '@/models/Language-detection.model';
 import { IUploadableAIService } from '@/interfaces/ai-service.interface';
 import { DetailedAIResponse } from '@/models/AiResponse.model';
-import { LessonModel } from '@/models/AppAllModels.model';
+import { AssessmentLesson, LessonModel } from '@/models/AppAllModels.model';
 
 class RecordingService {
   private aiService: IUploadableAIService;
@@ -90,7 +90,7 @@ class RecordingService {
     recordingTime: number,
       recordingSize: number, 
       languages: { targetLanguage: string, nativeLanguage: string },
-      lessonData: LessonModel
+      lessonData: LessonModel | AssessmentLesson
   ): Promise<Record<string, unknown>> {
     try {
 

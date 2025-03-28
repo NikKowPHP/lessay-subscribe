@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
   createOnboardingAction,
   updateOnboardingAction,
@@ -10,11 +10,15 @@ import {
   getOnboardingAction,
   completeOnboardingAction,
   recordAssessmentStepAttemptAction,
+  updateOnboardingLessonAction,
+  processAssessmentLessonRecordingAction
 } from '@/lib/server-actions/onboarding-actions';
 import logger from '@/utils/logger';
 import { AssessmentLesson, AssessmentStep, OnboardingModel } from '@/models/AppAllModels.model';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
+import { useUpload } from '@/hooks/use-upload';
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;
@@ -37,7 +41,14 @@ interface OnboardingContextType {
     stepId: string,
     userResponse: string,
     correct?: boolean
+
   ) => Promise<AssessmentStep>;
+  processAssessmentLessonRecording: (
+    recording: RecordingBlob,
+    lesson: AssessmentLesson,
+    recordingTime: number,
+    recordingSize: number
+  ) => Promise<AssessmentLesson>;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(
@@ -54,6 +65,8 @@ export function OnboardingProvider({
   const [error, setError] = useState<string | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingModel | null>(null);
   const router = useRouter();
+
+  const { uploadFile } = useUpload();
 
   // Helper method to handle async operations with loading and error states
   const withLoadingAndErrorHandling = async <T,>(
@@ -148,6 +161,58 @@ export function OnboardingProvider({
   };
 
 
+  const processAssessmentLessonRecording = async (
+    sessionRecording: RecordingBlob,
+    lesson: AssessmentLesson,
+    recordingTime: number,
+    recordingSize: number
+  ) => {
+    if (!sessionRecording) {
+      throw new Error('No session recording provided');
+    }
+    if (lesson.audioMetrics) {
+      return lesson;
+    }
+    if (!lesson.sessionRecordingUrl) {
+      const uploadedAudioUrl = await uploadFilesToStorage(sessionRecording);
+      lesson.sessionRecordingUrl = uploadedAudioUrl;
+  
+      updateOnboardingLessonAction(lesson.id, { sessionRecordingUrl: uploadedAudioUrl });
+    }
+    const lessonWithAudioMetrics = await processAssessmentLessonRecordingAction(
+      sessionRecording,
+      lesson,
+      recordingSize,
+      recordingTime
+    );
+    logger.info('lessonWithAudioMetrics', { lessonWithAudioMetrics });
+    return lessonWithAudioMetrics;
+    // TODO: sync when generating new lessons
+    // TODO: each target langauge should have its own onboarding, and data
+  };
+
+
+  const uploadFilesToStorage = useCallback(
+    async (data: Blob): Promise<string> => {
+      const file = new File([data], `recording-${Date.now()}.webm`, {
+        type: data.type,
+      });
+
+      let recordingUrl = null;
+      if (process.env.NEXT_PUBLIC_MOCK_UPLOADS === 'true') {
+        recordingUrl = `https://6jnegrfq8rkxfevo.public.blob.vercel-storage.com/products/images/1741514066709-2025-03-09_07-55-trAfuCDSuaW2aZYiXHgENMuGfGNdCo.png`;
+      } else {
+        recordingUrl = await uploadFile(file, 'lessay/sessionRecordings');
+      }
+
+      if (!recordingUrl) throw new Error('Missing recording URL');
+
+      return  recordingUrl ;
+    },
+    [uploadFile]
+  );
+
+
 
   useEffect(() => {
     const initializeOnboarding = async () => {
@@ -183,7 +248,8 @@ export function OnboardingProvider({
         completeOnboardingWithLessons,
         onboarding,
         recordAssessmentStepAttempt,
-        goToLessonsWithOnboardingComplete
+        goToLessonsWithOnboardingComplete,
+        processAssessmentLessonRecording
       }}
     >
       {children}

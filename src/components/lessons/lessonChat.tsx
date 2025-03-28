@@ -40,7 +40,7 @@ declare global {
 
 interface LessonChatProps {
   lesson: LessonModel | AssessmentLesson;
-  onComplete: (recording: Blob | null) => void;
+  onComplete: (recording: RecordingBlob | null) => void;
   onStepComplete: (
     step: LessonStep | AssessmentStep,
     userResponse: string

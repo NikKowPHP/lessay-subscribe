@@ -2,11 +2,19 @@ import {
   OnboardingModel,
   AssessmentLesson,
   AssessmentStep,
+  AudioMetrics,
+  PronunciationAssessment,
+  FluencyAssessment,
+  GrammarAssessment,
+  VocabularyAssessment,
+  ExerciseCompletion,
 } from '@/models/AppAllModels.model';
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 import { IAuthService } from '@/services/auth.service';
 import prisma from '@/lib/prisma';
+import { JsonValue } from 'type-fest';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 export class OnboardingRepository implements IOnboardingRepository {
   private authService: IAuthService;
@@ -620,5 +628,158 @@ export class OnboardingRepository implements IOnboardingRepository {
       logger.error('Error recording assessment step attempt:', error);
       throw error;
     }
+  }
+
+  async updateOnboardingAssessmentLesson(lessonId: string, lessonData: Partial<AssessmentLesson>): Promise<AssessmentLesson> {
+    try {
+      const session = await this.getSession();
+
+      // First verify this assessment belongs to the current user
+      const assessment = await prisma.assessmentLesson.findUnique({
+        where: { id: lessonId },
+        include: {
+          steps: {
+            orderBy: {
+              stepNumber: 'asc',
+            },
+          },
+          audioMetrics: true
+        },
+      });
+
+      if (!assessment) {
+        throw new Error('Assessment lesson not found');
+      }
+
+      if (assessment.userId !== session.user.id) {
+        throw new Error('Unauthorized: You cannot update this assessment');
+      }
+
+      // Extract the data to update
+      const dataToUpdate: any = {};
+      
+      // Only include fields that are allowed to be updated
+      if (lessonData.completed !== undefined) dataToUpdate.completed = lessonData.completed;
+      if (lessonData.description !== undefined) dataToUpdate.description = lessonData.description;
+      if (lessonData.sourceLanguage !== undefined) dataToUpdate.sourceLanguage = lessonData.sourceLanguage;
+      if (lessonData.targetLanguage !== undefined) dataToUpdate.targetLanguage = lessonData.targetLanguage;
+      if (lessonData.metrics !== undefined) dataToUpdate.metrics = lessonData.metrics;
+      if (lessonData.proposedTopics !== undefined) dataToUpdate.proposedTopics = lessonData.proposedTopics;
+      if (lessonData.summary !== undefined) dataToUpdate.summary = lessonData.summary;
+      if (lessonData.sessionRecordingUrl !== undefined) dataToUpdate.sessionRecordingUrl = lessonData.sessionRecordingUrl;
+
+      // Handle audio metrics separately if included in the update
+      if (lessonData.audioMetrics) {
+        await this.updateAssessmentAudioMetrics(lessonId, assessment.audioMetrics, lessonData.audioMetrics);
+      }
+
+      // Update the assessment lesson
+      const updatedAssessment = await prisma.assessmentLesson.update({
+        where: { id: lessonId },
+        data: dataToUpdate,
+        include: {
+          steps: {
+            orderBy: {
+              stepNumber: 'asc',
+            },
+          },
+          audioMetrics: true
+        },
+      });
+      
+      // Transform to application model
+      return this.mapPrismaAssessmentToAppModel(updatedAssessment);
+    } catch (error) {
+      logger.error('Error updating assessment lesson:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update or create audio metrics for an assessment lesson
+   */
+  private async updateAssessmentAudioMetrics(
+    lessonId: string, 
+    existingMetrics: any | null,
+    newMetrics: AudioMetrics
+  ): Promise<void> {
+    try {
+      // Create data object for Prisma with proper JSON handling
+      const metricsData = {
+        pronunciationScore: newMetrics.pronunciationScore,
+        fluencyScore: newMetrics.fluencyScore,
+        grammarScore: newMetrics.grammarScore,
+        vocabularyScore: newMetrics.vocabularyScore,
+        overallPerformance: newMetrics.overallPerformance,
+        proficiencyLevel: newMetrics.proficiencyLevel,
+        learningTrajectory: newMetrics.learningTrajectory,
+        // Convert complex objects to JSON for storage
+        pronunciationAssessment: newMetrics.pronunciationAssessment as unknown as Prisma.InputJsonValue,
+        fluencyAssessment: newMetrics.fluencyAssessment as unknown as Prisma.InputJsonValue,
+        grammarAssessment: newMetrics.grammarAssessment as unknown as Prisma.InputJsonValue,
+        vocabularyAssessment: newMetrics.vocabularyAssessment as unknown as Prisma.InputJsonValue,
+        exerciseCompletion: newMetrics.exerciseCompletion as unknown as Prisma.InputJsonValue,
+        // Arrays
+        suggestedTopics: newMetrics.suggestedTopics,
+        grammarFocusAreas: newMetrics.grammarFocusAreas,
+        vocabularyDomains: newMetrics.vocabularyDomains,
+        nextSkillTargets: newMetrics.nextSkillTargets,
+        preferredPatterns: newMetrics.preferredPatterns,
+        effectiveApproaches: newMetrics.effectiveApproaches,
+        // Optional fields
+        audioRecordingUrl: newMetrics.audioRecordingUrl,
+        recordingDuration: newMetrics.recordingDuration,
+      };
+
+      // If audio metrics already exist, update them
+      if (existingMetrics) {
+        await prisma.audioMetrics.update({
+          where: { id: existingMetrics.id },
+          data: metricsData
+        });
+      } 
+      // If audio metrics don't exist, create them
+      else {
+        await prisma.audioMetrics.create({
+          data: {
+            ...metricsData,
+            // Link to the assessment lesson
+            assessmentLesson: {
+              connect: { id: lessonId }
+            }
+          }
+        });
+      }
+    } catch (error) {
+      logger.error('Error updating audio metrics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Maps Prisma assessment model to application model with proper type handling
+   */
+  private mapPrismaAssessmentToAppModel(assessment: any): AssessmentLesson {
+    // Handle the case where audioMetrics is null
+    let audioMetricsModel = null;
+    
+    if (assessment.audioMetrics) {
+      // Transform JSON fields to their typed counterparts
+      audioMetricsModel = {
+        ...assessment.audioMetrics,
+        // Type cast JSON fields to their strongly-typed interfaces
+        pronunciationAssessment: assessment.audioMetrics.pronunciationAssessment as unknown as PronunciationAssessment,
+        fluencyAssessment: assessment.audioMetrics.fluencyAssessment as unknown as FluencyAssessment,
+        grammarAssessment: assessment.audioMetrics.grammarAssessment as unknown as GrammarAssessment,
+        vocabularyAssessment: assessment.audioMetrics.vocabularyAssessment as unknown as VocabularyAssessment,
+        exerciseCompletion: assessment.audioMetrics.exerciseCompletion as unknown as ExerciseCompletion,
+      };
+    }
+    
+    // Return the properly typed model
+    return {
+      ...assessment,
+      audioMetrics: audioMetricsModel,
+    } as AssessmentLesson;  // Explicitly cast the entire result
   }
 }

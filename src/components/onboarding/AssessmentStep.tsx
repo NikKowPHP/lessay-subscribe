@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useOnboarding } from '@/context/onboarding-context';
 import {
   AssessmentLesson,
   AssessmentStep as AssessmentStepModel,
+  AudioMetrics,
   LessonStep,
   isAssessmentMetrics,
 } from '@/models/AppAllModels.model';
 import { toast } from 'react-hot-toast';
 import LessonChat from '@/components/lessons/lessonChat';
 import router from 'next/router';
+import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
+import logger from '@/utils/logger';
 
 interface AssessmentStepProps {
   areMetricsGenerated: boolean;
@@ -27,11 +30,16 @@ export default function AssessmentStep({
   onAssessmentComplete,
   onGoToLessonsButtonClick,
 }: AssessmentStepProps) {
-  const { recordAssessmentStepAttempt } = useOnboarding();
+  const { recordAssessmentStepAttempt, processAssessmentLessonRecording } = useOnboarding();
   const [isCompleting, setIsCompleting] = useState(false);
   const [showResults, setShowResults] = useState(false);
-
+  const [sessionRecording, setSessionRecording] = useState<RecordingBlob | null>(null);
   // Handle step completion - align with lesson page approach
+  const [pronunciationResults, setPronunciationResults] =
+    useState<AudioMetrics | null>(null);
+  const [pronunciationResultsLoading, setPronunciationResultsLoading] =
+    useState<boolean>(false);
+
   const handleStepComplete = async (
     step: LessonStep | AssessmentStepModel,
     userResponse: string
@@ -55,15 +63,16 @@ export default function AssessmentStep({
   };
 
   // Handle assessment completion
-  const handleComplete = async () => {
+  const handleComplete = async (recording: RecordingBlob | null ) => {
     setIsCompleting(true);
     try {
       if (!lesson) {
         throw new Error('Lesson is not loaded');
       }
-      setShowResults(true);
+      setSessionRecording(recording);
+      
       // const result = await completeAssessmentLesson(lesson.id, 'Assessment completed');
-      onAssessmentComplete();
+       onAssessmentComplete();
       // After completion, show results instead of immediately navigating
     } catch (error) {
       toast.error('Something went wrong completing your assessment');
@@ -71,6 +80,46 @@ export default function AssessmentStep({
       setIsCompleting(false);
     }
   };
+
+  useEffect(() => {
+    if (lesson && lesson.metrics && isAssessmentMetrics(lesson.metrics)) {
+      setShowResults(true);
+    }
+  }, [lesson?.metrics])
+
+  useEffect(() => {
+    const processPronunciation = async () => {
+      if (sessionRecording && lesson) {
+        if (!sessionRecording.lastModified || !sessionRecording.size) {
+          return
+        }
+        try {
+          const recordingTime = sessionRecording.lastModified - sessionRecording.lastModified;
+          const recordingSize = sessionRecording.size;
+        
+          const lessonWithAudioMetrics = await processAssessmentLessonRecording(
+            sessionRecording,
+            lesson,
+            recordingTime,
+            recordingSize
+          );
+          if (!lessonWithAudioMetrics.audioMetrics) {
+            throw new Error('No audio metrics found');
+          }
+          setPronunciationResults(lessonWithAudioMetrics.audioMetrics);
+          // TODO: render the pronunciation resuilts metrics
+          // TODO: render a seperate pronunciation loading state
+
+        } catch (error) {
+          logger.error('Failed to process pronunciation:', error);
+          toast.error('Failed to process pronunciation');
+        } finally {
+          setPronunciationResultsLoading(false);
+        }
+      }
+    };
+    processPronunciation();
+  }, [sessionRecording]);
 
   // Navigate to lessons after viewing results
   const handleFinishAndGoToLessons = () => {
@@ -115,7 +164,7 @@ export default function AssessmentStep({
       </div>
     );
   }
-  if (areMetricsGenerated) {
+  if (!areMetricsGenerated) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="bg-neutral-1 border border-neutral-4 rounded-lg overflow-hidden shadow-sm">
@@ -130,7 +179,7 @@ export default function AssessmentStep({
   }
 
   // Results view after assessment is completed
-  if (showResults && !areMetricsGenerated) {
+  if (showResults && areMetricsGenerated) {
     const metrics =
       lesson.metrics && isAssessmentMetrics(lesson.metrics)
         ? lesson.metrics

@@ -12,6 +12,8 @@ import AIService from '@/services/ai.service';
 import AssessmentStepGeneratorService from '@/services/assessment-step-generator.service';
 import { GoogleTTS } from '@/services/google-tts.service';
 import LessonGeneratorService from '@/services/lesson-generator.service';
+import { AssessmentLesson } from '@/models/AppAllModels.model';
+
 
 function createOnboardingService() {
   const repository = new OnboardingRepository(
@@ -48,6 +50,7 @@ export async function updateOnboardingAction(step: string) {
   logger.log('updated onboarding:', updatedOnboarding);
   return updatedOnboarding;
 }
+
 
 export async function completeOnboardingAction() {
   const onboardingService = createOnboardingService();
@@ -114,4 +117,53 @@ export async function recordAssessmentStepAttemptAction(
     stepId,
     userResponse
   );
+}
+
+export async function updateOnboardingLessonAction(lessonId: string, lessonData: Partial<AssessmentLesson>) {
+  if (!lessonId) {
+    throw new Error('Lesson ID is required')
+  }
+  const onboardingService = createOnboardingService()
+  return await onboardingService.updateOnboardingAssessmentLesson(lessonId, lessonData)
+}
+
+
+export async function processAssessmentLessonRecordingAction(
+  sessionRecording: Blob,
+  lesson: AssessmentLesson,
+  recordingTime: number,
+  recordingSize: number
+) {
+  try {
+    validateAssessmentRecording(sessionRecording, recordingTime, recordingSize, lesson);
+    const onboardingService = createOnboardingService();
+    return await onboardingService.processAssessmentLessonRecording(
+      sessionRecording,
+      lesson,
+      recordingTime,
+      recordingSize
+    );
+  } catch (error) {
+    throw new Error("Error processing assessment recording: " + error);
+  }
+}
+
+function validateAssessmentRecording(
+  sessionRecording: Blob,
+  recordingTime: number,
+  recordingSize: number,
+  lesson: AssessmentLesson
+) {
+  if (!sessionRecording) {
+    throw new Error("No session recording provided");
+  }
+  if (!lesson) {
+    throw new Error("No assessment lesson provided");
+  }
+  if (!recordingTime) {
+    throw new Error("No recording time provided");
+  }
+  if (!recordingSize) {
+    throw new Error("No recording size provided");
+  }
 }

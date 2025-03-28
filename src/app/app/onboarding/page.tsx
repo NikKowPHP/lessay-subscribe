@@ -152,7 +152,7 @@ export default function OnboardingPage() {
       throw new Error('Assessment lesson not found');
     }
     try {
-      setAreMetricsGenerated(true);
+      setAreMetricsGenerated(false);
       const LessonWithMetrics = await completeAssessmentLesson(
         assessmentLesson?.id,
         'Assessment completed'
@@ -162,7 +162,7 @@ export default function OnboardingPage() {
     } catch (error) {
       logger.error('Error completing assessment lesson:', error);
     } finally {
-      setAreMetricsGenerated(false);
+      setAreMetricsGenerated(true);
     }
   };
 
@@ -207,7 +207,7 @@ export default function OnboardingPage() {
       case 'assessment':
         return (
           <AssessmentStep
-            onAssessmentComplete={() => handleOnAssessmentComplete()}
+          onAssessmentComplete={() => handleOnAssessmentComplete()}
             loading={assessmentLoading}
             targetLanguage={formData.targetLanguage}
             lesson={assessmentLesson}

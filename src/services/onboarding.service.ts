@@ -1,17 +1,29 @@
 import {
-  OnboardingModel,
   AssessmentLesson,
   AssessmentStep,
+  AudioMetrics,
+  getExerciseCompletion,
+  getFluencyAssessment,
+  getGrammarAssessment,
+  getPronunciationAssessment,
+  getVocabularyAssessment,
+  LessonModel,
+  OnboardingModel,
 } from '@/models/AppAllModels.model';
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 import LessonService from './lesson.service';
 import { IAssessmentGeneratorService } from './assessment-step-generator.service';
+import RecordingService from './recording.service';
+import { mockAudioMetrics } from '@/__mocks__/generated-audio-metrics.mock';
+import { ComprehensionLevel, HesitationFrequency, LanguageInfluenceLevel, LearningTrajectory, SpeechRateEvaluation, VocabularyRange } from '@prisma/client';
+import { JsonValue } from '@prisma/client/runtime/library';
 
 export default class OnboardingService {
   private onboardingRepository: IOnboardingRepository;
   private lessonService: LessonService;
   private assessmentGeneratorService: IAssessmentGeneratorService;
+  private recordingService: RecordingService;
   constructor(
     onboardingRepository: IOnboardingRepository,
     lessonService: LessonService,
@@ -20,6 +32,7 @@ export default class OnboardingService {
     this.onboardingRepository = onboardingRepository;
     this.lessonService = lessonService;
     this.assessmentGeneratorService = assessmentGeneratorService;
+    this.recordingService = new RecordingService();
   }
 
   getOnboarding = async (): Promise<OnboardingModel | null> => {
@@ -244,4 +257,201 @@ export default class OnboardingService {
       throw new Error('Failed to record step attempt');
     }
   }
+
+
+  updateOnboardingAssessmentLesson = async (lessonId: string, lessonData: Partial<AssessmentLesson>) => {
+    if (!lessonId) {
+      throw new Error('Lesson ID is required')
+    }
+
+    return this.onboardingRepository.updateOnboardingAssessmentLesson(lessonId, lessonData)
+
+  }
+  async processAssessmentLessonRecording(
+    sessionRecording: Blob,
+    lesson: AssessmentLesson,
+    recordingTime: number,
+    recordingSize: number,
+    
+  ) {
+    //1. get user onboarding data with lagnuages
+    const onboardingData = await this.onboardingRepository.getOnboarding();
+    if (!onboardingData) {
+      throw new Error('User onboarding data not found');
+    }
+    const targetLanguage = onboardingData.targetLanguage || 'English';
+    const sourceLanguage = onboardingData.nativeLanguage || 'English';
+
+
+    // 2. process recording
+    const arrayBuffer = await sessionRecording.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const fileUri = await this.recordingService.uploadFile(
+      buffer,
+      sessionRecording.type,
+      `lesson-${lesson.id}-${Date.now()}.webm`
+    );
+    logger.log('File URI:', fileUri);
+
+    // send recording to AI
+    let aiResponse :Record<string, unknown>;
+    if (process.env.MOCK_AI_RESPONSE === 'true') {
+      aiResponse = mockAudioMetrics;
+    } else {
+      aiResponse = await this.recordingService.submitLessonRecordingSession(
+        fileUri, // Now using file URI instead of base64
+        Number(recordingTime),
+        Number(recordingSize),
+        { targetLanguage, nativeLanguage: sourceLanguage },
+        lesson
+      );
+    }
+
+    // 3. convert ai  response to audioMetrics model. 
+    const audioMetrics = this.convertAiResponseToAudioMetrics(aiResponse)
+
+    // 4. update lesson with sessionRecordingMetrics, lesson should have a foreign key to audioMetrics
+    return this.onboardingRepository.updateOnboardingAssessmentLesson(lesson.id, { audioMetrics })
+  }
+
+  private convertAiResponseToAudioMetrics(aiResponse: Record<string, unknown>): AudioMetrics {
+    // Extract top-level metrics with defaults if not present
+    const pronunciationScore = typeof aiResponse.pronunciationScore === 'number' 
+      ? aiResponse.pronunciationScore : 0;
+    const fluencyScore = typeof aiResponse.fluencyScore === 'number' 
+      ? aiResponse.fluencyScore : 0;
+    const grammarScore = typeof aiResponse.grammarScore === 'number' 
+      ? aiResponse.grammarScore : 0;
+    const vocabularyScore = typeof aiResponse.vocabularyScore === 'number' 
+      ? aiResponse.vocabularyScore : 0;
+    const overallPerformance = typeof aiResponse.overallPerformance === 'number' 
+      ? aiResponse.overallPerformance : 0;
+    
+    // Generate a unique ID for the metrics
+    const id = crypto.randomUUID();
+    
+    // Extract CEFR level and learning trajectory
+    const proficiencyLevel = typeof aiResponse.proficiencyLevel === 'string' 
+      ? aiResponse.proficiencyLevel : 'A1';
+    
+    // Safely convert learning trajectory to enum value
+    let learningTrajectory: LearningTrajectory = 'steady';
+    if (aiResponse.learningTrajectory === 'accelerating') {
+      learningTrajectory = 'accelerating';
+    } else if (aiResponse.learningTrajectory === 'plateauing') {
+      learningTrajectory = 'plateauing';
+    }
+    
+    // Extract detailed assessment data using our type guard helpers
+    const pronunciationAssessment = getPronunciationAssessment(
+      aiResponse.pronunciationAssessment as JsonValue
+    ) || {
+      overall_score: pronunciationScore,
+      native_language_influence: {
+        level: 'moderate' as LanguageInfluenceLevel,
+        specific_features: []
+      },
+      phoneme_analysis: [],
+      problematic_sounds: [],
+      strengths: [],
+      areas_for_improvement: []
+    };
+    
+    const fluencyAssessment = getFluencyAssessment(
+      aiResponse.fluencyAssessment as JsonValue
+    ) || {
+      overall_score: fluencyScore,
+      speech_rate: {
+        words_per_minute: 0,
+        evaluation: 'appropriate' as SpeechRateEvaluation
+      },
+      hesitation_patterns: {
+        frequency: 'occasional' as HesitationFrequency,
+        average_pause_duration: 0,
+        typical_contexts: []
+      },
+      rhythm_and_intonation: {
+        naturalness: 0,
+        sentence_stress_accuracy: 0,
+        intonation_pattern_accuracy: 0
+      }
+    };
+    
+    const grammarAssessment = getGrammarAssessment(
+      aiResponse.grammarAssessment as JsonValue
+    ) || {
+      overall_score: grammarScore,
+      error_patterns: [],
+      grammar_rules_to_review: [],
+      grammar_strengths: []
+    };
+    
+    const vocabularyAssessment = getVocabularyAssessment(
+      aiResponse.vocabularyAssessment as JsonValue
+    ) || {
+      overall_score: vocabularyScore,
+      range: 'adequate' as VocabularyRange,
+      appropriateness: 0,
+      precision: 0,
+      areas_for_expansion: []
+    };
+    
+    const exerciseCompletion = getExerciseCompletion(
+      aiResponse.exerciseCompletion as JsonValue
+    ) || {
+      overall_score: 0,
+      exercises_analyzed: [],
+      comprehension_level: 'fair' as ComprehensionLevel
+    };
+    
+    // Extract string arrays safely
+    const extractStringArray = (value: unknown): string[] => {
+      if (Array.isArray(value)) {
+        return value.filter(item => typeof item === 'string') as string[];
+      }
+      return [];
+    };
+    
+    const suggestedTopics = extractStringArray(aiResponse.suggestedTopics);
+    const grammarFocusAreas = extractStringArray(aiResponse.grammarFocusAreas);
+    const vocabularyDomains = extractStringArray(aiResponse.vocabularyDomains);
+    const nextSkillTargets = extractStringArray(aiResponse.nextSkillTargets);
+    const preferredPatterns = extractStringArray(aiResponse.preferredPatterns);
+    const effectiveApproaches = extractStringArray(aiResponse.effectiveApproaches);
+    
+    // Extract metadata
+    const audioRecordingUrl = typeof aiResponse.audioRecordingUrl === 'string' 
+      ? aiResponse.audioRecordingUrl : null;
+    const recordingDuration = typeof aiResponse.recordingDuration === 'number' 
+      ? aiResponse.recordingDuration : null;
+    
+    // Construct and return the AudioMetrics object
+    return {
+      id,
+      pronunciationScore,
+      fluencyScore,
+      grammarScore,
+      vocabularyScore,
+      overallPerformance,
+      proficiencyLevel,
+      learningTrajectory,
+      pronunciationAssessment,
+      fluencyAssessment,
+      grammarAssessment,
+      vocabularyAssessment,
+      exerciseCompletion,
+      suggestedTopics,
+      grammarFocusAreas,
+      vocabularyDomains,
+      nextSkillTargets,
+      preferredPatterns,
+      effectiveApproaches,
+      audioRecordingUrl,
+      recordingDuration,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
 }

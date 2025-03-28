@@ -17,6 +17,7 @@ export  interface IOnboardingRepository {
   }): Promise<AssessmentLesson>
   createAssessmentLesson(userId: string, assessment: Omit<AssessmentLesson, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentLesson>
   recordStepAttempt(lessonId: string, stepId: string, data:{userResponse: string, correct: boolean}): Promise<AssessmentStep>
+  updateOnboardingAssessmentLesson(lessonId: string, lessonData: Partial<AssessmentLesson>): Promise<AssessmentLesson>
 }
 
 export interface ILessonRepository {

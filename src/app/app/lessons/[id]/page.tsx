@@ -12,7 +12,6 @@ import {
 } from '@/models/AppAllModels.model';
 import LessonChat from '@/components/lessons/lessonChat';
 import logger from '@/utils/logger';
-import { AssessmentStep } from '@prisma/client';
 import { AudioMetrics } from '@/models/AppAllModels.model';
 import { toast } from 'react-hot-toast';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
@@ -68,6 +67,7 @@ export default function LessonDetailPage() {
           }
           setPronunciationResults(lessonWithAudioMetrics.audioMetrics);
           // TODO: render the pronunciation resuilts metrics
+          // TODO: render a seperate pronunciation loading state
 
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
