@@ -180,7 +180,7 @@ export class LessonRepository implements ILessonRepository {
     const existingStep = await prisma.lessonStep.findFirst({
       where: { 
         lessonId,
-        stepNumber 
+        id: stepId
       }
     })
 
