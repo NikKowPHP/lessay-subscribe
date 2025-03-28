@@ -4,11 +4,11 @@ import {
   OnboardingModel,
 } from '@/models/AppAllModels.model';
 import {
-  ILessonGeneratorService,
   ILessonRepository,
   IOnboardingRepository,
 } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
+import { ILessonGeneratorService } from './lesson-generator.service';
 
 export default class LessonService {
   private lessonRepository: ILessonRepository;
@@ -196,7 +196,8 @@ export default class LessonService {
       const generatedResult = await this.lessonGeneratorService.generateLesson(
         topic,
         targetLanguage,
-        proficiencyLevel
+        proficiencyLevel,
+        sourceLanguage
       );
       const lessonItems = Array.isArray(generatedResult.data)
         ? generatedResult.data
@@ -352,7 +353,8 @@ export default class LessonService {
       const generatedResult = await this.lessonGeneratorService.generateLesson(
         topic,
         targetLanguage,
-        proficiencyLevel
+        proficiencyLevel,
+        sourceLanguage
       );
 
       const lessonItems = Array.isArray(generatedResult.data)

@@ -1,4 +1,3 @@
-import { ILessonGeneratorService } from "@/lib/interfaces/all-interfaces"
 import logger from "@/utils/logger";
 import { LessonStepType } from "@prisma/client"
 
@@ -129,6 +128,7 @@ export const MockLessonGeneratorService = {
             stepNumber: 6,
             type: LessonStepType.prompt,
             content: 'How do you say "I have a reservation" in German?',
+            expectedAnswer: 'Ich habe eine Reservierung',
             translation: 'Wie sagt man "Ich habe eine Reservierung" auf Deutsch?'
           },
           {

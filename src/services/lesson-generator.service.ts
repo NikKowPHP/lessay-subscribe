@@ -2,11 +2,23 @@ import { IAIService } from '@/interfaces/ai-service.interface';
 import { models } from './ai.service';
 import logger from '@/utils/logger';
 import { retryOperation } from '@/utils/retryWithOperation';
-import { ILessonGeneratorService } from '@/lib/interfaces/all-interfaces';
 import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock';
 import { GeneratedLesson, LessonStep } from '@/models/AppAllModels.model';
 import { MockAssessmentGeneratorService } from '@/__mocks__/generated-assessment-lessons.mock';
 import { ITTS } from '@/interfaces/tts.interface';
+export interface ILessonGeneratorService {
+  generateLesson: (
+    topic: string,
+    targetLanguage: string,
+    difficultyLevel: string,
+    sourceLanguage: string
+  ) => Promise<Record<string, unknown>>;
+  generateAudioForSteps: (
+    steps: LessonStep[],
+    language: string,
+    sourceLanguage: string
+  ) => Promise<LessonStep[]>;
+}
 
 class LessonGeneratorService implements ILessonGeneratorService {
   private aiService: IAIService;
@@ -27,7 +39,8 @@ class LessonGeneratorService implements ILessonGeneratorService {
   async generateLesson(
     topic: string,
     targetLanguage: string,
-    difficultyLevel: string
+    difficultyLevel: string,
+    sourceLanguage: string
   ): Promise<Record<string, unknown>> {
     logger.info('Generating lesson', {
       topic,
@@ -35,6 +48,12 @@ class LessonGeneratorService implements ILessonGeneratorService {
       difficultyLevel,
     });
     let aiResponse: Record<string, unknown> | Record<string, unknown>[] = [];
+    const prompts = this.generateLessonPrompts(
+      topic,
+      targetLanguage,
+      sourceLanguage,
+      difficultyLevel
+    );
     try {
       if (this.useMock) {
         logger.info('Using mock lesson generator for topic:', topic);
@@ -46,11 +65,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
         logger.info('Mock lesson generated', { topic, mockLesson });
         aiResponse = mockLesson;
       } else {
-        const prompts = this.generateLessonPrompts(
-          topic,
-          targetLanguage,
-          difficultyLevel
-        );
+     
         logger.info('Generated prompts for lesson', { prompts });
 
         const aiResponse = await retryOperation(() =>
@@ -67,6 +82,24 @@ class LessonGeneratorService implements ILessonGeneratorService {
       const lessonsArray = Array.isArray(aiResponse)
         ? aiResponse
         : [aiResponse];
+
+      try {
+        lessonsArray.map((lesson) => this.validateLessonsResponse(lesson));
+      } catch (error) {
+        logger.error('Error validating lessons response:', { error });
+        if (!this.useMock) {
+          const aiResponse = await retryOperation(() =>
+            this.aiService.generateContent(
+              '', // No file URI needed
+              prompts.userPrompt,
+              prompts.systemPrompt,
+              models.gemini_2_5_pro_exp
+            )
+          );
+          logger.info('AI response received', { aiResponse });
+        }
+      }
+
       const generatedLessons = lessonsArray.map((lesson) =>
         this.formatLessonResponse(lesson)
       );
@@ -84,6 +117,38 @@ class LessonGeneratorService implements ILessonGeneratorService {
     }
   }
 
+  private validateLessonsResponse(aiResponse: Record<string, unknown>): void {
+    logger.info('Validating lessons response', { aiResponse });
+
+    const stepsWithExpectedAnswer = ['practice', 'prompt', 'new_word'];
+    const lessonData =
+      (aiResponse as { data?: unknown[] }).data?.[0] || aiResponse;
+
+    const steps = (lessonData as any).steps;
+
+    if (steps.length < 0) {
+      throw new Error('Invalid lesson format: steps are empty ');
+    }
+
+    for (const step of steps) {
+      const stepType = step.type;
+      const hasExpectedAnswer = step.expectedAnswer !== undefined;
+
+      // Practice and prompt steps must have expected answers
+      if (stepsWithExpectedAnswer.includes(stepType) && !hasExpectedAnswer) {
+        throw new Error(
+          `Step ${step.content} of type ${stepType} is missing expectedAnswer`
+        );
+      }
+
+      // Other step types should not have expected answers
+      if (!stepsWithExpectedAnswer.includes(stepType) && hasExpectedAnswer) {
+        throw new Error(
+          `Step ${step.content} of type ${stepType} should not have expectedAnswer`
+        );
+      }
+    }
+  }
 
   public async generateAudioForSteps(
     steps: LessonStep[],
@@ -99,18 +164,16 @@ class LessonGeneratorService implements ILessonGeneratorService {
         logger.info('Using mock assessment generator');
 
         for (const step of steps) {
-          const audio =
-            await MockLessonGeneratorService.generateAudioForStep(
-              step.content,
-              language
-            );
+          const audio = await MockLessonGeneratorService.generateAudioForStep(
+            step.content,
+            language
+          );
           step.contentAudioUrl = audio;
           if (step.expectedAnswer) {
-            const audio =
-              await MockLessonGeneratorService.generateAudioForStep(
-                step.expectedAnswer!,
-                language
-              );
+            const audio = await MockLessonGeneratorService.generateAudioForStep(
+              step.expectedAnswer!,
+              language
+            );
             step.expectedAnswerAudioUrl = audio;
           }
         }
@@ -121,7 +184,11 @@ class LessonGeneratorService implements ILessonGeneratorService {
 
         for (const step of steps) {
           const audio = await retryOperation(() =>
-            this.ttsService.synthesizeSpeech(step.content, sourceLanguage, voice)
+            this.ttsService.synthesizeSpeech(
+              step.content,
+              sourceLanguage,
+              voice
+            )
           );
           step.contentAudioUrl = audio.toString('base64');
           if (step.expectedAnswer) {
@@ -133,7 +200,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
               )
             );
             step.expectedAnswerAudioUrl = audio.toString('base64');
-            // TODO: keep audio in buffer, download to vercel blob and get the link, attach link here. 
+            // TODO: keep audio in buffer, download to vercel blob and get the link, attach link here.
           }
         }
       }
@@ -151,16 +218,20 @@ class LessonGeneratorService implements ILessonGeneratorService {
     aiResponse: Record<string, unknown>
   ): GeneratedLesson {
     logger.info('Formatting lesson response', { aiResponse });
-    
+
     // Assert that aiResponse.data is an array if it exists
-    const lessonData = ((aiResponse as { data?: unknown[] }).data?.[0]) || aiResponse;
+    const lessonData =
+      (aiResponse as { data?: unknown[] }).data?.[0] || aiResponse;
 
     return {
       id: '', // Populated when saved to the database.
       userId: '', // Will be assigned in the lesson service.
       lessonId: '', // To be autogenerated.
       focusArea: (lessonData as any).focusArea || 'General Conversation',
-      targetSkills: (lessonData as any).targetSkills || ['Vocabulary', 'Grammar'],
+      targetSkills: (lessonData as any).targetSkills || [
+        'Vocabulary',
+        'Grammar',
+      ],
       steps: (lessonData as any).steps || [],
       completed: false,
       createdAt: new Date(),
@@ -171,11 +242,13 @@ class LessonGeneratorService implements ILessonGeneratorService {
   private generateLessonPrompts(
     topic: string,
     targetLanguage: string,
+    sourceLanguage: string,
     difficultyLevel: string
   ): { userPrompt: string; systemPrompt: string } {
     logger.info('Generating lesson prompts', {
       topic,
       targetLanguage,
+      sourceLanguage,
       difficultyLevel,
     });
     return {

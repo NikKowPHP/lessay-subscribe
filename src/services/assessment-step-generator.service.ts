@@ -100,6 +100,7 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
           )
         );
       }
+      // TODO: add validation and try again if it fails
 
       logger.info('AI response received', { aiResponse });
 

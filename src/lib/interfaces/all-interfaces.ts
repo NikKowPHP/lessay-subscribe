@@ -42,7 +42,3 @@ export interface ILessonRepository {
 }
 
 
-export interface ILessonGeneratorService {
-  generateLesson: (topic: string, targetLanguage: string, difficultyLevel: string) => Promise<Record<string, unknown>>
-  generateAudioForSteps: (steps: LessonStep[], language: string, sourceLanguage: string) => Promise<LessonStep[]>
-}
