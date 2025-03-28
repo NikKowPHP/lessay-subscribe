@@ -363,6 +363,16 @@ export default function LessonChat({
     };
   }, []);
 
+  // Stop recording on component unmount
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+        logger.info('Recording stopped on component unmount');
+      }
+    };
+  }, []);
+
   // Start session recording function
   const startRecording = () => {
     try {
@@ -400,7 +410,17 @@ export default function LessonChat({
       logger.error('Error pausing recording:', error);
     }
   };
-
+  const stopRecordingCompletely = () => {
+    try {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+        logger.info('Recording stopped completely');
+      }
+    } catch (error) {
+      logger.error('Error stopping recording:', error);
+    }
+  };
 
 
 
@@ -466,6 +486,7 @@ export default function LessonChat({
         
         startListening();
       } else {
+        stopRecordingCompletely();
         onComplete();
       }
     } catch (error) {
