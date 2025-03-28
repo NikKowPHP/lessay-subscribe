@@ -24,7 +24,8 @@ export interface IAssessmentGeneratorService {
   ) => Promise<AiAssessmentResultResponse>;
   generateAudioForSteps: (
     steps: AssessmentStep[],
-    language: string
+    language: string,
+    sourceLanguage: string
   ) => Promise<AssessmentStep[]>;
 }
 
@@ -156,7 +157,8 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
 
   public async generateAudioForSteps(
     steps: AssessmentStep[],
-    language: string
+    language: string,
+    sourceLanguage: string
   ): Promise<AssessmentStep[]> {
     logger.info('Generating audio for assessment lesson', {
       steps,
@@ -189,7 +191,7 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
 
         for (const step of steps) {
           const audio = await retryOperation(() =>
-            this.ttsService.synthesizeSpeech(step.content, language, voice)
+            this.ttsService.synthesizeSpeech(step.content, sourceLanguage, voice)
           );
           step.contentAudioUrl = audio.toString('base64');
           if (step.expectedAnswer) {

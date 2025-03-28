@@ -87,7 +87,8 @@ class LessonGeneratorService implements ILessonGeneratorService {
 
   public async generateAudioForSteps(
     steps: LessonStep[],
-    language: string
+    language: string,
+    sourceLanguage: string
   ): Promise<LessonStep[]> {
     logger.info('Generating audio for assessment lesson', {
       steps,
@@ -120,7 +121,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
 
         for (const step of steps) {
           const audio = await retryOperation(() =>
-            this.ttsService.synthesizeSpeech(step.content, language, voice)
+            this.ttsService.synthesizeSpeech(step.content, sourceLanguage, voice)
           );
           step.contentAudioUrl = audio.toString('base64');
           if (step.expectedAnswer) {

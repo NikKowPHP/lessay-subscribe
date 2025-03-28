@@ -183,11 +183,11 @@ export default class LessonService {
     }
 
     // Extract necessary data for lesson generation
-    const targetLanguage = onboardingData.targetLanguage || 'English';
+    const targetLanguage = onboardingData.targetLanguage || 'German';
     const proficiencyLevel =
       onboardingData.proficiencyLevel?.toLowerCase() || 'beginner';
     const learningPurpose = onboardingData.learningPurpose || 'general';
-
+    const sourceLanguage = onboardingData.nativeLanguage || 'English';
     // Define topics based on learning purpose
     const topics = this.getTopicsFromLearningPurpose(learningPurpose);
 
@@ -205,7 +205,7 @@ export default class LessonService {
       // For each lesson item, create a lesson record
       const createdLessons = await Promise.all(
         lessonItems.map(async (lessonItem: any) => {
-          const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(lessonItem.steps as LessonStep[], targetLanguage);
+          const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(lessonItem.steps as LessonStep[], targetLanguage, sourceLanguage);
           
           // TODO: Seperate into 2 promises, one will be sent to user to update the loading screen while fetching the audio . 
           const lessonData = {
@@ -334,6 +334,7 @@ export default class LessonService {
     const targetLanguage = onboardingData.targetLanguage || 'English';
     const proficiencyLevel =
       onboardingData.proficiencyLevel?.toLowerCase() || 'beginner';
+    const sourceLanguage = onboardingData.nativeLanguage || 'English';
 
     // Aggregate performance metrics from completed lessons
     const errorPatterns = this.aggregateErrorPatterns(completedLessons);
@@ -361,7 +362,7 @@ export default class LessonService {
       // Create lessons from generated content
       const createdLessons = await Promise.all(
         lessonItems.map(async (lessonItem: any) => {
-          const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(lessonItem.steps as LessonStep[], targetLanguage);
+          const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(lessonItem.steps as LessonStep[], targetLanguage, sourceLanguage);
           logger.info('generating audio for  LESSON steps', {audioSteps})
           const lessonData = {
             focusArea: lessonItem.focusArea,

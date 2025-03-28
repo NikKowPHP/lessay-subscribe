@@ -75,7 +75,7 @@ export default class OnboardingService {
 
       //TODO: generate audios for the steps
 
-      const audioSteps = await this.assessmentGeneratorService.generateAudioForSteps(steps, onboarding?.targetLanguage || 'English');
+      const audioSteps = await this.assessmentGeneratorService.generateAudioForSteps(steps, onboarding?.targetLanguage || 'English', onboarding?.nativeLanguage || 'English');
 
       // merge the steps with the audio steps
       // const mergedSteps = steps.map((step, index) => ({
