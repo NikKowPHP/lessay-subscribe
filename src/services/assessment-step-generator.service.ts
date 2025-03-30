@@ -46,18 +46,20 @@ export interface AiAssessmentResultResponse {
 class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
   private aiService: IAIService;
   private useMock: boolean;
+  private useAudioGeneratorMock: boolean;
   private ttsService: ITTS;
 
   constructor(
     aiService: IAIService,
-    useMock: boolean = process.env.NEXT_PUBLIC_MOCK_ASSESSMENT_GENERATOR ===
-      'true',
     ttsService: ITTS
   ) {
     this.aiService = aiService;
-    this.useMock = useMock;
+    this.useMock = process.env.NEXT_PUBLIC_MOCK_ASSESSMENT_GENERATOR ===
+    'true';
+    this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR ===
+    'true';
     this.ttsService = ttsService;
-    logger.info('AssessmentGeneratorService initialized', { useMock });
+    logger.info('AssessmentGeneratorService initialized', { useMock: this.useMock, useAudioGeneratorMock: this.useAudioGeneratorMock });
   }
 
   async generateAssessmentSteps(
@@ -166,8 +168,9 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
     });
 
     try {
-      if (this.useMock) {
-        logger.info('Using mock assessment generator');
+      logger.info('useAudioGeneratorMock', this.useAudioGeneratorMock);
+      if ( this.useAudioGeneratorMock) {
+        logger.info('Using mock audio generator because useAudioGeneratorMock is true', this.useAudioGeneratorMock);
 
         for (const step of steps) {
           const audio =
@@ -190,11 +193,15 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
         // get appropriate voice
         const voice = this.ttsService.getVoice(language);
 
+        logger.info('voice', voice);
+
         for (const step of steps) {
           const audio = await retryOperation(() =>
             this.ttsService.synthesizeSpeech(step.content, sourceLanguage, voice)
           );
-          step.contentAudioUrl = audio.toString('base64');
+          logger.info('audio for content', audio);
+          step.contentAudioUrl = audio;
+          logger.info('adding audio to step contentAudioUrl', step.contentAudioUrl);
           if (step.expectedAnswer) {
             const audio = await retryOperation(() =>
               this.ttsService.synthesizeSpeech(
@@ -203,7 +210,9 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
                 voice
               )
             );
-            step.expectedAnswerAudioUrl = audio.toString('base64');
+            logger.info('audio for expectedAnswer', audio);
+            step.expectedAnswerAudioUrl = audio;
+            logger.info('adding audio to step expectedAnswerAudioUrl', step.expectedAnswerAudioUrl);
           }
         }
       }
