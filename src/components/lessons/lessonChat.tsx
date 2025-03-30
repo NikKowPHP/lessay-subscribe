@@ -156,19 +156,6 @@ export default function LessonChat({
           
           // Set user response with the transcript
           setUserResponse(transcript);
-
-          // Start/reset the silence timer when speech is detected
-          if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current);
-          }
-          
-          // Set up a new silence timer that will auto-submit after 1 second of silence
-          silenceTimerRef.current = setTimeout(() => {
-            if (isListening && userResponse.trim()) {
-              logger.log('Auto-submitting after silence detection!!!');
-              handleSubmit();
-            }
-          }, SILENCE_TIMEOUT_MS);
         };
 
         recognitionRef.current.onerror = (event: Event) => {
@@ -211,6 +198,34 @@ export default function LessonChat({
       }
     };
   }, [targetLanguage]);
+
+  // Add this useEffect to handle silence detection
+  useEffect(() => {
+    // Only set up silence timer if there's a response and we're listening
+    logger.info('userResponse', userResponse);
+    logger.info('isListening', isListening);
+    if (userResponse && userResponse.trim() && isListening) {
+      // Clear any existing silence timer
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+      
+      // Set up a new silence timer
+      silenceTimerRef.current = setTimeout(() => {
+        logger.log('Auto-submitting after silence detection!!!');
+        const currentStep = lesson.steps[currentStepIndex] as LessonStep;
+        handleSubmitStep(currentStep, userResponse);
+      }, SILENCE_TIMEOUT_MS);
+    }
+    
+    // Cleanup function
+    return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+    };
+  }, [userResponse, isListening]);
 
   // Update the toggleListening function to handle silence timer
   const toggleListening = () => {
