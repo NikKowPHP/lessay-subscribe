@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "postbuild": "next-sitemap --config sitemap-config.mjs",
-    "start": "next start",
+    "start": "WATCHPACK_POLLING=true next start",
     "lint": "next lint",
     "test": "npx jest",
     "docker:mac:run": "docker-compose -f docker-compose.mac.yml up",
