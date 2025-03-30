@@ -70,6 +70,8 @@ export default function LessonChat({
   const recognitionRef = useRef<any>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (
       lesson &&
@@ -127,7 +129,10 @@ export default function LessonChat({
     recognitionRef.current = new SpeechRecognition();
 
     const recognition = recognitionRef.current;
-    recognition.lang = mapLanguageToCode(targetLanguage);
+    logger.log('targetLanguage', targetLanguage);
+    const languageCode = mapLanguageToCode(targetLanguage);
+    logger.log('languageCode', languageCode);
+    recognition.lang = languageCode;
     recognition.interimResults = true;
     recognition.continuous = true;
 
@@ -150,6 +155,18 @@ export default function LessonChat({
         .join('');
 
       setUserResponse(transcript);
+
+      // Debounce the word checking
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(() => {
+        const currentStep = lesson.steps[currentStepIndex];
+        if (currentStep && transcript.trim().length > 0) {
+          handleSubmitStep(currentStep, transcript);
+        }
+      }, 1000); // 1 second debounce
 
       // Set realtime transcript for assessment mode
       if (realtimeTranscriptEnabled) {

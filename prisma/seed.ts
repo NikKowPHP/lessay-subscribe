@@ -31,9 +31,9 @@ async function main() {
         proficiency: false
       },
       completed: false,
-      learningPurpose: '',
-      nativeLanguage: '',
-      targetLanguage: '',
+      learningPurpose: 'Travel',
+      nativeLanguage: 'English',
+      targetLanguage: 'German',
       proficiencyLevel: null,
       initialAssessmentCompleted: false,
     },
