@@ -64,7 +64,7 @@ export default function LessonChat({
   const [isListening, setIsListening] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [realtimeTranscript, setRealtimeTranscript] = useState('');
+ 
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
   const recognitionRef = useRef<any>(null);
@@ -154,37 +154,15 @@ export default function LessonChat({
         .map((result) => result.transcript)
         .join('');
 
+      // Simply update the user response - don't trigger submission here
       setUserResponse(transcript);
-
-      // Debounce the word checking
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-
-      debounceTimerRef.current = setTimeout(() => {
-        const currentStep = lesson.steps[currentStepIndex];
-        if (currentStep && transcript.trim().length > 0) {
-          handleSubmitStep(currentStep, transcript);
-        }
-      }, 1000); // 1 second debounce
-
-      // Set realtime transcript for assessment mode
+      
+      // Reset silence timer if using that feature
       if (realtimeTranscriptEnabled) {
-        setRealtimeTranscript(transcript);
         resetSilenceTimer();
       }
 
       logger.info('LessonChat: Recognized speech', { transcript });
-
-      // For lessons, you might accept any non-empty answer or compare with an expected answer if available.
-      const currentStep = lesson.steps[currentStepIndex];
-      if (
-        currentStep &&
-        currentStep.type === 'prompt' &&
-        transcript.trim().length > 3
-      ) {
-        handleSubmitStep(currentStep, transcript);
-      }
     };
 
     recognition.onerror = (event: Event) => {
@@ -210,7 +188,7 @@ export default function LessonChat({
         clearTimeout(silenceTimerRef.current);
       }
     };
-  }, [currentStepIndex, lesson, targetLanguage, realtimeTranscriptEnabled]);
+  }, [currentStepIndex, lesson, targetLanguage]);
 
   // Function to reset the silence timer (for assessment mode)
   const resetSilenceTimer = () => {
@@ -220,7 +198,7 @@ export default function LessonChat({
 
     silenceTimerRef.current = setTimeout(() => {
       if (isListening) {
-        setRealtimeTranscript('');
+        setFeedback('')
         logger.info('Reset transcript due to 4 seconds of silence');
       }
     }, 4000);
@@ -299,6 +277,7 @@ export default function LessonChat({
       recognitionRef.current.start();
       logger.info('LessonChat: Start listening');
     } catch (error) {
+      logger.error('LessonChat: Error starting listening', { error });
       logger.warn('LessonChat: Recognition already started');
     }
   };
@@ -340,6 +319,11 @@ export default function LessonChat({
       : 'This is a mock response different from the expected';
     setUserResponse(response);
     handleSubmitStep(currentStep, response);
+  };
+
+  // Update the handleUpdateResponse function to pass to ChatInput
+  const handleUpdateResponse = (text: string) => {
+    setUserResponse(text);
   };
 
   return (
@@ -409,6 +393,7 @@ export default function LessonChat({
           onToggleListening={toggleListening}
           onSubmit={handleSubmit}
           disableSubmit={!userResponse || loading}
+          onUpdateResponse={handleUpdateResponse}
         />
 
         {/* Mock buttons */}

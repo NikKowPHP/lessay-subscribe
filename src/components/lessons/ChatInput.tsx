@@ -7,6 +7,7 @@ interface ChatInputProps {
   onToggleListening: () => void;
   onSubmit: () => void;
   disableSubmit: boolean;
+  onUpdateResponse?: (text: string) => void;
 }
 
 const ChatInput = React.memo(function ChatInput({
@@ -15,12 +16,28 @@ const ChatInput = React.memo(function ChatInput({
   feedback,
   onToggleListening,
   onSubmit,
-  disableSubmit
+  disableSubmit,
+  onUpdateResponse
 }: ChatInputProps) {
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (onUpdateResponse) {
+      onUpdateResponse(e.target.value);
+    }
+  };
+
   return (
     <div className="border-t p-4 bg-white shrink-0">
       <div className="mb-4 min-h-[60px] p-2 border rounded-[4px] bg-neutral-2">
-        {userResponse || (isListening ? 'Listening...' : 'Ready to listen')}
+        {onUpdateResponse ? (
+          <textarea 
+            value={userResponse}
+            onChange={handleTextChange}
+            className="w-full h-full min-h-[60px] bg-transparent resize-none focus:outline-none"
+            placeholder={isListening ? 'Listening...' : 'Ready to listen'}
+          />
+        ) : (
+          <div>{userResponse || (isListening ? 'Listening...' : 'Ready to listen')}</div>
+        )}
       </div>
       {feedback && (
         <div className="text-sm text-neutral-11 mb-2">{feedback}</div>
