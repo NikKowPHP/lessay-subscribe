@@ -343,27 +343,6 @@ export default function LessonChat({
   }, [userResponse, isListening]);
 
   // Update the toggleListening function to handle silence timer
-  const toggleListening = () => {
-    if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      
-      // Clear the silence timer when manually stopping
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = null;
-      }
-    } else {
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-        
-        // Reset the last speech timestamp when starting
-        lastSpeechTimestampRef.current = Date.now();
-      }
-    }
-  };
-
   useEffect(() => {
     const initializeRecorder = async () => {
       try {

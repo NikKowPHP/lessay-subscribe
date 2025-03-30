@@ -164,7 +164,7 @@ export default function AssessmentStep({
       </div>
     );
   }
-  if (!areMetricsGenerated) {
+  if (!areMetricsGenerated && lesson.completed) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="bg-neutral-1 border border-neutral-4 rounded-lg overflow-hidden shadow-sm">

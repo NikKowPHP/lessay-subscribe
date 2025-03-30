@@ -28,7 +28,7 @@ async function main() {
         welcome: true,
         purpose: true,
         languages: true,
-        proficiency: true
+        proficiency: false 
       },
       completed: false,
       learningPurpose: 'Travel',
