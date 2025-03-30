@@ -410,6 +410,8 @@ export default function LessonChat({
         logger.error('Error initializing media recorder:', error);
       }
     };
+    // TODO: STOP RECORDING AFTER 10 SECONDS
+    // TODO: initialize rerorder when user starts speaking
 
     initializeRecorder();
 
@@ -504,13 +506,13 @@ export default function LessonChat({
     }
   };
 
-  const handleSubmitStep = async (step: LessonStep, response: string) => {
+  const handleSubmitStep = async (step: LessonStep | AssessmentStep, response: string) => {
     try {
       // setFeedback('Processing...');
       logger.info('Processing response:', response);
 
       // For instruction and summary steps, just acknowledge them without requiring user response
-      if (step.type === 'instruction' || step.type === 'summary') {
+      if (step.type === 'instruction' || step.type === 'summary' || step.type === 'feedback' || step.type === 'model_answer') {
         // Mark as seen/acknowledged
         await onStepComplete(step, 'Acknowledged');
 
