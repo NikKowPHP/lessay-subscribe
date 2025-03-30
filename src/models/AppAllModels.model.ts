@@ -44,7 +44,7 @@ export interface AssessmentStep {
   id: string;
   assessmentId: string;
   stepNumber: number;
-  type: AssessmentStepType;
+  type:  'question' | 'user_response' | 'feedback' | 'instruction' | 'summary';
   content: string;
   contentAudioUrl?: string | null;
   translation?: string | null;

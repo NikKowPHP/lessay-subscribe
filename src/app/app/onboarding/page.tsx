@@ -94,8 +94,8 @@ export default function OnboardingPage() {
   }, [isOnboardingComplete, user, router]);
 
   useEffect(() => {
-    console.log('assessmentLesson', assessmentLesson);
-    console.log('currentStep', currentStep);
+    console.log('assessmentLesson on page.tsx', assessmentLesson);
+    console.log('currentStep on page.tsx', currentStep);
     if (currentStep === 'assessment' && !assessmentLesson) {
       generateAssessmentLesson();
     }

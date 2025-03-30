@@ -182,10 +182,36 @@ export default function LessonChat({
 
   // Audio playback
   useEffect(() => {
+    logger.info('lesson.steps useEffect', lesson.steps);
     const handleAudioEnded = () => {
       // Remove the played audio from queue and reset playing state
       setAudioQueue((prevQueue) => prevQueue.slice(1));
       setIsPlayingAudio(false);
+      
+      logger.info('audioQueue', audioQueue);
+      logger.info('initialUserInteractionDone', initialUserInteractionDone);
+      logger.info('currentStepIndex', currentStepIndex);
+      logger.info('lesson.steps', lesson.steps);
+
+      // const currentStep = lesson.steps[currentStepIndex];
+      // logger.info('currentStep type ', currentStep.type);
+      // Auto-advance for certain step types when audio finishes
+      if (initialUserInteractionDone && 
+          !isPlayingAudio && // No more audio in queue
+          lesson.steps ) {
+        
+        const currentStep = lesson.steps[currentStepIndex];
+        logger.info('currentStep type 123 ', currentStep.type);
+        // Auto-advance non-interactive steps when audio finishes
+        if (currentStep.type === 'instruction' || 
+            currentStep.type === 'summary' || 
+            currentStep.type === 'feedback' || 
+            currentStep.type === 'model_answer') {
+          
+          logger.info(`Auto-advancing ${currentStep.type} step after audio playback`);
+          handleSubmitStep(currentStep, userResponse);
+        }
+      }
     };
 
     if (audioRef.current) {
@@ -197,7 +223,7 @@ export default function LessonChat({
         audioRef.current.removeEventListener('ended', handleAudioEnded);
       }
     };
-  }, []);
+  }, [audioQueue, currentStepIndex, initialUserInteractionDone, lesson.steps]);
 
   // Audio playback
   useEffect(() => {
