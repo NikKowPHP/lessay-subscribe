@@ -11,6 +11,11 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://myuser:mypassword@db:5432/mydb
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - FAST_REFRESH=false
+      - NODE_ENV=development
+      - CHOKIDAR_INTERVAL=300
     depends_on:
       - db
     volumes:
@@ -22,8 +27,10 @@ services:
       - ./src/app/globals.css:/app/src/app/globals.css  # Mount globals.css
       - ./tsconfig.json:/app/tsconfig.json  # Mount tsconfig.json
       - ./prisma:/app/prisma  # Mount prisma
+    restart: unless-stopped
     networks:
       - web-network
+    command: sh -c "npm rebuild && npm run dev"
 
   db:
     image: postgres:17

@@ -53,6 +53,7 @@ export default function OnboardingPage() {
             learningPurpose: onboarding.learningPurpose || '',
             proficiencyLevel: onboarding.proficiencyLevel || '',
           });
+          logger.info('formData', formData);
 
           // Determine current step based on completed steps
           const stepsOrder = [

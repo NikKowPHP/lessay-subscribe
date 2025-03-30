@@ -212,9 +212,54 @@ export default class OnboardingService {
         case 'question':
           // For questions, compare with the expectedAnswer if available
           if (step.expectedAnswer) {
-            correct =
-              userResponse.trim().toLowerCase() ===
-              step.expectedAnswer.trim().toLowerCase();
+            logger.info('step.expectedAnswer', step.expectedAnswer);
+            logger.info('userResponse', userResponse);
+            
+            // Normalize user response by removing punctuation and special characters
+            const normalizedUserResponse = userResponse
+              .trim()
+              .toLowerCase()
+              // Remove punctuation, ellipses, and extra whitespace
+              .replace(/[.,!?;:"'""''()[\]…]+/g, '')
+              .replace(/\s+/g, ' ');
+            
+            // Normalize expected answer the same way
+            const normalizedExpectedAnswer = step.expectedAnswer
+              .trim()
+              .toLowerCase()
+              // Remove punctuation, ellipses, and extra whitespace
+              .replace(/[.,!?;:"'""''()[\]…]+/g, '')
+              .replace(/\s+/g, ' ');
+              
+            // Main comparison: Check if normalized user response includes
+            // the essential part of the normalized expected answer
+            
+            // First check if expected answer without ellipses is in user response
+            const essentialExpectedPart = normalizedExpectedAnswer.replace(/\.{3,}/g, '').trim();
+            
+            logger.info('Normalized user response:', normalizedUserResponse);
+            logger.info('Essential expected part:', essentialExpectedPart);
+            
+            // Check if either there's a very close match, or the user response
+            // contains the essential part of the expected answer
+            if (normalizedUserResponse === essentialExpectedPart) {
+              correct = true;
+            } else if (normalizedUserResponse.includes(essentialExpectedPart)) {
+              correct = true;
+            } else if (essentialExpectedPart.includes(normalizedUserResponse)) {
+              // For responses that may be shorter but still valid
+              // For example, if expected is "hallo ich heiße" and user just said "hallo"
+              const essentialWords = essentialExpectedPart.split(' ');
+              const userWords = normalizedUserResponse.split(' ');
+              
+              // If user said at least half of the essential words, consider it correct
+              // This helps with partial responses that are still meaningful
+              const matchedWordCount = userWords.filter(word => 
+                essentialWords.includes(word) && word.length > 1
+              ).length;
+              
+              correct = matchedWordCount / essentialWords.length >= 0.5;
+            }
           } else {
             // If no expected answer, consider it correct (open-ended question)
             correct = true;
