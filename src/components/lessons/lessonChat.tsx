@@ -47,7 +47,6 @@ interface LessonChatProps {
   loading: boolean;
   targetLanguage: string;
   isAssessment?: boolean; // Add this flag to differentiate between lesson and assessment
-  realtimeTranscriptEnabled?: boolean; // Optional feature for assessment mode
 }
 
 export default function LessonChat({
@@ -57,7 +56,6 @@ export default function LessonChat({
   loading,
   targetLanguage,
   isAssessment = false,
-  realtimeTranscriptEnabled = false,
 }: LessonChatProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [userResponse, setUserResponse] = useState('');
@@ -66,6 +64,8 @@ export default function LessonChat({
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
  
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSpeechTimestampRef = useRef<number>(0);
+  const SILENCE_TIMEOUT_MS = 1000; // 1 second silence detection
   const router = useRouter();
   const recognitionRef = useRef<any>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
@@ -118,96 +118,126 @@ export default function LessonChat({
     }
   }, [lesson]);
 
-  // Set up speech recognition
+  // use effect for logging the user response
   useEffect(() => {
-    if (!('webkitSpeechRecognition' in window)) {
-      setFeedback('Voice recognition is not supported in your browser');
-      return;
+    logger.info('User response:', userResponse);
+  }, [userResponse]);
+
+  // Update the speech recognition setup to handle silence detection
+  useEffect(() => {
+    if (targetLanguage) {
+      // Initialize speech recognition
+      try {
+        if (!('webkitSpeechRecognition' in window)) {
+          throw new Error('Speech recognition not supported in this browser');
+        }
+
+        const SpeechRecognition = window.webkitSpeechRecognition;
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.lang = mapLanguageToCode(targetLanguage);
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+
+        recognitionRef.current.onstart = () => {
+          setIsListening(true);
+        };
+
+        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          // Update the last speech timestamp whenever we receive speech
+          lastSpeechTimestampRef.current = Date.now();
+          
+          const result = event.results[event.results.length - 1];
+          const transcript = result[0].transcript;
+          
+          // If we have debounce timer, clear it
+          if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+          }
+          
+          // Set user response with the transcript
+          setUserResponse(transcript);
+
+          // Start/reset the silence timer when speech is detected
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+          }
+          
+          // Set up a new silence timer that will auto-submit after 1 second of silence
+          silenceTimerRef.current = setTimeout(() => {
+            if (isListening && userResponse.trim()) {
+              logger.log('Auto-submitting after silence detection!!!');
+              handleSubmit();
+            }
+          }, SILENCE_TIMEOUT_MS);
+        };
+
+        recognitionRef.current.onerror = (event: Event) => {
+          logger.error('Speech recognition error:', event);
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+          
+          // Clear the silence timer when recognition ends
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = null;
+          }
+        };
+      } catch (error) {
+        logger.error('Error initializing speech recognition:', error);
+      }
     }
 
-    const SpeechRecognition = window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
-
-    const recognition = recognitionRef.current;
-    logger.log('targetLanguage', targetLanguage);
-    const languageCode = mapLanguageToCode(targetLanguage);
-    logger.log('languageCode', languageCode);
-    recognition.lang = languageCode;
-    recognition.interimResults = true;
-    recognition.continuous = true;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      setFeedback('Listening...');
-      logger.info('LessonChat: Speech recognition started');
-
-      // Reset silence timer for assessment mode
-      if (realtimeTranscriptEnabled && silenceTimerRef.current) {
-        resetSilenceTimer();
-      }
-    };
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const speechEvent = event as SpeechRecognitionEvent;
-      const transcript = Array.from(speechEvent.results)
-        .map((result) => result[0])
-        .map((result) => result.transcript)
-        .join('');
-
-      // Simply update the user response - don't trigger submission here
-      setUserResponse(transcript);
-      
-      // Reset silence timer if using that feature
-      if (realtimeTranscriptEnabled) {
-        resetSilenceTimer();
-      }
-
-      logger.info('LessonChat: Recognized speech', { transcript });
-    };
-
-    recognition.onerror = (event: Event) => {
-      setIsListening(false);
-      setFeedback(`Error occurred: ${(event as ErrorEvent).error}`);
-      logger.error('LessonChat: Speech recognition error', {
-        error: (event as ErrorEvent).error,
-      });
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      logger.info('LessonChat: Speech recognition ended');
-    };
-
+    // Clean up function
     return () => {
-      if (recognition) {
-        recognition.abort();
+      if (recognitionRef.current) {
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
       }
-
-      // Clear silence timer on unmount
+      
+      // Clear any remaining timers
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+      
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
       }
     };
-  }, [currentStepIndex, lesson, targetLanguage]);
+  }, [targetLanguage]);
 
-  // Function to reset the silence timer (for assessment mode)
-  const resetSilenceTimer = () => {
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-    }
-
-    silenceTimerRef.current = setTimeout(() => {
-      if (isListening) {
-        setFeedback('')
-        logger.info('Reset transcript due to 4 seconds of silence');
+  // Update the toggleListening function to handle silence timer
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
       }
-    }, 4000);
+      
+      // Clear the silence timer when manually stopping
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+    } else {
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+        
+        // Reset the last speech timestamp when starting
+        lastSpeechTimestampRef.current = Date.now();
+      }
+    }
   };
-
 
   const handleSubmitStep = async (step: LessonStep, response: string) => {
     try {
-      setFeedback('Processing...');
+      // setFeedback('Processing...');
+      logger.info('Processing response:', response);
 
       // For instruction and summary steps, just acknowledge them without requiring user response
       if (step.type === 'instruction' || step.type === 'summary') {
@@ -288,14 +318,6 @@ export default function LessonChat({
     logger.info('LessonChat: Paused listening');
   };
 
-  const toggleListening = () => {
-    if (isListening) {
-      pauseListening();
-    } else {
-      startListening();
-    }
-  };
-
   // A wrapper to trigger submission from the input component.
   const handleSubmit = () => {
     const currentStep = lesson.steps[currentStepIndex] as LessonStep;
@@ -362,29 +384,7 @@ export default function LessonChat({
           <ChatMessages messages={chatHistory} />
         </div>
 
-        {/* Assessment specific realtime transcript display */}
-        {/* {realtimeTranscriptEnabled && (
-          <div className="mb-4 min-h-[60px] p-3 border border-neutral-5 rounded-md mx-4 bg-neutral-2 text-foreground">
-            {realtimeTranscript ||
-              (isListening ? (
-                <span className="text-accent-6 flex items-center">
-                  <svg
-                    className="animate-pulse w-4 h-4 mr-2"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                  </svg>
-                  Listening...
-                </span>
-              ) : (
-                <span className="text-neutral-8">Ready to speak...</span>
-              ))}
-          </div>
-        )} */}
-
-        {/* User Input Area */}
+    
 
         <ChatInput
           userResponse={userResponse}
