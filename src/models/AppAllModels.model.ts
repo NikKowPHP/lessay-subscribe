@@ -44,7 +44,7 @@ export interface AssessmentStep {
   id: string;
   assessmentId: string;
   stepNumber: number;
-  type:  'question' | 'user_response' | 'feedback' | 'instruction' | 'summary';
+  type:  'question' |  'feedback' | 'instruction' | 'summary';
   content: string;
   contentAudioUrl?: string | null;
   translation?: string | null;
@@ -95,7 +95,7 @@ export interface LessonStep {
   id: string;
   lessonId: string;
   stepNumber: number;
-  type: 'prompt' | 'model_answer' | 'user_answer' | 'new_word' | 'practice' | 'instruction' | 'summary';
+  type: 'prompt' | 'feedback'  | 'new_word' | 'practice' | 'instruction' | 'summary';
   content: string;
   contentAudioUrl?: string | null;
   translation?: string | null;

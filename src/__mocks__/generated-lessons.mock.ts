@@ -41,7 +41,7 @@ export const MockLessonGeneratorService = {
           },
           {
             stepNumber: 3,
-            type: LessonStepType.model_answer,
+            type: LessonStepType.feedback,
             content: 'Great job!',
             translation: 'Gut gemacht!'
           },
@@ -53,7 +53,7 @@ export const MockLessonGeneratorService = {
           },
           {
             stepNumber: 5,
-            type: LessonStepType.model_answer,
+            type: LessonStepType.feedback,
             content: 'Excellent pronunciation! Now, let\'s learn how to ask for directions.',
             translation: 'Ausgezeichnete Aussprache! Lassen Sie uns nun lernen, wie man nach dem Weg fragt.'
           },
@@ -66,7 +66,7 @@ export const MockLessonGeneratorService = {
           },
           {
             stepNumber: 7,
-            type: LessonStepType.model_answer,
+            type: LessonStepType.feedback,
             content: 'Lets add some more words to our vocabulary',
             // // contentAudioUrl: '/audio-test.mp3',
             translation: ''
@@ -108,7 +108,7 @@ export const MockLessonGeneratorService = {
           },
           {
             stepNumber: 3,
-            type: LessonStepType.model_answer,
+            type: LessonStepType.feedback,
             content: 'Very good! "das Hotel" is "the hotel" in German. Now let\'s practice this word.',
             translation: 'Sehr gut! "das Hotel" ist "the hotel" auf Deutsch. Lassen Sie uns jetzt dieses Wort üben.'
           },
@@ -120,7 +120,7 @@ export const MockLessonGeneratorService = {
           },
           {
             stepNumber: 5,
-            type: LessonStepType.model_answer,
+              type: LessonStepType.feedback,
             content: 'Well done! Now, let\'s learn how to make a reservation.',
             translation: 'Gut gemacht! Jetzt lernen wir, wie man eine Reservierung macht.'
           },
@@ -133,7 +133,7 @@ export const MockLessonGeneratorService = {
           },
           {
             stepNumber: 7,
-            type: LessonStepType.model_answer,
+            type: LessonStepType.feedback,
             content: 'To say "I have a reservation" in German, you say "Ich habe eine Reservierung"',
             translation: 'Um "I have a reservation" auf Deutsch zu sagen, sagt man "Ich habe eine Reservierung"'
           },
@@ -184,7 +184,7 @@ export const MockLessonGeneratorService = {
           },
           {
             stepNumber: 6,
-            type: LessonStepType.model_answer,
+            type: LessonStepType.feedback,
             content: 'Die Aussprache ist manchmal schwierig',
             translation: 'The pronunciation is sometimes difficult',
             expectedAnswer: 'Die Aussprache ist manchmal schwierig'
@@ -242,7 +242,7 @@ export const MockLessonGeneratorService = {
           },
           {
             stepNumber: 6,
-            type: LessonStepType.model_answer,
+            type: LessonStepType.feedback,
             content: 'Ich lerne Grammatik',
             // contentAudioUrl: '/audio-test.mp3',
             // expectedAnswerAudioUrl: '/audio-test.mp3',
@@ -283,7 +283,7 @@ export const MockLessonGeneratorService = {
         },
         {
           stepNumber: 3,
-          type: LessonStepType.model_answer,
+          type: LessonStepType.feedback,
           content: 'Excellent! Now let\'s practice saying "Hello".',
           translation: 'Ausgezeichnet! Jetzt üben wir, "Hello" zu sagen.'
         },
@@ -295,7 +295,7 @@ export const MockLessonGeneratorService = {
         },
         {
           stepNumber: 5,
-          type: LessonStepType.model_answer,
+          type: LessonStepType.feedback,
           content: 'Perfect pronunciation! You\'re making great progress.',
           translation: 'Perfekte Aussprache! Sie machen große Fortschritte.'
         },

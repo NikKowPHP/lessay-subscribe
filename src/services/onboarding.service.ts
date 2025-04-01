@@ -275,10 +275,7 @@ export default class OnboardingService {
           userResponse = userResponse || 'Acknowledged';
           break;
 
-        case 'user_response':
-          // For user_response types, generally considered correct with any valid response
-          correct = true;
-          break;
+        
 
         default:
           logger.warn(`Unknown assessment step type: ${step.type}`);
