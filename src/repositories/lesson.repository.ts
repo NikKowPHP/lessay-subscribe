@@ -93,32 +93,97 @@ export class LessonRepository implements ILessonRepository {
   async updateLesson(lessonId: string, lessonData: Partial<LessonModel>): Promise<LessonModel> {
     try {
       const session = await this.getSession()
-      const data = {
-        ...lessonData,
-        performanceMetrics: lessonData.performanceMetrics ? 
-          JSON.parse(JSON.stringify(lessonData.performanceMetrics)) : 
+      
+      // Remove related fields from direct spread to handle them properly
+      const { steps, audioMetrics, ...otherData } = lessonData
+      
+      // Prepare data object for update
+      const data: any = {
+        ...otherData,
+        performanceMetrics: otherData.performanceMetrics ? 
+          JSON.parse(JSON.stringify(otherData.performanceMetrics)) : 
           undefined,
-        steps: lessonData.steps ? {
+      }
+      
+      // Handle steps relationship if provided
+      if (steps) {
+        data.steps = {
           deleteMany: {}, // Delete existing steps
-          create: lessonData.steps.map(step => ({
+          create: steps.map(step => ({
             stepNumber: step.stepNumber,
             type: step.type,
             content: step.content,
             translation: step.translation,
             attempts: step.attempts || 0,
             correct: step.correct || false,
-            errorPatterns: step.errorPatterns || []
+            errorPatterns: step.errorPatterns || [],
+            expectedAnswer: step.expectedAnswer || null,
+            expectedAnswerAudioUrl: step.expectedAnswerAudioUrl || null,
+            contentAudioUrl: step.contentAudioUrl || null
           }))
-        } : undefined
+        }
       }
-      return await prisma.lesson.update({
+      
+      // Handle audioMetrics relationship if provided
+      if (audioMetrics) {
+        data.audioMetrics = {
+          upsert: {
+            create: {
+              // Required fields for creating new audio metrics
+              pronunciationScore: audioMetrics.pronunciationScore,
+              fluencyScore: audioMetrics.fluencyScore,
+              grammarScore: audioMetrics.grammarScore,
+              vocabularyScore: audioMetrics.vocabularyScore,
+              overallPerformance: audioMetrics.overallPerformance,
+              proficiencyLevel: audioMetrics.proficiencyLevel,
+              learningTrajectory: audioMetrics.learningTrajectory,
+              pronunciationAssessment: audioMetrics.pronunciationAssessment,
+              fluencyAssessment: audioMetrics.fluencyAssessment,
+              grammarAssessment: audioMetrics.grammarAssessment,
+              vocabularyAssessment: audioMetrics.vocabularyAssessment,
+              exerciseCompletion: audioMetrics.exerciseCompletion,
+              suggestedTopics: audioMetrics.suggestedTopics,
+              grammarFocusAreas: audioMetrics.grammarFocusAreas,
+              vocabularyDomains: audioMetrics.vocabularyDomains,
+              nextSkillTargets: audioMetrics.nextSkillTargets,
+              preferredPatterns: audioMetrics.preferredPatterns,
+              effectiveApproaches: audioMetrics.effectiveApproaches
+            },
+            update: {
+              // Fields to update if audio metrics already exist
+              pronunciationScore: audioMetrics.pronunciationScore,
+              fluencyScore: audioMetrics.fluencyScore,
+              grammarScore: audioMetrics.grammarScore,
+              vocabularyScore: audioMetrics.vocabularyScore,
+              overallPerformance: audioMetrics.overallPerformance,
+              proficiencyLevel: audioMetrics.proficiencyLevel,
+              learningTrajectory: audioMetrics.learningTrajectory,
+              pronunciationAssessment: audioMetrics.pronunciationAssessment,
+              fluencyAssessment: audioMetrics.fluencyAssessment,
+              grammarAssessment: audioMetrics.grammarAssessment,
+              vocabularyAssessment: audioMetrics.vocabularyAssessment,
+              exerciseCompletion: audioMetrics.exerciseCompletion,
+              suggestedTopics: audioMetrics.suggestedTopics,
+              grammarFocusAreas: audioMetrics.grammarFocusAreas,
+              vocabularyDomains: audioMetrics.vocabularyDomains,
+              nextSkillTargets: audioMetrics.nextSkillTargets,
+              preferredPatterns: audioMetrics.preferredPatterns,
+              effectiveApproaches: audioMetrics.effectiveApproaches
+            }
+          }
+        }
+      }
+      
+      const updatedLesson = await prisma.lesson.update({
         where: { 
           id: lessonId,
           userId: session.user.id
         },
         data: data,
-        include: { steps: true }
+        include: { steps: true, audioMetrics: true }
       })
+      
+      return updatedLesson as LessonModel
     } catch (error) {
       logger.error('Error updating lesson:', error)
       throw error
