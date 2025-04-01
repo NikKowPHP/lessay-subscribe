@@ -1,18 +1,29 @@
 import { ITTS } from '@/interfaces/tts.interface';
 import logger from '@/utils/logger';
 import axios from 'axios';
+import { GoogleAuth } from 'google-auth-library';
 
 export class GoogleTTS implements ITTS {
+  private auth: GoogleAuth;
   
   constructor() {
     this.validateEnvironment();
+    
+    // Initialize authentication with JSON credentials directly from environment variable
+    const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS || '{}');
+    
+    this.auth = new GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      credentials: credentials
+    });
   }
 
   public async synthesizeSpeech(text: string, language: string, voice: string): Promise<string> {
     try {
-      // Get Google Cloud authentication token
-      const accessToken = process.env.GOOGLE_CLOUD_ACCESS_TOKEN;
-      logger.info(`Access token: ${accessToken}`);
+      // Get auth client and token
+      const client = await this.auth.getClient();
+      const token = await client.getAccessToken();
+      const accessToken = token.token;
       
       // Map full language name to language code if needed
       const languageCode = this.mapLanguageToCode(language);
@@ -27,7 +38,7 @@ export class GoogleTTS implements ITTS {
           name: voice
         },
         audioConfig: {
-          audioEncoding: 'MP3'
+          audioEncoding: 'LINEAR16'
         }
       };
 
@@ -49,8 +60,6 @@ export class GoogleTTS implements ITTS {
       if (!response.data.audioContent) {
         throw new Error('No audio content received from Google TTS');
       }
-
-      logger.info('response.data.audioContent', response.data.audioContent);
       
       // Return the base64 string directly
       return response.data.audioContent;
@@ -137,14 +146,14 @@ export class GoogleTTS implements ITTS {
     // Prioritizing Neural2 > Studio > WaveNet > Standard voices
     const languageVoiceMap: Record<string, string> = {
       // English variants
-      'english': 'en-US-Neural2-F', // Female Neural2 voice
+      'english': 'en-US-Chirp3-HD-Aoede', // Female Neural2 voice
       'english (us)': 'en-US-Neural2-F',
       'english (uk)': 'en-GB-Neural2-B', // British English
       'english (australia)': 'en-AU-Neural2-B',
       'english (india)': 'en-IN-Neural2-A',
       
       // European languages
-      'german': 'de-DE-Neural2-B',
+      'german':'de-DE-Chirp3-HD-Aoede',
       'french': 'fr-FR-Neural2-A',
       'spanish': 'es-ES-Neural2-F',
       'italian': 'it-IT-Neural2-A',
@@ -221,7 +230,7 @@ export class GoogleTTS implements ITTS {
   private validateEnvironment(): void {
     const requiredVars = [
       'GOOGLE_CLOUD_PROJECT',
-      'GOOGLE_CLOUD_ACCESS_TOKEN'
+      'GOOGLE_CREDENTIALS'  // Using GOOGLE_CREDENTIALS instead of GOOGLE_CLOUD_ACCESS_TOKEN
     ];
 
     const missingVars = requiredVars.filter(v => !process.env[v]);
