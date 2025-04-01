@@ -54,11 +54,19 @@ enum LessonGenerationStatus {
 
 enum AssessmentStepType {
   question        // Assessment question
-  user_response   // User's answer
   feedback        // Feedback on user's answer
   instruction     // Instructions for the assessment
   summary         // Assessment summary/results
 }
+enum LessonStepType {
+  prompt
+  feedback // messages like 'great job'
+  new_word
+  practice
+  instruction 
+  summary    
+}
+
 
 model AssessmentLesson {
   id                String   @id @default(cuid())
@@ -121,15 +129,6 @@ model Lesson {
   @@map("lessons")
 }
 
-enum LessonStepType {
-  prompt
-  model_answer // messages like 'great job'
-  user_answer
-  new_word
-  practice
-  instruction 
-  summary    
-}
 
 model LessonStep {
   id              String   @id @default(cuid())
