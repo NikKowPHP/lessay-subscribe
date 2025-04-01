@@ -27,6 +27,8 @@ services:
       - ./src/app/globals.css:/app/src/app/globals.css  # Mount globals.css
       - ./tsconfig.json:/app/tsconfig.json  # Mount tsconfig.json
       - ./prisma:/app/prisma  # Mount prisma
+      - ./node_modules:/app/node_modules
+      - ./.env:/app/.env
     networks:
       - web-network
 
