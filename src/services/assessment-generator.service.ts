@@ -11,6 +11,8 @@ import {
 } from '@prisma/client';
 import { AssessmentLesson } from '@/models/AppAllModels.model';
 import { ITTS } from '@/interfaces/tts.interface';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface IAssessmentGeneratorService {
   generateAssessmentSteps: (
@@ -47,6 +49,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   private aiService: IAIService;
   private useMock: boolean;
   private useAudioGeneratorMock: boolean;
+  private useAudioUploadMock: boolean;
   private ttsService: ITTS;
   private uploadFunction: (file: File, pathPrefix: string) => Promise<string>;
 
@@ -60,10 +63,16 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
     'true';
     this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR ===
     'true';
+    this.useAudioUploadMock = process.env.NEXT_PUBLIC_USE_AUDIO_UPLOAD_MOCK ===
+    'true';
     this.ttsService = ttsService;
     this.uploadFunction = uploadFunction || ((file, _) => Promise.resolve(URL.createObjectURL(file)));
     
-    logger.info('AssessmentGeneratorService initialized', { useMock: this.useMock, useAudioGeneratorMock: this.useAudioGeneratorMock });
+    logger.info('AssessmentGeneratorService initialized', { 
+      useMock: this.useMock, 
+      useAudioGeneratorMock: this.useAudioGeneratorMock,
+      useAudioUploadMock: this.useAudioUploadMock
+    });
   }
 
   async generateAssessmentSteps(
@@ -209,10 +218,16 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
           // Create a File object from the audio buffer
           const contentAudioFile = this.createAudioFile(audioBuffer, `content_step_${step.stepNumber}.mp3`);
           
-          // Upload to Vercel Blob
-          const contentAudioUrl = await this.uploadFunction(contentAudioFile, 'lessay/assessmentStep/audio');
+          let contentAudioUrl: string;
           
-          logger.info('audio for content uploaded', contentAudioUrl);
+          // Check if we should save locally or upload to Vercel Blob
+          if (this.useAudioUploadMock) {
+            contentAudioUrl = await this.saveAudioLocally(contentAudioFile, 'lessay/assessmentStep/audio');
+          } else {
+            contentAudioUrl = await this.uploadFunction(contentAudioFile, 'lessay/assessmentStep/audio');
+          }
+          
+          logger.info('audio for content saved/uploaded', contentAudioUrl);
           step.contentAudioUrl = contentAudioUrl;
 
           // generate expected answer in target language
@@ -229,10 +244,16 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
             // Create a File object from the answer audio buffer
             const answerAudioFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
             
-            // Upload to Vercel Blob
-            const answerAudioUrl = await this.uploadFunction(answerAudioFile, 'lessay/assessmentStep/audio');
+            let answerAudioUrl: string;
             
-            logger.info('audio for expectedAnswer uploaded', answerAudioUrl);
+            // Check if we should save locally or upload to Vercel Blob
+            if (this.useAudioUploadMock) {
+              answerAudioUrl = await this.saveAudioLocally(answerAudioFile, 'lessay/assessmentStep/audio');
+            } else {
+              answerAudioUrl = await this.uploadFunction(answerAudioFile, 'lessay/assessmentStep/audio');
+            }
+            
+            logger.info('audio for expectedAnswer saved/uploaded', answerAudioUrl);
             step.expectedAnswerAudioUrl = answerAudioUrl;
           }
         }
@@ -243,6 +264,35 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
       logger.error('Error generating audio for assessment:', {
         error,
       });
+      throw error;
+    }
+  }
+  
+  // Helper method to save files locally in public folder
+  private async saveAudioLocally(file: File, pathPrefix: string): Promise<string> {
+    try {
+      // Create the directory structure if it doesn't exist
+      const publicDir = path.join(process.cwd(), 'public');
+      const targetDir = path.join(publicDir, pathPrefix);
+      
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      
+      // Generate a unique filename with timestamp
+      const timestamp = Date.now();
+      const filename = `${timestamp}-${file.name}`;
+      const filePath = path.join(targetDir, filename);
+      
+      // Convert File to Buffer and save
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      fs.writeFileSync(filePath, buffer);
+      
+      // Return the URL path that can be used in browser
+      return `/${pathPrefix}/${filename}`;
+    } catch (error) {
+      logger.error('Error saving audio file locally', { error });
       throw error;
     }
   }
