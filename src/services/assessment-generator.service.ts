@@ -48,10 +48,12 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   private useMock: boolean;
   private useAudioGeneratorMock: boolean;
   private ttsService: ITTS;
+  private uploadFunction: (file: File, pathPrefix: string) => Promise<string>;
 
   constructor(
     aiService: IAIService,
-    ttsService: ITTS
+    ttsService: ITTS,
+    uploadFunction?: (file: File, pathPrefix: string) => Promise<string>
   ) {
     this.aiService = aiService;
     this.useMock = process.env.NEXT_PUBLIC_MOCK_ASSESSMENT_GENERATOR ===
@@ -59,6 +61,8 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
     this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR ===
     'true';
     this.ttsService = ttsService;
+    this.uploadFunction = uploadFunction || ((file, _) => Promise.resolve(URL.createObjectURL(file)));
+    
     logger.info('AssessmentGeneratorService initialized', { useMock: this.useMock, useAudioGeneratorMock: this.useAudioGeneratorMock });
   }
 
@@ -169,7 +173,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
 
     try {
       logger.info('useAudioGeneratorMock', this.useAudioGeneratorMock);
-      if ( this.useAudioGeneratorMock) {
+      if (this.useAudioGeneratorMock) {
         logger.info('Using mock audio generator because useAudioGeneratorMock is true', this.useAudioGeneratorMock);
 
         for (const step of steps) {
@@ -191,39 +195,45 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
         logger.info('Mock assessment generated', { steps });
       } else {
         // Real implementation
-        // get appropriate voice
-        // assessment tts generation
         let voice: string;
 
-
         for (const step of steps) {
-
-
           // generate step content in native language
-        voice = this.ttsService.getVoice(sourceLanguage);
-        logger.info('voice for source language content', voice);
+          voice = this.ttsService.getVoice(sourceLanguage);
+          logger.info('voice for source language content', voice);
 
-          const audio = await retryOperation(() =>
+          const audioBuffer = await retryOperation(() =>
             this.ttsService.synthesizeSpeech(step.content, sourceLanguage, voice)
           );
-          logger.info('audio for content', audio);
-          step.contentAudioUrl = audio;
-
-          logger.info('adding audio to step contentAudioUrl', step.contentAudioUrl);
+          
+          // Create a File object from the audio buffer
+          const contentAudioFile = this.createAudioFile(audioBuffer, `content_step_${step.stepNumber}.mp3`);
+          
+          // Upload to Vercel Blob
+          const contentAudioUrl = await this.uploadFunction(contentAudioFile, 'lessay/assessmentStep/audio');
+          
+          logger.info('audio for content uploaded', contentAudioUrl);
+          step.contentAudioUrl = contentAudioUrl;
 
           // generate expected answer in target language
           if (step.expectedAnswer) {
             const voice = this.ttsService.getVoice(language);
-            const audio = await retryOperation(() =>
+            const answerAudioBuffer = await retryOperation(() =>
               this.ttsService.synthesizeSpeech(
                 step.expectedAnswer!,
                 language,
                 voice
               )
             );
-            logger.info('audio for expectedAnswer', audio);
-            step.expectedAnswerAudioUrl = audio;
-            logger.info('adding audio to step expectedAnswerAudioUrl', step.expectedAnswerAudioUrl);
+            
+            // Create a File object from the answer audio buffer
+            const answerAudioFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
+            
+            // Upload to Vercel Blob
+            const answerAudioUrl = await this.uploadFunction(answerAudioFile, 'lessay/assessmentStep/audio');
+            
+            logger.info('audio for expectedAnswer uploaded', answerAudioUrl);
+            step.expectedAnswerAudioUrl = answerAudioUrl;
           }
         }
       }
@@ -235,6 +245,26 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
       });
       throw error;
     }
+  }
+  
+  // Helper method to create a File from audio buffer
+  private createAudioFile(audioBuffer: string | ArrayBuffer, filename: string): File {
+    let blob: Blob;
+    
+    if (typeof audioBuffer === 'string') {
+      // If it's a base64 string, convert it to a Blob
+      const byteCharacters = atob(audioBuffer.split(',')[1]);
+      const byteArrays = [];
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteArrays.push(byteCharacters.charCodeAt(i));
+      }
+      blob = new Blob([new Uint8Array(byteArrays)], { type: 'audio/mp3' });
+    } else {
+      // If it's already an ArrayBuffer
+      blob = new Blob([audioBuffer], { type: 'audio/mp3' });
+    }
+    
+    return new File([blob], filename, { type: 'audio/mp3' });
   }
 
   private constructAiAssessmentResultResponse(
