@@ -16,7 +16,14 @@ import LessonService from './lesson.service';
 import { IAssessmentGeneratorService } from './assessment-step-generator.service';
 import RecordingService from './recording.service';
 import { mockAudioMetrics } from '@/__mocks__/generated-audio-metrics.mock';
-import { ComprehensionLevel, HesitationFrequency, LanguageInfluenceLevel, LearningTrajectory, SpeechRateEvaluation, VocabularyRange } from '@prisma/client';
+import {
+  ComprehensionLevel,
+  HesitationFrequency,
+  LanguageInfluenceLevel,
+  LearningTrajectory,
+  SpeechRateEvaluation,
+  VocabularyRange,
+} from '@prisma/client';
 import { JsonValue } from '@prisma/client/runtime/library';
 
 export default class OnboardingService {
@@ -87,16 +94,18 @@ export default class OnboardingService {
 
       //TODO: generate audios for the steps
 
-      const audioSteps = await this.assessmentGeneratorService.generateAudioForSteps(steps, onboarding?.targetLanguage || 'English', onboarding?.nativeLanguage || 'English');
+      const audioSteps =
+        await this.assessmentGeneratorService.generateAudioForSteps(
+          steps,
+          onboarding?.targetLanguage || 'English',
+          onboarding?.nativeLanguage || 'English'
+        );
 
       // merge the steps with the audio steps
       // const mergedSteps = steps.map((step, index) => ({
       //   ...step,
       //   ...audioSteps[index],
       // }));
-
-
-
 
       const assessmentLesson = {
         userId,
@@ -214,7 +223,7 @@ export default class OnboardingService {
           if (step.expectedAnswer) {
             logger.info('step.expectedAnswer', step.expectedAnswer);
             logger.info('userResponse', userResponse);
-            
+
             // Normalize user response by removing punctuation and special characters
             const normalizedUserResponse = userResponse
               .trim()
@@ -222,7 +231,7 @@ export default class OnboardingService {
               // Remove punctuation, ellipses, and extra whitespace
               .replace(/[.,!?;:"'""''()[\]…]+/g, '')
               .replace(/\s+/g, ' ');
-            
+
             // Normalize expected answer the same way
             const normalizedExpectedAnswer = step.expectedAnswer
               .trim()
@@ -230,16 +239,18 @@ export default class OnboardingService {
               // Remove punctuation, ellipses, and extra whitespace
               .replace(/[.,!?;:"'""''()[\]…]+/g, '')
               .replace(/\s+/g, ' ');
-              
+
             // Main comparison: Check if normalized user response includes
             // the essential part of the normalized expected answer
-            
+
             // First check if expected answer without ellipses is in user response
-            const essentialExpectedPart = normalizedExpectedAnswer.replace(/\.{3,}/g, '').trim();
-            
+            const essentialExpectedPart = normalizedExpectedAnswer
+              .replace(/\.{3,}/g, '')
+              .trim();
+
             logger.info('Normalized user response:', normalizedUserResponse);
             logger.info('Essential expected part:', essentialExpectedPart);
-            
+
             // Check if either there's a very close match, or the user response
             // contains the essential part of the expected answer
             if (normalizedUserResponse === essentialExpectedPart) {
@@ -251,13 +262,13 @@ export default class OnboardingService {
               // For example, if expected is "hallo ich heiße" and user just said "hallo"
               const essentialWords = essentialExpectedPart.split(' ');
               const userWords = normalizedUserResponse.split(' ');
-              
+
               // If user said at least half of the essential words, consider it correct
               // This helps with partial responses that are still meaningful
-              const matchedWordCount = userWords.filter(word => 
-                essentialWords.includes(word) && word.length > 1
+              const matchedWordCount = userWords.filter(
+                (word) => essentialWords.includes(word) && word.length > 1
               ).length;
-              
+
               correct = matchedWordCount / essentialWords.length >= 0.5;
             }
           } else {
@@ -274,8 +285,6 @@ export default class OnboardingService {
           // For these types, we use a default "Acknowledged" response if none provided
           userResponse = userResponse || 'Acknowledged';
           break;
-
-        
 
         default:
           logger.warn(`Unknown assessment step type: ${step.type}`);
@@ -300,21 +309,24 @@ export default class OnboardingService {
     }
   }
 
-
-  updateOnboardingAssessmentLesson = async (lessonId: string, lessonData: Partial<AssessmentLesson>) => {
+  updateOnboardingAssessmentLesson = async (
+    lessonId: string,
+    lessonData: Partial<AssessmentLesson>
+  ) => {
     if (!lessonId) {
-      throw new Error('Lesson ID is required')
+      throw new Error('Lesson ID is required');
     }
 
-    return this.onboardingRepository.updateOnboardingAssessmentLesson(lessonId, lessonData)
-
-  }
+    return this.onboardingRepository.updateOnboardingAssessmentLesson(
+      lessonId,
+      lessonData
+    );
+  };
   async processAssessmentLessonRecording(
     sessionRecording: Blob,
     lesson: AssessmentLesson,
     recordingTime: number,
-    recordingSize: number,
-    
+    recordingSize: number
   ) {
     //1. get user onboarding data with lagnuages
     const onboardingData = await this.onboardingRepository.getOnboarding();
@@ -323,7 +335,6 @@ export default class OnboardingService {
     }
     const targetLanguage = onboardingData.targetLanguage || 'English';
     const sourceLanguage = onboardingData.nativeLanguage || 'English';
-
 
     // 2. process recording
     const arrayBuffer = await sessionRecording.arrayBuffer();
@@ -337,7 +348,7 @@ export default class OnboardingService {
     logger.log('File URI:', fileUri);
 
     // send recording to AI
-    let aiResponse :Record<string, unknown>;
+    let aiResponse: Record<string, unknown>;
     if (process.env.MOCK_AI_RESPONSE === 'true') {
       aiResponse = mockAudioMetrics;
     } else {
@@ -350,33 +361,46 @@ export default class OnboardingService {
       );
     }
 
-    // 3. convert ai  response to audioMetrics model. 
-    const audioMetrics = this.convertAiResponseToAudioMetrics(aiResponse)
+    // 3. convert ai  response to audioMetrics model.
+    const audioMetrics = this.convertAiResponseToAudioMetrics(aiResponse);
 
     // 4. update lesson with sessionRecordingMetrics, lesson should have a foreign key to audioMetrics
-    return this.onboardingRepository.updateOnboardingAssessmentLesson(lesson.id, { audioMetrics })
+    return this.onboardingRepository.updateOnboardingAssessmentLesson(
+      lesson.id,
+      { audioMetrics }
+    );
   }
 
-  private convertAiResponseToAudioMetrics(aiResponse: Record<string, unknown>): AudioMetrics {
+  private convertAiResponseToAudioMetrics(
+    aiResponse: Record<string, unknown>
+  ): AudioMetrics {
     // Extract top-level metrics with defaults if not present
-    const pronunciationScore = typeof aiResponse.pronunciationScore === 'number' 
-      ? aiResponse.pronunciationScore : 0;
-    const fluencyScore = typeof aiResponse.fluencyScore === 'number' 
-      ? aiResponse.fluencyScore : 0;
-    const grammarScore = typeof aiResponse.grammarScore === 'number' 
-      ? aiResponse.grammarScore : 0;
-    const vocabularyScore = typeof aiResponse.vocabularyScore === 'number' 
-      ? aiResponse.vocabularyScore : 0;
-    const overallPerformance = typeof aiResponse.overallPerformance === 'number' 
-      ? aiResponse.overallPerformance : 0;
-    
+    const pronunciationScore =
+      typeof aiResponse.pronunciationScore === 'number'
+        ? aiResponse.pronunciationScore
+        : 0;
+    const fluencyScore =
+      typeof aiResponse.fluencyScore === 'number' ? aiResponse.fluencyScore : 0;
+    const grammarScore =
+      typeof aiResponse.grammarScore === 'number' ? aiResponse.grammarScore : 0;
+    const vocabularyScore =
+      typeof aiResponse.vocabularyScore === 'number'
+        ? aiResponse.vocabularyScore
+        : 0;
+    const overallPerformance =
+      typeof aiResponse.overallPerformance === 'number'
+        ? aiResponse.overallPerformance
+        : 0;
+
     // Generate a unique ID for the metrics
     const id = crypto.randomUUID();
-    
+
     // Extract CEFR level and learning trajectory
-    const proficiencyLevel = typeof aiResponse.proficiencyLevel === 'string' 
-      ? aiResponse.proficiencyLevel : 'A1';
-    
+    const proficiencyLevel =
+      typeof aiResponse.proficiencyLevel === 'string'
+        ? aiResponse.proficiencyLevel
+        : 'A1';
+
     // Safely convert learning trajectory to enum value
     let learningTrajectory: LearningTrajectory = 'steady';
     if (aiResponse.learningTrajectory === 'accelerating') {
@@ -384,7 +408,7 @@ export default class OnboardingService {
     } else if (aiResponse.learningTrajectory === 'plateauing') {
       learningTrajectory = 'plateauing';
     }
-    
+
     // Extract detailed assessment data using our type guard helpers
     const pronunciationAssessment = getPronunciationAssessment(
       aiResponse.pronunciationAssessment as JsonValue
@@ -392,43 +416,43 @@ export default class OnboardingService {
       overall_score: pronunciationScore,
       native_language_influence: {
         level: 'moderate' as LanguageInfluenceLevel,
-        specific_features: []
+        specific_features: [],
       },
       phoneme_analysis: [],
       problematic_sounds: [],
       strengths: [],
-      areas_for_improvement: []
+      areas_for_improvement: [],
     };
-    
+
     const fluencyAssessment = getFluencyAssessment(
       aiResponse.fluencyAssessment as JsonValue
     ) || {
       overall_score: fluencyScore,
       speech_rate: {
         words_per_minute: 0,
-        evaluation: 'appropriate' as SpeechRateEvaluation
+        evaluation: 'appropriate' as SpeechRateEvaluation,
       },
       hesitation_patterns: {
         frequency: 'occasional' as HesitationFrequency,
         average_pause_duration: 0,
-        typical_contexts: []
+        typical_contexts: [],
       },
       rhythm_and_intonation: {
         naturalness: 0,
         sentence_stress_accuracy: 0,
-        intonation_pattern_accuracy: 0
-      }
+        intonation_pattern_accuracy: 0,
+      },
     };
-    
+
     const grammarAssessment = getGrammarAssessment(
       aiResponse.grammarAssessment as JsonValue
     ) || {
       overall_score: grammarScore,
       error_patterns: [],
       grammar_rules_to_review: [],
-      grammar_strengths: []
+      grammar_strengths: [],
     };
-    
+
     const vocabularyAssessment = getVocabularyAssessment(
       aiResponse.vocabularyAssessment as JsonValue
     ) || {
@@ -436,38 +460,44 @@ export default class OnboardingService {
       range: 'adequate' as VocabularyRange,
       appropriateness: 0,
       precision: 0,
-      areas_for_expansion: []
+      areas_for_expansion: [],
     };
-    
+
     const exerciseCompletion = getExerciseCompletion(
       aiResponse.exerciseCompletion as JsonValue
     ) || {
       overall_score: 0,
       exercises_analyzed: [],
-      comprehension_level: 'fair' as ComprehensionLevel
+      comprehension_level: 'fair' as ComprehensionLevel,
     };
-    
+
     // Extract string arrays safely
     const extractStringArray = (value: unknown): string[] => {
       if (Array.isArray(value)) {
-        return value.filter(item => typeof item === 'string') as string[];
+        return value.filter((item) => typeof item === 'string') as string[];
       }
       return [];
     };
-    
+
     const suggestedTopics = extractStringArray(aiResponse.suggestedTopics);
     const grammarFocusAreas = extractStringArray(aiResponse.grammarFocusAreas);
     const vocabularyDomains = extractStringArray(aiResponse.vocabularyDomains);
     const nextSkillTargets = extractStringArray(aiResponse.nextSkillTargets);
     const preferredPatterns = extractStringArray(aiResponse.preferredPatterns);
-    const effectiveApproaches = extractStringArray(aiResponse.effectiveApproaches);
-    
+    const effectiveApproaches = extractStringArray(
+      aiResponse.effectiveApproaches
+    );
+
     // Extract metadata
-    const audioRecordingUrl = typeof aiResponse.audioRecordingUrl === 'string' 
-      ? aiResponse.audioRecordingUrl : null;
-    const recordingDuration = typeof aiResponse.recordingDuration === 'number' 
-      ? aiResponse.recordingDuration : null;
-    
+    const audioRecordingUrl =
+      typeof aiResponse.audioRecordingUrl === 'string'
+        ? aiResponse.audioRecordingUrl
+        : null;
+    const recordingDuration =
+      typeof aiResponse.recordingDuration === 'number'
+        ? aiResponse.recordingDuration
+        : null;
+
     // Construct and return the AudioMetrics object
     return {
       id,
@@ -492,8 +522,7 @@ export default class OnboardingService {
       audioRecordingUrl,
       recordingDuration,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
   }
-
 }

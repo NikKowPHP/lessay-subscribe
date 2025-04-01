@@ -66,7 +66,7 @@ export default function LessonChat({
   const [isListening, setIsListening] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
- 
+
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSpeechTimestampRef = useRef<number>(0);
   const SILENCE_TIMEOUT_MS = 1000; // 1 second silence detection
@@ -88,9 +88,8 @@ export default function LessonChat({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number>(0);
   const recordingPausedTimeRef = useRef<number>(0);
-  const [fullSessionRecording, setFullSessionRecording] = useState<RecordingBlob | null>(
-    null
-  );
+  const [fullSessionRecording, setFullSessionRecording] =
+    useState<RecordingBlob | null>(null);
 
   // Add state for recording playback
   const [recordingAudioURL, setRecordingAudioURL] = useState<string | null>(
@@ -187,7 +186,7 @@ export default function LessonChat({
       // Remove the played audio from queue and reset playing state
       setAudioQueue((prevQueue) => prevQueue.slice(1));
       setIsPlayingAudio(false);
-      
+
       logger.info('audioQueue', audioQueue);
       logger.info('initialUserInteractionDone', initialUserInteractionDone);
       logger.info('currentStepIndex', currentStepIndex);
@@ -196,19 +195,22 @@ export default function LessonChat({
       // const currentStep = lesson.steps[currentStepIndex];
       // logger.info('currentStep type ', currentStep.type);
       // Auto-advance for certain step types when audio finishes
-      if (initialUserInteractionDone && 
-          !isPlayingAudio && // No more audio in queue
-          lesson.steps ) {
-        
+      if (
+        initialUserInteractionDone &&
+        !isPlayingAudio && // No more audio in queue
+        lesson.steps
+      ) {
         const currentStep = lesson.steps[currentStepIndex];
         logger.info('currentStep type 123 ', currentStep.type);
         // Auto-advance non-interactive steps when audio finishes
-        if (currentStep.type === 'instruction' || 
-            currentStep.type === 'summary' || 
-            currentStep.type === 'feedback' || 
-            currentStep.type === 'model_answer') {
-          
-          logger.info(`Auto-advancing ${currentStep.type} step after audio playback`);
+        if (
+          currentStep.type === 'instruction' ||
+          currentStep.type === 'summary' ||
+          currentStep.type === 'feedback'
+        ) {
+          logger.info(
+            `Auto-advancing ${currentStep.type} step after audio playback`
+          );
           handleSubmitStep(currentStep, userResponse);
         }
       }
@@ -286,15 +288,15 @@ export default function LessonChat({
         recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
           // Update the last speech timestamp whenever we receive speech
           lastSpeechTimestampRef.current = Date.now();
-          
+
           const result = event.results[event.results.length - 1];
           const transcript = result[0].transcript;
-          
+
           // If we have debounce timer, clear it
           if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
           }
-          
+
           // Set user response with the transcript
           setUserResponse(transcript);
         };
@@ -306,7 +308,7 @@ export default function LessonChat({
 
         recognitionRef.current.onend = () => {
           setIsListening(false);
-          
+
           // Clear the silence timer when recognition ends
           if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
@@ -326,13 +328,13 @@ export default function LessonChat({
         recognitionRef.current.onend = null;
         recognitionRef.current.onerror = null;
       }
-      
+
       // Clear any remaining timers
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
       }
-      
+
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
@@ -350,7 +352,7 @@ export default function LessonChat({
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
       }
-      
+
       // Set up a new silence timer
       silenceTimerRef.current = setTimeout(() => {
         logger.log('Auto-submitting after silence detection!!!');
@@ -358,7 +360,7 @@ export default function LessonChat({
         handleSubmitStep(currentStep, userResponse);
       }, SILENCE_TIMEOUT_MS);
     }
-    
+
     // Cleanup function
     return () => {
       if (silenceTimerRef.current) {
@@ -532,13 +534,20 @@ export default function LessonChat({
     }
   };
 
-  const handleSubmitStep = async (step: LessonStep | AssessmentStep, response: string) => {
+  const handleSubmitStep = async (
+    step: LessonStep | AssessmentStep,
+    response: string
+  ) => {
     try {
       // setFeedback('Processing...');
       logger.info('Processing response:', response);
 
       // For instruction and summary steps, just acknowledge them without requiring user response
-      if (step.type === 'instruction' || step.type === 'summary' || step.type === 'feedback' || step.type === 'model_answer') {
+      if (
+        step.type === 'instruction' ||
+        step.type === 'summary' ||
+        step.type === 'feedback'
+      ) {
         // Mark as seen/acknowledged
         await onStepComplete(step, 'Acknowledged');
 
@@ -773,8 +782,6 @@ export default function LessonChat({
           <audio ref={audioRef} />
           <audio ref={recordingAudioRef} src={recordingAudioURL || ''} />
         </div>
-
-    
 
         <ChatInput
           userResponse={userResponse}

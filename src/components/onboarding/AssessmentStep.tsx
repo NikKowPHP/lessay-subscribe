@@ -30,10 +30,12 @@ export default function AssessmentStep({
   onAssessmentComplete,
   onGoToLessonsButtonClick,
 }: AssessmentStepProps) {
-  const { recordAssessmentStepAttempt, processAssessmentLessonRecording } = useOnboarding();
+  const { recordAssessmentStepAttempt, processAssessmentLessonRecording } =
+    useOnboarding();
   const [isCompleting, setIsCompleting] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [sessionRecording, setSessionRecording] = useState<RecordingBlob | null>(null);
+  const [sessionRecording, setSessionRecording] =
+    useState<RecordingBlob | null>(null);
   // Handle step completion - align with lesson page approach
   const [pronunciationResults, setPronunciationResults] =
     useState<AudioMetrics | null>(null);
@@ -63,16 +65,16 @@ export default function AssessmentStep({
   };
 
   // Handle assessment completion
-  const handleComplete = async (recording: RecordingBlob | null ) => {
+  const handleComplete = async (recording: RecordingBlob | null) => {
     setIsCompleting(true);
     try {
       if (!lesson) {
         throw new Error('Lesson is not loaded');
       }
       setSessionRecording(recording);
-      
+
       // const result = await completeAssessmentLesson(lesson.id, 'Assessment completed');
-       onAssessmentComplete();
+      onAssessmentComplete();
       // After completion, show results instead of immediately navigating
     } catch (error) {
       toast.error('Something went wrong completing your assessment');
@@ -85,18 +87,19 @@ export default function AssessmentStep({
     if (lesson && lesson.metrics && isAssessmentMetrics(lesson.metrics)) {
       setShowResults(true);
     }
-  }, [lesson?.metrics])
+  }, [lesson?.metrics]);
 
   useEffect(() => {
     const processPronunciation = async () => {
       if (sessionRecording && lesson) {
         if (!sessionRecording.lastModified || !sessionRecording.size) {
-          return
+          return;
         }
         try {
-          const recordingTime = sessionRecording.lastModified - sessionRecording.lastModified;
+          const recordingTime =
+            sessionRecording.lastModified - sessionRecording.lastModified;
           const recordingSize = sessionRecording.size;
-        
+
           const lessonWithAudioMetrics = await processAssessmentLessonRecording(
             sessionRecording,
             lesson,
@@ -109,7 +112,6 @@ export default function AssessmentStep({
           setPronunciationResults(lessonWithAudioMetrics.audioMetrics);
           // TODO: render the pronunciation resuilts metrics
           // TODO: render a seperate pronunciation loading state
-
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
           toast.error('Failed to process pronunciation');
@@ -373,15 +375,14 @@ export default function AssessmentStep({
 
   return (
     <div className="animate-fade-in h-screen flex flex-col">
-        <LessonChat
-          lesson={lesson}
-          onComplete={handleComplete}
-          onStepComplete={handleStepComplete}
-          loading={loading || isCompleting}
-          targetLanguage={targetLanguage}
-          isAssessment={true}
-          realtimeTranscriptEnabled={true}
-        />
+      <LessonChat
+        lesson={lesson}
+        onComplete={handleComplete}
+        onStepComplete={handleStepComplete}
+        loading={loading || isCompleting}
+        targetLanguage={targetLanguage}
+        isAssessment={true}
+      />
     </div>
   );
 }
