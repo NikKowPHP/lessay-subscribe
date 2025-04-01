@@ -43,7 +43,7 @@ export interface AiAssessmentResultResponse {
   summary: string;
 }
 
-class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
+class AssessmentGeneratorService implements IAssessmentGeneratorService {
   private aiService: IAIService;
   private useMock: boolean;
   private useAudioGeneratorMock: boolean;
@@ -318,4 +318,4 @@ class AssessmentStepGeneratorService implements IAssessmentGeneratorService {
   }
 }
 
-export default AssessmentStepGeneratorService;
+export default AssessmentGeneratorService;

@@ -13,7 +13,7 @@ import {
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 import LessonService from './lesson.service';
-import { IAssessmentGeneratorService } from './assessment-step-generator.service';
+import { IAssessmentGeneratorService } from './assessment-generator.service';
 import RecordingService from './recording.service';
 import { mockAudioMetrics } from '@/__mocks__/generated-audio-metrics.mock';
 import {
@@ -100,12 +100,10 @@ export default class OnboardingService {
           onboarding?.targetLanguage || 'English',
           onboarding?.nativeLanguage || 'English'
         );
+      logger.info('generated audio steps', audioSteps);
 
-      // merge the steps with the audio steps
-      // const mergedSteps = steps.map((step, index) => ({
-      //   ...step,
-      //   ...audioSteps[index],
-      // }));
+      // TODO: save audios to the storage and persist the audio urls in the database
+
 
       const assessmentLesson = {
         userId,

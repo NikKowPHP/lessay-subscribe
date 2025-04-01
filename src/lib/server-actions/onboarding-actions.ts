@@ -9,7 +9,7 @@ import logger from '@/utils/logger';
 import LessonService from '@/services/lesson.service';
 import { LessonRepository } from '@/repositories/lesson.repository';
 import AIService from '@/services/ai.service';
-import AssessmentStepGeneratorService from '@/services/assessment-step-generator.service';
+import AssessmentGeneratorService from '@/services/assessment-generator.service';
 import { GoogleTTS } from '@/services/google-tts.service';
 import LessonGeneratorService from '@/services/lesson-generator.service';
 import { AssessmentLesson } from '@/models/AppAllModels.model';
@@ -25,7 +25,7 @@ function createOnboardingService() {
   return new OnboardingService(
     repository,
     new LessonService(lessonRepository, new LessonGeneratorService(new AIService(), true, new GoogleTTS()), repository),
-    new AssessmentStepGeneratorService(new AIService(), new GoogleTTS())
+    new AssessmentGeneratorService(new AIService(), new GoogleTTS())
   );
 }
 
