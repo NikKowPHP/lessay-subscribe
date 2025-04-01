@@ -190,19 +190,30 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
         }
         logger.info('Mock assessment generated', { steps });
       } else {
+        // Real implementation
         // get appropriate voice
-        const voice = this.ttsService.getVoice(language);
+        // assessment tts generation
+        let voice: string;
 
-        logger.info('voice', voice);
 
         for (const step of steps) {
+
+
+          // generate step content in native language
+        voice = this.ttsService.getVoice(sourceLanguage);
+        logger.info('voice for source language content', voice);
+
           const audio = await retryOperation(() =>
             this.ttsService.synthesizeSpeech(step.content, sourceLanguage, voice)
           );
           logger.info('audio for content', audio);
           step.contentAudioUrl = audio;
+
           logger.info('adding audio to step contentAudioUrl', step.contentAudioUrl);
+
+          // generate expected answer in target language
           if (step.expectedAnswer) {
+            const voice = this.ttsService.getVoice(language);
             const audio = await retryOperation(() =>
               this.ttsService.synthesizeSpeech(
                 step.expectedAnswer!,
