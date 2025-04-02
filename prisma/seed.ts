@@ -1,6 +1,7 @@
 import { ProficiencyLevel, LessonStepType, AssessmentStepType } from '@prisma/client'
 // import prisma from '../src/lib/prisma.ts'
 import prisma from '../src/lib/prisma.js';
+import { assessmentMockDataJson } from '../src/__mocks__/assessment-data.mock';
 
 async function main() {
   // Clear existing data in the correct order
@@ -39,113 +40,47 @@ async function main() {
     },
   })
 
-  // Create single assessment lesson with multiple steps
-  // const assessmentLesson = await prisma.assessmentLesson.create({
-  //   data: {
-  //     userId: user.id,
-  //     description: "Comprehensive language assessment to evaluate your current German knowledge and skills",
-  //     completed: false,
-  //     sourceLanguage: onboarding.nativeLanguage || "English",
-  //     targetLanguage: onboarding.targetLanguage || "German",
-  //     metrics: {
-  //       accuracy: 0,
-  //       pronunciationScore: 0,
-  //       grammarScore: 0,
-  //       vocabularyScore: 0,
-  //       overallScore: 0,
-  //       strengths: [],
-  //       weaknesses: []
-  //     },
-  //     proposedTopics: ["Basic Greetings", "Restaurant Vocabulary", "Travel Essentials"],
-  //     summary: null, // Will be filled after assessment completion
-  //     steps: {
-  //       create: [
-  //         {
-  //           stepNumber: 1,
-  //           type: AssessmentStepType.instruction,
-  //           content: "Welcome to your language assessment. I'll ask you a series of questions to evaluate your current knowledge of German. This will help me create a personalized learning plan for you. Let's begin!",
-  //           maxAttempts: 1,
-  //           attempts: 0,
-  //           correct: false
-  //         },
-  //         {
-  //           stepNumber: 2,
-  //           type: AssessmentStepType.question,
-  //           content: "How do you say 'Hello, my name is...' in German?",
-  //           expectedAnswer: "Hallo, ich heiße...",
-  //           expectedAnswerAudioUrl: "https://example.com/audio/german/hallo_ich_heisse.mp3",
-  //           maxAttempts: 3,
-  //           attempts: 0,
-  //           correct: false,
-  //           feedback: "The correct way to introduce yourself in German is 'Hallo, ich heiße...' followed by your name."
-  //         },
-  //         {
-  //           stepNumber: 3,
-  //           type: AssessmentStepType.feedback,
-  //           content: "Great job! Let's try another phrase.",
-  //           maxAttempts: 1,
-  //           attempts: 0,
-  //           correct: false
-  //         },
-  //         {
-  //           stepNumber: 4,
-  //           type: AssessmentStepType.question,
-  //           content: "How do you ask 'Where is the bathroom?' in German?",
-  //           expectedAnswer: "Wo ist die Toilette?",
-  //           expectedAnswerAudioUrl: "https://example.com/audio/german/wo_ist_die_toilette.mp3",
-  //           maxAttempts: 3,
-  //           attempts: 0,
-  //           correct: false,
-  //           feedback: "To ask where the bathroom is in German, you say 'Wo ist die Toilette?'"
-  //         },
-  //         {
-  //           stepNumber: 5, 
-  //           type: AssessmentStepType.question,
-  //           content: "How would you order a coffee in German?",
-  //           expectedAnswer: "Einen Kaffee, bitte.",
-  //           expectedAnswerAudioUrl: "https://example.com/audio/german/einen_kaffee_bitte.mp3",
-  //           maxAttempts: 3,
-  //           attempts: 0,
-  //           correct: false,
-  //           feedback: "To order a coffee in German, you can say 'Einen Kaffee, bitte.'"
-  //         },
-  //         {
-  //           stepNumber: 6,
-  //           type: AssessmentStepType.question,
-  //           content: "How do you ask for the time in German?",
-  //           expectedAnswer: "Wie spät ist es?",
-  //           expectedAnswerAudioUrl: "https://example.com/audio/german/wie_spat_ist_es.mp3",
-  //           maxAttempts: 3,
-  //           attempts: 0,
-  //           correct: false,
-  //           feedback: "To ask for the time in German, you say 'Wie spät ist es?'"
-  //         },
-  //         {
-  //           stepNumber: 7,
-  //           type: AssessmentStepType.question,
-  //           content: "How do you say 'I don't understand' in German?",
-  //           expectedAnswer: "Ich verstehe nicht.",
-  //           expectedAnswerAudioUrl: "https://example.com/audio/german/ich_verstehe_nicht.mp3",
-  //           maxAttempts: 3,
-  //           attempts: 0,
-  //           correct: false,
-  //           feedback: "When you don't understand something in German, you can say 'Ich verstehe nicht.'"
-  //         },
-  //         {
-  //           stepNumber: 8,
-  //           type: AssessmentStepType.summary,
-  //           content: "Great work on completing the assessment! Based on your responses, we'll create a personalized learning plan to help you improve your German skills.",
-  //           maxAttempts: 1,
-  //           attempts: 0,
-  //           correct: false
-  //         }
-  //       ]
-  //     }
-  //   },
-  //   include: {
-  //     steps: true
-  //   }
-  // });
+  // Create assessment lesson from mock data
+  for (const assessmentData of assessmentMockDataJson) {
+    const assessmentLesson = await prisma.assessmentLesson.create({
+      data: {
+        id: assessmentData.id,
+        userId: user.id,
+        description: assessmentData.description,
+        completed: assessmentData.completed,
+        sourceLanguage: assessmentData.sourceLanguage,
+        targetLanguage: assessmentData.targetLanguage,
+        metrics: assessmentData.metrics,
+        proposedTopics: assessmentData.proposedTopics,
+        summary: assessmentData.summary,
+        createdAt: new Date(assessmentData.createdAt),
+        updatedAt: new Date(assessmentData.updatedAt),
+        sessionRecordingUrl: assessmentData.sessionRecordingUrl,
+        steps: {
+          create: assessmentData.steps.map(step => ({
+            id: step.id,
+            stepNumber: step.stepNumber,
+            type: step.type as AssessmentStepType,
+            content: step.content,
+            contentAudioUrl: step.contentAudioUrl,
+            translation: step.translation,
+            expectedAnswer: step.expectedAnswer,
+            expectedAnswerAudioUrl: step.expectedAnswerAudioUrl,
+            maxAttempts: step.maxAttempts,
+            userResponse: step.userResponse,
+            attempts: step.attempts,
+            correct: step.correct,
+            lastAttemptAt: step.lastAttemptAt ? new Date(step.lastAttemptAt) : null,
+            feedback: step.feedback,
+            createdAt: new Date(step.createdAt),
+            updatedAt: new Date(step.updatedAt)
+          }))
+        }
+      },
+    });
+
+    console.log(`Created assessment lesson: ${assessmentLesson.id} with ${assessmentData.steps.length} steps`);
+  }
 
   // Create regular lessons - Lesson 1: Greetings and Introductions
   // const lesson1 = await prisma.lesson.create({
