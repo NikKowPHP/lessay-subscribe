@@ -12,6 +12,7 @@ import ChatInput from './ChatInput';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
+// TODO: play the expectedAudio when answer is correct
 
 // Add this interface at the top of the file
 interface SpeechRecognitionEvent extends Event {
