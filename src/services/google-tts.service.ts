@@ -15,93 +15,72 @@ export class GoogleTTS implements ITTS {
 
     const authOptions: GoogleAuthOptions = {
       scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-     
     };
 
     // Check if running in an environment with Base64 credentials
     if (process.env.GOOGLE_CREDENTIALS_BASE64) {
-      // Declare variable here to make it accessible in the catch block
       let decodedCredentials = '';
       try {
         logger.info(
           'Found GOOGLE_CREDENTIALS_BASE64, decoding and using for Google Auth.'
         );
-        // Perform decoding
-        decodedCredentials = Buffer.from(
-          process.env.GOOGLE_CREDENTIALS_BASE64,
-          'base64'
-        ).toString('utf-8');
+        let rawBase64 = process.env.GOOGLE_CREDENTIALS_BASE64.trim();
+      
+        rawBase64 = rawBase64.replace(/%/g, '');
+        logger.info('rawBase64', rawBase64);
+        decodedCredentials = Buffer.from(rawBase64, 'base64').toString();
+        logger.info('Decoded Credentials (first 100 chars):', decodedCredentials.substring(0, 100) + '...');
 
-        // Attempt to parse the decoded string
         const credentials = JSON.parse(decodedCredentials);
-        authOptions.credentials = credentials; // Pass credentials object directly
+        authOptions.credentials = credentials;
 
-        // Ensure the project ID from the credentials matches, or override if necessary
-        if (
-          credentials.project_id &&
-          credentials.project_id !== this.googleProjectId
-        ) {
+        if (credentials.project_id && credentials.project_id !== this.googleProjectId) {
           logger.warn(
             `Project ID mismatch: GOOGLE_CLOUD_PROJECT is ${this.googleProjectId}, but credentials file has ${credentials.project_id}. Using ID from credentials.`
           );
-          // Use the project ID from the credentials file as it's more specific
           this.googleProjectId = credentials.project_id;
         }
-        // If parsing and checks succeed, we're good for this branch
       } catch (error) {
-        // Log the failure reason AND the problematic input string (partially)
         logger.error(
-          'Failed to decode/parse GOOGLE_CREDENTIALS_BASE64. Input string causing error (first 100 chars):',
-          // Check if decodedCredentials has content before trying to access it
+          'Failed to decode/parse GOOGLE_CREDENTIALS_BASE64. Decoded string causing error (first 100 chars):',
           decodedCredentials
             ? decodedCredentials.substring(0, 100) + '...'
-            : 'Input string was empty or not captured.'
+            : 'Input string was empty, invalid Base64, or not captured.'
         );
-        logger.error(
-          'Underlying Error:', // Log the actual error (e.g., SyntaxError)
-          error
-        );
-
-        // Throw a new error to indicate initialization failure from Base64
+        logger.error('Underlying Error:', error);
         throw new Error(
           'Failed to initialize Google Auth from Base64 credentials. Check Base64 encoding and JSON validity.'
         );
       }
     } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      // If not using Base64, log the use of the file path.
-      // GoogleAuth library will automatically pick up this env variable if authOptions.credentials is not set.
       logger.info(
         `Using GOOGLE_APPLICATION_CREDENTIALS file path for Google Auth: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`
       );
-     
     } else {
-      // If neither variable is set, GoogleAuth will try Application Default Credentials (ADC)
       logger.warn(
         'Neither GOOGLE_CREDENTIALS_BASE64 nor GOOGLE_APPLICATION_CREDENTIALS is set. Attempting Application Default Credentials (ADC).'
       );
     }
 
-    
+    // Initialize GoogleAuth
     try {
       this.auth = new GoogleAuth(authOptions);
     } catch (authError) {
       logger.error('Failed to initialize GoogleAuth instance:', authError);
       throw new Error(
-        `Google Auth initialization failed: ${authError instanceof Error ? authError.message : String(authError)}`
+        `Google Auth initialization failed: ${
+          authError instanceof Error ? authError.message : String(authError)
+        }`
       );
     }
 
     if (!this.googleProjectId) {
-      logger.error(
-        'Google Project ID could not be determined after auth setup.'
-      );
+      logger.error('Google Project ID could not be determined after auth setup.');
       throw new Error(
         "Google Project ID is missing. Set GOOGLE_CLOUD_PROJECT or ensure credentials file contains 'project_id'."
       );
     } else {
-      logger.info(
-        `GoogleTTS service initialized for project: ${this.googleProjectId}`
-      );
+      logger.info(`GoogleTTS service initialized for project: ${this.googleProjectId}`);
     }
   } // End of constructor
 
