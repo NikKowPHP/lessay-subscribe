@@ -233,7 +233,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
           // generate expected answer in target language
           if (step.expectedAnswer) {
             const voice = this.ttsService.getVoice(language);
-            const answerAudioBuffer = await retryOperation(() =>
+            const audioBase64 = await retryOperation(() =>
               this.ttsService.synthesizeSpeech(
                 step.expectedAnswer!,
                 language,
@@ -242,7 +242,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
             );
             
             // Create a File object from the answer audio buffer
-            const answerAudioFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
+            const answerAudioFile = this.createAudioFile(audioBase64, `answer_step_${step.stepNumber}.mp3`);
             
             let answerAudioUrl: string;
             
@@ -300,15 +300,17 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   // Helper method to create a File from audio buffer
   private createAudioFile(audioBuffer: string | ArrayBuffer, filename: string): File {
     let blob: Blob;
+
+    logger.info('audioBuffer', audioBuffer.slice(0, 100));
     
     if (typeof audioBuffer === 'string') {
-      // If it's a base64 string, convert it to a Blob
-      const byteCharacters = atob(audioBuffer.split(',')[1]);
-      const byteArrays = [];
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteArrays.push(byteCharacters.charCodeAt(i));
-      }
-      blob = new Blob([new Uint8Array(byteArrays)], { type: 'audio/mp3' });
+      // If it's a base64 string, convert it to a Blob using Buffer
+      const base64Data = audioBuffer.includes(',') 
+        ? audioBuffer.split(',')[1]  // Extract from data URL
+        : audioBuffer;       
+        
+      const buffer = Buffer.from(base64Data, 'base64');
+      blob = new Blob([buffer], { type: 'audio/mp3' });
     } else {
       // If it's already an ArrayBuffer
       blob = new Blob([audioBuffer], { type: 'audio/mp3' });

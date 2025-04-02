@@ -3,6 +3,7 @@ import logger from '@/utils/logger';
 import axios from 'axios';
 import { GoogleAuth, GoogleAuthOptions } from 'google-auth-library';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import mockAudioJsonReply from '@/__mocks__/google-audio-json-reply.mock.json'
 
 export class GoogleTTS implements ITTS {
   private auth: GoogleAuth;
@@ -11,6 +12,7 @@ export class GoogleTTS implements ITTS {
 
   private proxyAgent: unknown | undefined;
 
+  // TODO: refactor constructor
   constructor() {
     this.validateEnvironment(); // Checks required vars like GOOGLE_CLOUD_PROJECT
     const projectId = process.env.GOOGLE_CLOUD_PROJECT!;
@@ -31,7 +33,6 @@ export class GoogleTTS implements ITTS {
         let rawBase64 = process.env.GOOGLE_CREDENTIALS_BASE64.trim();
 
         rawBase64 = rawBase64.replace(/%/g, '');
-        logger.info('rawBase64', rawBase64);
         decodedCredentials = Buffer.from(rawBase64, 'base64').toString();
         logger.info(
           'Decoded Credentials (first 100 chars):',
@@ -166,6 +167,11 @@ export class GoogleTTS implements ITTS {
         config.proxy = false;
       }
 
+      const mockReturnData = false;
+
+      if (mockReturnData) {
+        return mockAudioJsonReply.audioContent;
+      } 
       const response = await axios(config);
 
       // Detect proxy interference by checking for HTML response
@@ -181,6 +187,7 @@ export class GoogleTTS implements ITTS {
           'Network gateway error occurred - received HTML response instead of API response'
         );
       }
+
 
       // Try to parse JSON if we got through proxy
       const responseData =
@@ -211,7 +218,7 @@ export class GoogleTTS implements ITTS {
         );
       }
 
-      return responseData.audioContent;
+      return responseData.audioContent; // base64 string
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNABORTED') {
