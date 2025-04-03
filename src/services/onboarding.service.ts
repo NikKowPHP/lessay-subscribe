@@ -92,7 +92,6 @@ export default class OnboardingService {
 
       logger.info(`Generated ${steps} assessment steps without audio`);
 
-      //TODO: generate audios for the steps
 
       const audioSteps =
         await this.assessmentGeneratorService.generateAudioForSteps(

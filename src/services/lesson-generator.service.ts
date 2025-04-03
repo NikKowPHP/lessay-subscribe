@@ -6,6 +6,9 @@ import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock';
 import { GeneratedLesson, LessonStep } from '@/models/AppAllModels.model';
 import { MockAssessmentGeneratorService } from '@/__mocks__/generated-assessment-lessons.mock';
 import { ITTS } from '@/interfaces/tts.interface';
+import path from 'path';
+import fs from 'fs';
+
 export interface ILessonGeneratorService {
   generateLesson: (
     topic: string,
@@ -23,17 +26,28 @@ export interface ILessonGeneratorService {
 class LessonGeneratorService implements ILessonGeneratorService {
   private aiService: IAIService;
   private useMock: boolean;
+  private useAudioGeneratorMock: boolean;
+  private useAudioUploadMock: boolean;
   private ttsService: ITTS;
+  private uploadFunction: (file: File, pathPrefix: string) => Promise<string>;
 
   constructor(
     aiService: IAIService,
     useMock: boolean = process.env.NEXT_PUBLIC_MOCK_LESSON_GENERATOR === 'true',
-    ttsService: ITTS
+    ttsService: ITTS,
+    uploadFunction?: (file: File, pathPrefix: string) => Promise<string>
   ) {
     this.aiService = aiService;
     this.useMock = useMock;
+    this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR === 'true';
+    this.useAudioUploadMock = process.env.NEXT_PUBLIC_USE_AUDIO_UPLOAD_MOCK === 'true';
     this.ttsService = ttsService;
-    logger.info('LessonGeneratorService initialized', { useMock });
+    this.uploadFunction = uploadFunction || ((file, _) => Promise.resolve(URL.createObjectURL(file)));
+    logger.info('LessonGeneratorService initialized', { 
+      useMock: this.useMock,
+      useAudioGeneratorMock: this.useAudioGeneratorMock,
+      useAudioUploadMock: this.useAudioUploadMock
+    });
   }
 
   async generateLesson(
@@ -155,14 +169,11 @@ class LessonGeneratorService implements ILessonGeneratorService {
     language: string,
     sourceLanguage: string
   ): Promise<LessonStep[]> {
-    logger.info('Generating audio for assessment lesson', {
-      steps,
-    });
+    logger.info('Generating audio for lesson steps', { steps });
 
     try {
-      if (this.useMock) {
-        logger.info('Using mock assessment generator');
-
+      if (this.useAudioGeneratorMock) {
+        logger.info('Using mock audio generator');
         for (const step of steps) {
           const audio = await MockLessonGeneratorService.generateAudioForStep(
             step.content,
@@ -177,41 +188,82 @@ class LessonGeneratorService implements ILessonGeneratorService {
             step.expectedAnswerAudioUrl = audio;
           }
         }
-        logger.info('Mock assessment generated', { steps });
+        logger.info('Mock audio generated', { steps });
       } else {
-        // get appropriate voice
-        const voice = this.ttsService.getVoice(language);
-
+        // Real implementation
         for (const step of steps) {
-          const audio = await retryOperation(() =>
-            this.ttsService.synthesizeSpeech(
-              step.content,
-              sourceLanguage,
-              voice
-            )
+          // Generate content audio in source language
+          const contentVoice = this.ttsService.getVoice(sourceLanguage);
+          const contentAudioBuffer = await retryOperation(() =>
+            this.ttsService.synthesizeSpeech(step.content, sourceLanguage, contentVoice)
           );
-          step.contentAudioUrl = audio.toString('base64');
+          
+          const contentFile = this.createAudioFile(contentAudioBuffer, `content_step_${step.stepNumber}.mp3`);
+          step.contentAudioUrl = await this.handleAudioOutput(contentFile, 'lessay/lessonStep/audio');
+
+          // Generate expected answer audio in target language if exists
           if (step.expectedAnswer) {
-            const audio = await retryOperation(() =>
-              this.ttsService.synthesizeSpeech(
-                step.expectedAnswer!,
-                language,
-                voice
-              )
+            const answerVoice = this.ttsService.getVoice(language);
+            const answerAudioBuffer = await retryOperation(() =>
+              this.ttsService.synthesizeSpeech(step.expectedAnswer!, language, answerVoice)
             );
-            step.expectedAnswerAudioUrl = audio.toString('base64');
-            // TODO: keep audio in buffer, download to vercel blob and get the link, attach link here.
+            
+            const answerFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
+            step.expectedAnswerAudioUrl = await this.handleAudioOutput(answerFile, 'lessay/lessonStep/audio');
           }
         }
       }
-
       return steps;
     } catch (error) {
-      logger.error('Error generating audio for assessment:', {
-        error,
-      });
+      logger.error('Error generating audio for lesson:', { error });
       throw error;
     }
+  }
+
+  private async handleAudioOutput(file: File, pathPrefix: string): Promise<string> {
+    return this.useAudioUploadMock 
+      ? await this.saveAudioLocally(file, pathPrefix)
+      : await this.uploadFunction(file, pathPrefix);
+  }
+
+  private async saveAudioLocally(file: File, pathPrefix: string): Promise<string> {
+    try {
+      const publicDir = path.join(process.cwd(), 'public');
+      const targetDir = path.join(publicDir, pathPrefix);
+      
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      
+      const timestamp = Date.now();
+      const filename = `${timestamp}-${file.name}`;
+      const filePath = path.join(targetDir, filename);
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      fs.writeFileSync(filePath, buffer);
+      
+      return `/${pathPrefix}/${filename}`;
+    } catch (error) {
+      logger.error('Error saving audio locally', { error });
+      throw error;
+    }
+  }
+
+  private createAudioFile(audioBuffer: string | ArrayBuffer, filename: string): File {
+    let blob: Blob;
+    
+    if (typeof audioBuffer === 'string') {
+      const base64Data = audioBuffer.includes(',') 
+        ? audioBuffer.split(',')[1]
+        : audioBuffer;
+      const buffer = Buffer.from(base64Data, 'base64');
+      blob = new Blob([buffer], { type: 'audio/mp3' });
+    } else {
+      blob = new Blob([audioBuffer], { type: 'audio/mp3' });
+    }
+    
+    return new File([blob], filename, { type: 'audio/mp3' });
   }
 
   private formatLessonResponse(
