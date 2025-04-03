@@ -106,14 +106,14 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
 
         logger.info('Generated prompts for assessment', { prompts });
 
-        aiResponse = await retryOperation(() =>
-          this.aiService.generateContent(
+        // aiResponse = await retryOperation(() =>
+          aiResponse = await this.aiService.generateContent(
             '', // No file URI needed
             prompts.userPrompt,
             prompts.systemPrompt,
-            models.gemini_2_5_pro_exp
+            models.gemini_2_0_flash
           )
-        );
+        // );
       }
       // TODO: add validation and try again if it fails
 
@@ -144,8 +144,8 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
         );
       }
 
-      const prompts = this.generateAssessmentResultPrompts(
-        assessmentLesson,
+      const prompts = this.generateOnboardingAssessmentEvaluationPrompts(
+        assessmentLesson.steps as AssessmentStep[],
         userResponse
       );
 
@@ -156,7 +156,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
           '', // No file URI needed
           prompts.userPrompt,
           prompts.systemPrompt,
-          models.gemini_2_5_pro_exp
+          models.gemini_2_0_flash
         )
       );
 
@@ -367,6 +367,9 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
     }
   }
 
+
+
+
   private generateAssessmentPrompts(
     targetLanguage: string,
     sourceLanguage: string,
@@ -374,39 +377,107 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   ): { userPrompt: string; systemPrompt: string } {
     return {
       systemPrompt: `You are an expert language assessment designer specializing in ${targetLanguage} 
-        language proficiency evaluation. Create a comprehensive assessment for ${proficiencyLevel} level 
-        learners whose native language is ${sourceLanguage}.`,
+        language proficiency evaluation. Create an initial onboarding assessment that will help 
+        determine a new user's proficiency level (beginner, intermediate, or advanced) and learning needs
+        in ${targetLanguage}. The assessment should be welcoming and encouraging while still providing 
+        accurate diagnostic information.
+        
+        The user's native language is ${sourceLanguage}. Design an assessment that progressively increases 
+        in difficulty to identify their current skill level.`,
 
-      userPrompt: `Create a language assessment to evaluate a ${proficiencyLevel} level student of ${targetLanguage}.
+      userPrompt: `Create a welcoming onboarding language assessment for a new user learning ${targetLanguage} 
+        with ${sourceLanguage} as their native language.
+        
         The assessment should:
-        1. Include a variety of question types (vocabulary, grammar, comprehension)
-        2. Progress from simpler to more complex questions
-        3. Test both recognition and production skills
+        1. Start with a friendly introduction explaining the purpose of the assessment
+        2. Include 6-8 carefully selected questions that progressively increase in difficulty
+        3. Cover fundamental language skills (vocabulary, grammar, comprehension, basic production)
+        4. Be designed to accurately place users in beginner, intermediate, or advanced levels
+        5. End with an encouraging message regardless of performance level
         
-        Format the response as JSON with an array of steps, each containing:
-        - stepNumber: sequential number
-        - type: one of [instruction, question, feedback, summary]
-        - content: The text of the instruction/question
-        - expectedAnswer: The correct answer (for question types)
-        - maxAttempts: Maximum attempts allowed (usually 3)
-        - feedback: Helpful feedback to provide after the student attempts the question
+        Format the response as a JSON object with the following structure:
+        {
+          "steps": [
+            {
+              "stepNumber": 1,
+              "type": "instruction",  // one of: instruction, question, feedback, summary
+              "content": "Welcome message and instructions in ${sourceLanguage}",
+              "translation": null,
+              "expectedAnswer": null,
+              "maxAttempts": 1,
+              "feedback": null
+            },
+            {
+              "stepNumber": 2,
+              "type": "question",
+              "content": "Basic level question in ${sourceLanguage}",
+              "translation": "Translation in ${targetLanguage} if applicable",
+              "expectedAnswer": "Expected answer in ${targetLanguage}",
+              "maxAttempts": 3,
+              "feedback": "Supportive feedback explaining the answer"
+            },
+            // Additional steps with progressively harder questions...
+            {
+              "stepNumber": 8,
+              "type": "summary",
+              "content": "Encouraging conclusion in ${sourceLanguage}",
+              "translation": null,
+              "expectedAnswer": null,
+              "maxAttempts": 1,
+              "feedback": null
+            }
+          ]
+        }
         
-        The assessment should have 8-10 steps including introduction and conclusion.`,
+        Ensure questions are clearly labeled by difficulty level (internally in the JSON via comments or description fields)
+        so we can accurately determine the user's proficiency based on which questions they answer correctly.
+        
+        The assessment should be engaging, supportive, and provide a positive first experience while still 
+        gathering accurate diagnostic information about the user's current language abilities.`
     };
   }
 
-  generateAssessmentResultPrompts(
-    assessmentLesson: AssessmentLesson,
-    userResponse: string
+  // You can add this method to evaluate the onboarding assessment results
+  private generateOnboardingAssessmentEvaluationPrompts(
+    assessmentSteps: AssessmentStep[],
+    userResponses: Record<number, string>
   ): { userPrompt: string; systemPrompt: string } {
     return {
-      systemPrompt: `You are an expert language assessment designer specializing in ${assessmentLesson.targetLanguage} 
-        language proficiency evaluation. Create a comprehensive assessment for  level 
-        learners whose native language is ${assessmentLesson.sourceLanguage}.`,
-      userPrompt: `Evaluate the student's response to the following assessment lesson:
-        ${JSON.stringify(assessmentLesson)}
-        The student's response is:
-        ${userResponse}`,
+      systemPrompt: `You are an expert language assessment evaluator specializing in determining a user's 
+        proficiency level and learning needs based on their responses to an onboarding assessment.
+        
+        Analyze the user's responses to determine:
+        1. Their overall proficiency level (beginner, intermediate, or advanced)
+        2. Their strengths and weaknesses
+        3. Recommended learning topics based on their performance
+        4. A supportive summary of their current abilities`,
+
+      userPrompt: `Evaluate the following onboarding assessment responses and determine the user's proficiency level.
+        
+        Assessment steps:
+        ${JSON.stringify(assessmentSteps, null, 2)}
+        
+        User responses:
+        ${JSON.stringify(userResponses, null, 2)}
+        
+        Provide your evaluation in the following JSON format:
+        {
+          "metrics": {
+            "accuracy": number,           // Overall percentage of correct answers
+            "pronunciationScore": number, // Estimated pronunciation score based on complexity of responses
+            "grammarScore": number,       // Grammar accuracy score
+            "vocabularyScore": number,    // Vocabulary knowledge score
+            "overallScore": number,       // Overall proficiency score
+            "strengths": ["string"],      // List of identified strengths
+            "weaknesses": ["string"]      // List of identified areas for improvement
+          },
+          "proficiencyLevel": "beginner|intermediate|advanced", // Determined level
+          "proposedTopics": ["string"],   // 3-5 recommended topics for initial learning
+          "summary": "string"             // Encouraging summary of results
+        }
+        
+        Be supportive and encouraging in your assessment, focusing on the user's potential for growth
+        while still providing an accurate proficiency assessment.`
     };
   }
 }

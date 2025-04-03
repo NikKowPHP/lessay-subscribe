@@ -172,12 +172,12 @@ class AIService implements  IUploadableAIService{
       contents: [{
         role: "user",
         parts: [
-          {
+          ...(fileUri ? [{
             fileData: {
               fileUri: fileUri,
               mimeType: "audio/aac-adts"
             }
-          },
+          }] : []),
           { text: userMessage }
         ]
       }],
@@ -206,31 +206,56 @@ class AIService implements  IUploadableAIService{
     }
 
     return await this.retryOperation(async () => {
-      const response = await axios.post<GeminiResponse>(url, data, config);
-      
-      // Extract the JSON string from the response
-      const jsonString = response.data.candidates[0].content.parts[0].text;
-      const cleanedJson = jsonString
-        .replace(/```json/g, '')
-        .replace(/```/g, '')
-        .trim();
-      logger.log("Cleaned JSON:", cleanedJson);
-
       try {
-        const analysisData = JSON.parse(cleanedJson);
-        console.log("Analysis Data:", analysisData);
+        const response = await axios.post<GeminiResponse>(url, data, config);
+        
+        // Extract the JSON string from the response
+        const jsonString = response.data.candidates[0].content.parts[0].text;
+        const cleanedJson = jsonString
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .trim();
+        logger.log("Cleaned JSON:", cleanedJson);
 
-        if (Array.isArray(analysisData)) {
-          if (analysisData.length === 0) {
-            throw new Error("Empty analysis array");
+        try {
+          const analysisData = JSON.parse(cleanedJson);
+          console.log("Analysis Data:", analysisData);
+
+          if (Array.isArray(analysisData)) {
+            if (analysisData.length === 0) {
+              throw new Error("Empty analysis array");
+            }
+            return analysisData[0];
           }
-          return analysisData[0];
+          // Return the first item in the array as that's our analysis
+          return analysisData;
+        } catch (parseError) {
+          logger.error("Error parsing Gemini response:", {
+            error: parseError,
+            response: response.data,
+            cleanedJson
+          });
+          throw new Error(`Failed to parse AI response: ${parseError.message}`);
         }
-        // Return the first item in the array as that's our analysis
-        return analysisData;
-      } catch (parseError) {
-        logger.error("Error parsing Gemini response:", parseError);
-        throw new Error("Failed to parse AI response");
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const errorDetails = {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            config: {
+              url: error.config?.url,
+              method: error.config?.method,
+              headers: error.config?.headers,
+              data: error.config?.data
+            }
+          };
+          
+          logger.error("Detailed API error:", errorDetails);
+          throw new Error(`API request failed: ${error.response?.status} ${error.response?.statusText} - ${JSON.stringify(error.response?.data)}`);
+        }
+        logger.error("Unexpected error in generateContent:", error);
+        throw new Error(`Unexpected error: ${error.message}`);
       }
     });
   }
