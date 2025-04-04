@@ -13,6 +13,7 @@ interface AuthContextType {
   loading: boolean
   error: string | null
   login: (email: string, password: string) => Promise<void>
+  register: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   clearError: () => void
 }
@@ -85,6 +86,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const register = async (email: string, password: string) => {
+    setError(null)
+    setLoading(true)
+    try {
+      const { user, session } = await authService.register(email, password)
+      setUser(user)
+      setSession(session)
+      if (user) {
+        router.push('/app/lessons')
+      }
+    } catch (error) {
+      const message = error instanceof AuthError 
+        ? error.message 
+        : 'Registration failed'
+      setError(message)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const logout = async () => {
     setError(null)
     try {
@@ -105,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading, 
       error,
       login, 
+      register,
       logout,
       clearError 
     }}>

@@ -9,7 +9,8 @@ export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const { login, error, loading, user } = useAuth()
+  const [isRegistering, setIsRegistering] = useState(false)
+  const { login, register, error, loading, user, clearError } = useAuth()
 
   useEffect(() => {
     console.log('user', user)
@@ -20,12 +21,26 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    clearError()
     try {
       await login(email, password)
       // Navigation is handled in the AuthContext
-    } catch (error) {
-      // Error handling is managed by the context
+    } catch (error: any) {
       logger.log('Login failed:', error)
+      
+      // Check if error is because user doesn't exist
+      if (error.message?.includes('Invalid login credentials') || 
+          error.message?.includes('user not found')) {
+        try {
+          setIsRegistering(true)
+          logger.log('Attempting to register instead...')
+          await register(email, password)
+          // Registration successful, navigation handled in the AuthContext
+        } catch (registerError) {
+          logger.log('Registration failed:', registerError)
+          setIsRegistering(false)
+        }
+      }
     }
   }
 
@@ -34,8 +49,13 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            {isRegistering ? 'Creating your account' : 'Sign in to your account'}
           </h2>
+          {isRegistering && (
+            <p className="mt-2 text-center text-sm text-gray-600">
+              We're creating a new account for you...
+            </p>
+          )}
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           {error && (
@@ -71,8 +91,13 @@ export default function LoginPage() {
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
               disabled={loading}
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading 
+                ? isRegistering ? 'Creating account...' : 'Signing in...' 
+                : 'Sign in'}
             </button>
+          </div>
+          <div className="text-sm text-center text-gray-600">
+            Enter your email and password to sign in. If you don't have an account yet, we'll create one for you.
           </div>
         </form>
       </div>

@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useUpload } from '@/hooks/use-upload';
+import { useAuth } from './auth-context';
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;
@@ -65,6 +66,8 @@ export function OnboardingProvider({
   const [error, setError] = useState<string | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingModel | null>(null);
   const router = useRouter();
+
+  const { user } = useAuth();
 
   const { uploadFile } = useUpload();
 
@@ -216,6 +219,7 @@ export function OnboardingProvider({
 
 
   useEffect(() => {
+   
     const initializeOnboarding = async () => {
       try {
         const isComplete = await checkOnboardingStatus();
@@ -231,8 +235,9 @@ export function OnboardingProvider({
       }
     };
 
+    if(!user) router.replace('/app/login');
     initializeOnboarding();
-  }, []);
+  }, [user, router]);
 
   return (
     <OnboardingContext.Provider

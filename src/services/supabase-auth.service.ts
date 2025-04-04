@@ -14,6 +14,16 @@ export class SupabaseAuthService implements IAuthService {
     return data
   }
 
+  async register(email: string, password: string) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+    console.log('register', data, error)
+    if (error) throw new Error(error.message)
+    return data
+  }
+
   async logout() {
     const { error } = await supabase.auth.signOut()
     if (error) throw new Error(error.message)
@@ -31,7 +41,7 @@ export class SupabaseAuthService implements IAuthService {
 } 
 
 export function getAuthServiceBasedOnEnvironment() {
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
     return new MockAuthService()
   }
   return new SupabaseAuthService()
