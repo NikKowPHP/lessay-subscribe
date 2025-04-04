@@ -23,6 +23,7 @@ export default function OnboardingPage() {
     getOnboarding,
     getAssessmentLesson,
     markOnboardingAsCompleteAndGenerateLessons,
+    processAssessmentLessonRecording,
     completeAssessmentLesson,
     goToLessonsWithOnboardingComplete,
   } = useOnboarding();
@@ -175,9 +176,9 @@ export default function OnboardingPage() {
     goToLessonsWithOnboardingComplete();
   };
 
-  const processAssessmentLessonRecording = async (sessionRecording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number) => {
+  const onProcessAssessmentLessonRecording = async (sessionRecording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number) => {
     logger.info('processing assessment lesson recording', { sessionRecording, lesson, recordingTime, recordingSize });
-    const LessonWithMetrics = await completeAssessmentLesson(lesson.id, 'Assessment completed');
+    const LessonWithMetrics = await processAssessmentLessonRecording(sessionRecording, lesson, recordingTime, recordingSize);
     setAssessmentLesson((prev) => ({ ...prev, ...LessonWithMetrics }));
     logger.info('LessonWithMetrics', LessonWithMetrics);
     return LessonWithMetrics;
@@ -226,7 +227,7 @@ export default function OnboardingPage() {
             lesson={assessmentLesson}
             onGoToLessonsButtonClick={() => handleGoToLessonsButtonClick()}
             areMetricsGenerated={areMetricsGenerated}
-            processAssessmentLessonRecording={processAssessmentLessonRecording}
+            processAssessmentLessonRecording={onProcessAssessmentLessonRecording}
           />
         );
       default:

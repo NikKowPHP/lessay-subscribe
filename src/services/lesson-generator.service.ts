@@ -29,6 +29,19 @@ export interface ILessonGeneratorService {
       completedAssessment?: boolean;
       proposedTopics?: string[];
       summary?: string;
+      audioMetricsAvailable?: boolean;
+      audioMetrics?: {
+        pronunciationScore?: number;
+        fluencyScore?: number;
+        grammarScore?: number;
+        vocabularyScore?: number;
+        overallPerformance?: number;
+        problematicSounds?: string[];
+        grammarRulesToReview?: Array<{rule: string; priority: string}>;
+        vocabularyAreasForExpansion?: Array<{topic: string; suggestedVocabulary: string[]}>;
+        suggestedTopics?: string[];
+        proficiencyLevel?: string;
+      };
     }
   ) => Promise<Record<string, unknown>>;
   generateAudioForSteps: (
@@ -101,6 +114,19 @@ class LessonGeneratorService implements ILessonGeneratorService {
       completedAssessment?: boolean;
       proposedTopics?: string[];
       summary?: string;
+      audioMetricsAvailable?: boolean;
+      audioMetrics?: {
+        pronunciationScore?: number;
+        fluencyScore?: number;
+        grammarScore?: number;
+        vocabularyScore?: number;
+        overallPerformance?: number;
+        problematicSounds?: string[];
+        grammarRulesToReview?: Array<{rule: string; priority: string}>;
+        vocabularyAreasForExpansion?: Array<{topic: string; suggestedVocabulary: string[]}>;
+        suggestedTopics?: string[];
+        proficiencyLevel?: string;
+      };
     }
   ): Promise<Record<string, unknown>> {
     logger.info('Generating lesson', {
@@ -359,6 +385,19 @@ class LessonGeneratorService implements ILessonGeneratorService {
       completedAssessment?: boolean;
       proposedTopics?: string[];
       summary?: string;
+      audioMetricsAvailable?: boolean;
+      audioMetrics?: {
+        pronunciationScore?: number;
+        fluencyScore?: number;
+        grammarScore?: number;
+        vocabularyScore?: number;
+        overallPerformance?: number;
+        problematicSounds?: string[];
+        grammarRulesToReview?: Array<{rule: string; priority: string}>;
+        vocabularyAreasForExpansion?: Array<{topic: string; suggestedVocabulary: string[]}>;
+        suggestedTopics?: string[];
+        proficiencyLevel?: string;
+      };
     }
   ): { userPrompt: string; systemPrompt: string } {
     logger.info('Generating lesson prompts', {
@@ -366,10 +405,11 @@ class LessonGeneratorService implements ILessonGeneratorService {
       targetLanguage,
       sourceLanguage,
       difficultyLevel,
-      hasAssessmentData: !!assessmentData
+      hasAssessmentData: !!assessmentData,
+      hasAudioMetrics: !!assessmentData?.audioMetricsAvailable
     });
     
-    // Create assessment context if available
+    // Construct assessment context based on basic metrics
     let assessmentContext = '';
     if (assessmentData?.completedAssessment && assessmentData?.metrics) {
       assessmentContext = `
@@ -387,6 +427,35 @@ class LessonGeneratorService implements ILessonGeneratorService {
       Assessment summary: ${assessmentData.summary || 'Not available'}
       
       Recommended topics: ${assessmentData.proposedTopics?.join(', ') || topic}`;
+    }
+    
+    // Add detailed audio metrics context if available
+    let audioMetricsContext = '';
+    if (assessmentData?.audioMetricsAvailable && assessmentData?.audioMetrics) {
+      const am = assessmentData.audioMetrics;
+      
+      // Format audio metrics context
+      audioMetricsContext = `
+      Audio metrics:
+      - Pronunciation score: ${am.pronunciationScore || 'Not measured'}/100
+      - Fluency score: ${am.fluencyScore || 'Not measured'}/100
+      - Grammar score: ${am.grammarScore || 'Not measured'}/100
+      - Vocabulary score: ${am.vocabularyScore || 'Not measured'}/100
+      - Overall performance: ${am.overallPerformance || 'Not measured'}/100
+      
+      Problematic sounds: ${am.problematicSounds?.join(', ') || 'None identified'}
+      
+      Grammar rules to review:
+      ${am.grammarRulesToReview?.map(rule => `- ${rule.rule} (Priority: ${rule.priority})`).join('\n') || 'None identified'}
+      
+      Vocabulary areas for expansion:
+      ${am.vocabularyAreasForExpansion?.map(area => 
+        `- ${area.topic}: ${area.suggestedVocabulary.join(', ')}`
+      ).join('\n') || 'None identified'}
+      
+      Suggested topics from speech analysis: ${am.suggestedTopics?.join(', ') || 'None identified'}
+      
+      Current proficiency level: ${am.proficiencyLevel || difficultyLevel}`;
     }
     
     return {
@@ -411,11 +480,18 @@ class LessonGeneratorService implements ILessonGeneratorService {
         Your lesson should be optimized for audio-based learning, as most content will be spoken aloud.
         ${assessmentData?.completedAssessment ? 
           `\n\nYou have access to the student's assessment results. Use this information to personalize the lesson, 
-          focusing on addressing identified weaknesses while building upon their strengths.` : ''}`,
+          focusing on addressing identified weaknesses while building upon their strengths.` : ''}
+        ${assessmentData?.audioMetricsAvailable ? 
+          `\n\nImportantly, you have detailed speech analysis metrics available. Pay special attention to:
+          - Problematic sounds that need pronunciation practice
+          - Grammar patterns that need reinforcement
+          - Vocabulary domains that should be expanded
+          - The student's actual proficiency level based on speech analysis` : ''}`,
         
       userPrompt: `Create a comprehensive lesson about "${topic}" in ${targetLanguage} 
         for ${difficultyLevel} level students who speak ${sourceLanguage}.
         ${assessmentData?.completedAssessment ? `\n${assessmentContext}\n` : ''}
+        ${assessmentData?.audioMetricsAvailable ? `\n${audioMetricsContext}\n` : ''}
         
         Format the response as JSON with:
         {
@@ -479,6 +555,10 @@ class LessonGeneratorService implements ILessonGeneratorService {
           `- Directly addresses the student's weaknesses identified in their assessment
           - Builds upon their strengths to maintain engagement and confidence
           - Focuses particularly on: ${assessmentData.metrics?.weaknesses?.join(', ') || 'general improvement'}` : ''}
+        ${assessmentData?.audioMetricsAvailable ? 
+          `- Incorporates exercises for problematic sounds: ${assessmentData.audioMetrics?.problematicSounds?.join(', ') || 'general pronunciation'}
+          - Includes practice for key grammar rules: ${assessmentData.audioMetrics?.grammarRulesToReview?.slice(0, 2).map(r => r.rule).join(', ') || 'basic grammar structures'}
+          - Expands vocabulary in needed areas: ${assessmentData.audioMetrics?.vocabularyAreasForExpansion?.slice(0, 2).map(a => a.topic).join(', ') || 'essential vocabulary'}` : ''}
         
         Do not include user responses or contentAudioUrl fields as these will be populated during the lesson.`
     };

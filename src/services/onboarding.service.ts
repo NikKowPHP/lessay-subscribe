@@ -359,16 +359,32 @@ export default class OnboardingService {
     const arrayBuffer = await sessionRecording.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // 3. Determine proper mime type
+    const mimeType = sessionRecording.type || 'audio/webm';
+   
+    // 4. Upload the file
+    const fileName = `lesson-${lesson.id}-${Date.now()}.webm`;
+    logger.info('Uploading recording file', { 
+      fileName,
+      mimeType,
+      size: buffer.length
+    });
+ 
+   
+    
     const fileUri = await this.recordingService.uploadFile(
       buffer,
-      sessionRecording.type,
-      `lesson-${lesson.id}-${Date.now()}.webm`
+      mimeType,
+      fileName
     );
     logger.log('File URI:', fileUri);
+  
+    logger.log('Sending recording to AI for analysis');
 
     // send recording to AI
     let aiResponse: Record<string, unknown>;
-    if (process.env.MOCK_AI_RESPONSE === 'true') {
+    if(false) {
+    // if (process.env.MOCK_AI_RESPONSE === 'true') {
       aiResponse = mockAudioMetrics;
     } else {
       aiResponse = await this.recordingService.submitLessonRecordingSession(

@@ -230,49 +230,96 @@ export default class LessonService {
       );
     }
 
-    // here we have already the audiometrics from the onboarding assessment
-
-
     // Extract necessary data for lesson generation
     const targetLanguage = onboardingData.targetLanguage || 'German';
     const proficiencyLevel =
       onboardingData.proficiencyLevel?.toLowerCase() || 'beginner';
     const learningPurpose = onboardingData.learningPurpose || 'general';
     const sourceLanguage = onboardingData.nativeLanguage || 'English';
-    // TODO: Feed with the recording results from the onboarding assessment
     
-    // Get assessment data if available
-    let assessmentData: any;
+    // Initialize variables for collecting topic suggestions from various sources
+    let assessmentTopics: string[] = [];
+    let audioMetricsTopics: string[] = [];
+    let learningPurposeTopics: string[] = [];
+    let adaptiveRequest: any = undefined;
+    
+    // Get assessment data with audio metrics if available
     if (onboardingData.initialAssessmentCompleted) {
-      // Get the latest assessment
+      // Get the latest assessment with audio metrics
       const assessment = await this.onboardingRepository.getAssessmentLesson(onboardingData.userId);
-      const latestAssessment = assessment ? 
-        assessment : null;
+      
+      if (assessment) {
+        // Collect topics from assessment
+        assessmentTopics = assessment.proposedTopics || [];
+        logger.info('Found assessment topics', { assessmentTopics });
         
-      if (latestAssessment) {
-        assessmentData = {
-          completedAssessment: true,
-          metrics: latestAssessment.metrics as any,
-          proposedTopics: latestAssessment.proposedTopics || [],
-          summary: latestAssessment.summary || ''
-        };
+        // If we have audio metrics, use those for richer insights
+        if (assessment.audioMetrics) {
+          const audioMetrics = assessment.audioMetrics;
+          
+          // Gather topics from audio metrics
+          audioMetricsTopics = [
+            ...audioMetrics.suggestedTopics || [], 
+            ...audioMetrics.grammarFocusAreas || [],
+            ...audioMetrics.vocabularyDomains || []
+          ];
+          
+          logger.info('Found audio metrics topics', { audioMetricsTopics });
+          
+          // Create adaptive request with detailed audio metrics
+          adaptiveRequest = {
+            completedAssessment: true,
+            audioMetricsAvailable: true,
+            metrics: assessment.metrics,
+            audioMetrics: {
+              pronunciationScore: audioMetrics.pronunciationScore,
+              fluencyScore: audioMetrics.fluencyScore,
+              grammarScore: audioMetrics.grammarScore,
+              vocabularyScore: audioMetrics.vocabularyScore,
+              overallPerformance: audioMetrics.overallPerformance,
+              problematicSounds: audioMetrics.pronunciationAssessment.problematic_sounds,
+              grammarRulesToReview: audioMetrics.grammarAssessment.grammar_rules_to_review,
+              vocabularyAreasForExpansion: audioMetrics.vocabularyAssessment.areas_for_expansion,
+              suggestedTopics: audioMetrics.suggestedTopics,
+              proficiencyLevel: audioMetrics.proficiencyLevel
+            },
+            proposedTopics: assessment.proposedTopics || [],
+            summary: assessment.summary || ''
+          };
+        } else {
+          // Create basic assessment data if no audio metrics
+          adaptiveRequest = {
+            completedAssessment: true,
+            audioMetricsAvailable: false,
+            metrics: assessment.metrics,
+            proposedTopics: assessment.proposedTopics || [],
+            summary: assessment.summary || ''
+          };
+        }
       }
     }
-    // TODO: track user topics 
     
-    // Define topics based on learning purpose
-    // aggregate the summary and the 3 top topics from the proposedTopics of assessment resutls and audio metrics and take into consideration the learning purpose
-    // TODO: aggregate the summary and the 3 top topics from the proposedTopics of assessment resutls and audio metrics and take into consideration the learning purpose
+    // Get topics from learning purpose
+    learningPurposeTopics = this.getTopicsFromLearningPurpose(learningPurpose);
+    
+    // Combine and prioritize topics
+    const selectedTopics = this.selectPrioritizedTopics(
+      assessmentTopics,
+      audioMetricsTopics,
+      learningPurposeTopics,
+      proficiencyLevel
+    );
+    
+    logger.info('Selected prioritized topics', { selectedTopics });
 
-    const topics = this.getTopicsFromLearningPurpose(learningPurpose)
-    // Generate lessons for each topic
-    const lessonPromises = topics.map(async (topic) => {
+    // Generate lessons for each selected topic
+    const lessonPromises = selectedTopics.map(async (topic) => {
       const generatedResult = await this.lessonGeneratorService.generateLesson(
         topic,
         targetLanguage,
         proficiencyLevel,
         sourceLanguage,
-        assessmentData  // Pass assessment data to the generator
+        adaptiveRequest  // Pass enriched assessment data to the generator
       );
       const lessonItems = Array.isArray(generatedResult.data)
         ? generatedResult.data
@@ -293,11 +340,6 @@ export default class LessonService {
             targetSkills: lessonItem.targetSkills,
             steps: audioSteps,
           };
-          logger.info(
-            'lessonData in initial lesson generation  with steps: ',
-            { lessonData },
-            { steps: lessonData.steps }
-          );
           return this.createLesson(lessonData);
         })
       );
@@ -308,6 +350,73 @@ export default class LessonService {
     // Flatten the nested array of lessons and return
     const lessonsNested = await Promise.all(lessonPromises);
     return lessonsNested.flat();
+  }
+
+  // New helper method to intelligently select and prioritize topics
+  private selectPrioritizedTopics(
+    assessmentTopics: string[],
+    audioMetricsTopics: string[],
+    learningPurposeTopics: string[],
+    proficiencyLevel: string
+  ): string[] {
+    // Create a map to score topics based on their source and frequency
+    const topicScores: Record<string, number> = {};
+    
+    // Score topics from different sources with different weights
+    // Audio metrics topics get highest priority as they're most personalized
+    audioMetricsTopics.forEach(topic => {
+      const normalizedTopic = this.normalizeTopic(topic);
+      topicScores[normalizedTopic] = (topicScores[normalizedTopic] || 0) + 3;
+    });
+    
+    // Assessment topics get second priority
+    assessmentTopics.forEach(topic => {
+      const normalizedTopic = this.normalizeTopic(topic);
+      topicScores[normalizedTopic] = (topicScores[normalizedTopic] || 0) + 2;
+    });
+    
+    // Learning purpose topics get lowest priority but ensure some basics are covered
+    learningPurposeTopics.forEach(topic => {
+      const normalizedTopic = this.normalizeTopic(topic);
+      topicScores[normalizedTopic] = (topicScores[normalizedTopic] || 0) + 1;
+    });
+    
+    // For beginners, ensure basic topics are included
+    if (proficiencyLevel === 'beginner') {
+      const basicTopics = ['Greetings', 'Introductions', 'Basic Phrases'];
+      basicTopics.forEach(topic => {
+        const normalizedTopic = this.normalizeTopic(topic);
+        topicScores[normalizedTopic] = (topicScores[normalizedTopic] || 0) + 1.5;
+      });
+    }
+    
+    // Sort topics by score and limit to top 3
+    const sortedTopics = Object.entries(topicScores)
+      .sort((a, b) => b[1] - a[1])
+      .map(([topic]) => topic)
+      .slice(0, 3);
+    
+    // If we somehow ended up with less than 3 topics, fill with defaults
+    if (sortedTopics.length < 3) {
+      const defaultTopics = [
+        'Daily Conversations', 
+        'Practical Vocabulary', 
+        'Essential Grammar'
+      ];
+      
+      for (const topic of defaultTopics) {
+        if (sortedTopics.length < 3 && !sortedTopics.includes(topic)) {
+          sortedTopics.push(topic);
+        }
+      }
+    }
+    
+    return sortedTopics;
+  }
+
+  // Helper to normalize topic strings for comparison
+  private normalizeTopic(topic: string): string {
+    return topic.trim().toLowerCase();
   }
 
   async recordStepAttempt(

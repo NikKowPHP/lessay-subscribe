@@ -199,7 +199,8 @@ export function OnboardingProvider({
       });
 
       let recordingUrl = null;
-      if (process.env.NEXT_PUBLIC_MOCK_UPLOADS === 'true') {
+      if(true) {
+      // if (process.env.NEXT_PUBLIC_MOCK_UPLOADS === 'true') {
         recordingUrl = `https://6jnegrfq8rkxfevo.public.blob.vercel-storage.com/products/images/1741514066709-2025-03-09_07-55-trAfuCDSuaW2aZYiXHgENMuGfGNdCo.png`;
       } else {
         recordingUrl = await uploadFile(file, 'lessay/sessionRecordings');
