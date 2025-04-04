@@ -14,7 +14,21 @@ export interface ILessonGeneratorService {
     topic: string,
     targetLanguage: string,
     difficultyLevel: string,
-    sourceLanguage: string
+    sourceLanguage: string,
+    assessmentData?: {
+      metrics?: {
+        accuracy?: number;
+        pronunciationScore?: number;
+        grammarScore?: number;
+        vocabularyScore?: number;
+        overallScore?: number;
+        strengths?: string[];
+        weaknesses?: string[];
+      };
+      completedAssessment?: boolean;
+      proposedTopics?: string[];
+      summary?: string;
+    }
   ) => Promise<Record<string, unknown>>;
   generateAudioForSteps: (
     steps: LessonStep[],
@@ -33,40 +47,58 @@ class LessonGeneratorService implements ILessonGeneratorService {
 
   constructor(
     aiService: IAIService,
-    useMock: boolean = process.env.NEXT_PUBLIC_MOCK_LESSON_GENERATOR === 'true',
     ttsService: ITTS,
     uploadFunction?: (file: File, pathPrefix: string) => Promise<string>
   ) {
     this.aiService = aiService;
-    this.useMock = useMock;
-    this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR === 'true';
-    this.useAudioUploadMock = process.env.NEXT_PUBLIC_USE_AUDIO_UPLOAD_MOCK === 'true';
     this.ttsService = ttsService;
     this.uploadFunction = uploadFunction || ((file, _) => Promise.resolve(URL.createObjectURL(file)));
+    // this.useMock = process.env.NEXT_PUBLIC_MOCK_LESSON_GENERATOR === 'true';
+    this.useMock = false;
+    this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR === 'true';
+    this.useAudioUploadMock = process.env.NEXT_PUBLIC_USE_AUDIO_UPLOAD_MOCK === 'true';
     logger.info('LessonGeneratorService initialized', { 
       useMock: this.useMock,
       useAudioGeneratorMock: this.useAudioGeneratorMock,
       useAudioUploadMock: this.useAudioUploadMock
     });
+    // TODO: Text lesson gen prod
+
   }
 
   async generateLesson(
     topic: string,
     targetLanguage: string,
     difficultyLevel: string,
-    sourceLanguage: string
+    sourceLanguage: string,
+    assessmentData?: {
+      metrics?: {
+        accuracy?: number;
+        pronunciationScore?: number;
+        grammarScore?: number;
+        vocabularyScore?: number;
+        overallScore?: number;
+        strengths?: string[];
+        weaknesses?: string[];
+      };
+      completedAssessment?: boolean;
+      proposedTopics?: string[];
+      summary?: string;
+    }
   ): Promise<Record<string, unknown>> {
     logger.info('Generating lesson', {
       topic,
       targetLanguage,
       difficultyLevel,
+      hasAssessmentData: !!assessmentData
     });
     let aiResponse: Record<string, unknown> | Record<string, unknown>[] = [];
     const prompts = this.generateLessonPrompts(
       topic,
       targetLanguage,
       sourceLanguage,
-      difficultyLevel
+      difficultyLevel,
+      assessmentData
     );
     try {
       if (this.useMock) {
@@ -80,17 +112,18 @@ class LessonGeneratorService implements ILessonGeneratorService {
         aiResponse = mockLesson;
       } else {
      
+        // TODO: after lessons created we should refresh the ui 
         logger.info('Generated prompts for lesson', { prompts });
 
-        const aiResponse = await retryOperation(() =>
+        aiResponse = await retryOperation(() =>
           this.aiService.generateContent(
             '', // No file URI needed
             prompts.userPrompt,
             prompts.systemPrompt,
-            models.gemini_2_5_pro_exp
+            models.gemini_2_0_flash
           )
         );
-        logger.info('AI response received', { aiResponse });
+        logger.info('AI response received for lesson generation', { aiResponse });
       }
 
       const lessonsArray = Array.isArray(aiResponse)
@@ -102,15 +135,15 @@ class LessonGeneratorService implements ILessonGeneratorService {
       } catch (error) {
         logger.error('Error validating lessons response:', { error });
         if (!this.useMock) {
-          const aiResponse = await retryOperation(() =>
+          aiResponse = await retryOperation(() =>
             this.aiService.generateContent(
               '', // No file URI needed
               prompts.userPrompt,
               prompts.systemPrompt,
-              models.gemini_2_5_pro_exp
+              models.gemini_2_0_flash
             )
           );
-          logger.info('AI response received', { aiResponse });
+          logger.info('AI response received for lesson generation', { aiResponse });
         }
       }
 
@@ -295,30 +328,137 @@ class LessonGeneratorService implements ILessonGeneratorService {
     topic: string,
     targetLanguage: string,
     sourceLanguage: string,
-    difficultyLevel: string
+    difficultyLevel: string,
+    assessmentData?: {
+      metrics?: {
+        accuracy?: number;
+        pronunciationScore?: number;
+        grammarScore?: number;
+        vocabularyScore?: number;
+        overallScore?: number;
+        strengths?: string[];
+        weaknesses?: string[];
+      };
+      completedAssessment?: boolean;
+      proposedTopics?: string[];
+      summary?: string;
+    }
   ): { userPrompt: string; systemPrompt: string } {
     logger.info('Generating lesson prompts', {
       topic,
       targetLanguage,
       sourceLanguage,
       difficultyLevel,
+      hasAssessmentData: !!assessmentData
     });
+    
+    // Create assessment context if available
+    let assessmentContext = '';
+    if (assessmentData?.completedAssessment && assessmentData?.metrics) {
+      assessmentContext = `
+      The student has completed an initial assessment with the following results:
+      - Overall proficiency: ${assessmentData.metrics.overallScore || 'Not measured'}/100
+      - Pronunciation score: ${assessmentData.metrics.pronunciationScore || 'Not measured'}/100
+      - Grammar score: ${assessmentData.metrics.grammarScore || 'Not measured'}/100
+      - Vocabulary score: ${assessmentData.metrics.vocabularyScore || 'Not measured'}/100
+      - Accuracy: ${assessmentData.metrics.accuracy || 'Not measured'}/100
+      
+      Strengths: ${assessmentData.metrics.strengths?.join(', ') || 'None identified'}
+      
+      Areas for improvement: ${assessmentData.metrics.weaknesses?.join(', ') || 'None identified'}
+      
+      Assessment summary: ${assessmentData.summary || 'Not available'}
+      
+      Recommended topics: ${assessmentData.proposedTopics?.join(', ') || topic}`;
+    }
+    
     return {
-      systemPrompt: `You are a helpful language tutor teaching ${targetLanguage}. 
-        Create engaging lessons appropriate for ${difficultyLevel} level learners.
-        Structure the lesson with a steps of steps including prompts, new words, 
-        practice opportunities, and model answers.`,
+      systemPrompt: `You are an expert language tutor specialized in teaching ${targetLanguage} to ${sourceLanguage} speakers.
+        Your task is to create a comprehensive, engaging, and pedagogically sound lesson for ${difficultyLevel} level learners.
+        
+        The lesson should follow best practices in language education:
+        - Progressive difficulty that challenges but doesn't overwhelm learners
+        - Clear explanations with examples in both languages
+        - Varied practice opportunities and interactive elements
+        - Cultural context when relevant to vocabulary or expressions
+        - Supportive feedback that encourages learning
+        
+        Structure the lesson with a clear progression from introduction to practice to summary:
+        1. Start with an instruction explaining the lesson focus
+        2. Introduce new vocabulary or concepts with translations
+        3. Provide practice opportunities with expected answers
+        4. Include appropriate feedback for reinforcement
+        5. End with a summary that reviews what was learned
+        
+        For each step, consider how it builds on previous knowledge and prepares for the next step.
+        Your lesson should be optimized for audio-based learning, as most content will be spoken aloud.
+        ${assessmentData?.completedAssessment ? 
+          `\n\nYou have access to the student's assessment results. Use this information to personalize the lesson, 
+          focusing on addressing identified weaknesses while building upon their strengths.` : ''}`,
+        
       userPrompt: `Create a comprehensive lesson about "${topic}" in ${targetLanguage} 
-        for ${difficultyLevel} level students.
+        for ${difficultyLevel} level students who speak ${sourceLanguage}.
+        ${assessmentData?.completedAssessment ? `\n${assessmentContext}\n` : ''}
+        
         Format the response as JSON with:
-        - focusArea: The main focus of the lesson
-        - targetSkills: Array of skills being taught
-        - steps: Array of lesson steps with:
-          - step: number (sequential)
-          - type: one of [prompt, new_word, practice, model_answer]
-          - content: The content of the step
-          - translation: English translation if applicable
-        Do not include user_answer steps as these will be populated during the lesson.`,
+        {
+          "focusArea": "The main focus of the lesson (e.g., Travel Vocabulary, Grammar Rules)",
+          "targetSkills": ["Array of specific skills being taught"],
+          "steps": [
+            {
+              "stepNumber": 1,
+              "type": "instruction",
+              "content": "Clear instructions about the lesson in ${sourceLanguage}",
+              "translation": "Translation in ${targetLanguage} if applicable"
+            },
+            {
+              "stepNumber": 2,
+              "type": "new_word",
+              "content": "New vocabulary in ${targetLanguage}",
+              "translation": "Translation in ${sourceLanguage}",
+              "expectedAnswer": "Expected pronunciation/response"
+            },
+            {
+              "stepNumber": 3,
+              "type": "practice",
+              "content": "Practice prompt in ${targetLanguage} or ${sourceLanguage}",
+              "translation": "Translation if needed",
+              "expectedAnswer": "Expected answer in ${targetLanguage}"
+            },
+            {
+              "stepNumber": 4,
+              "type": "feedback",
+              "content": "Supportive feedback in ${sourceLanguage}",
+              "translation": "Translation in ${targetLanguage}"
+            },
+            {
+              "stepNumber": 5,
+              "type": "prompt",
+              "content": "Question or task for the user in ${sourceLanguage}",
+              "translation": "Translation if needed",
+              "expectedAnswer": "Expected answer in ${targetLanguage}"
+            },
+            {
+              "stepNumber": 6,
+              "type": "summary",
+              "content": "Summary of what was learned in ${sourceLanguage}",
+              "translation": "Translation in ${targetLanguage}"
+            }
+          ]
+        }
+        
+        Ensure the lesson:
+        - Is appropriate for ${difficultyLevel} level (vocabulary, grammar complexity)
+        - Contains 5-8 total steps that flow naturally
+        - Includes at least one instruction, one new_word, one practice, one prompt, and one summary step
+        - Has accurate translations and expected answers
+        - Provides clear, concise content suitable for audio delivery
+        ${assessmentData?.completedAssessment ? 
+          `- Directly addresses the student's weaknesses identified in their assessment
+          - Builds upon their strengths to maintain engagement and confidence
+          - Focuses particularly on: ${assessmentData.metrics?.weaknesses?.join(', ') || 'general improvement'}` : ''}
+        
+        Do not include user responses or contentAudioUrl fields as these will be populated during the lesson.`
     };
   }
 }

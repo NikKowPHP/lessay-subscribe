@@ -201,6 +201,26 @@ export default class LessonService {
       onboardingData.proficiencyLevel?.toLowerCase() || 'beginner';
     const learningPurpose = onboardingData.learningPurpose || 'general';
     const sourceLanguage = onboardingData.nativeLanguage || 'English';
+    // TODO: Feed with the recording results from the onboarding assessment
+    
+    // Get assessment data if available
+    let assessmentData: any;
+    if (onboardingData.initialAssessmentCompleted) {
+      // Get the latest assessment
+      const assessment = await this.onboardingRepository.getAssessmentLesson(onboardingData.userId);
+      const latestAssessment = assessment ? 
+        assessment : null;
+        
+      if (latestAssessment) {
+        assessmentData = {
+          completedAssessment: true,
+          metrics: latestAssessment.metrics as any,
+          proposedTopics: latestAssessment.proposedTopics || [],
+          summary: latestAssessment.summary || ''
+        };
+      }
+    }
+    
     // Define topics based on learning purpose
     const topics = this.getTopicsFromLearningPurpose(learningPurpose);
 
@@ -210,7 +230,8 @@ export default class LessonService {
         topic,
         targetLanguage,
         proficiencyLevel,
-        sourceLanguage
+        sourceLanguage,
+        assessmentData  // Pass assessment data to the generator
       );
       const lessonItems = Array.isArray(generatedResult.data)
         ? generatedResult.data
