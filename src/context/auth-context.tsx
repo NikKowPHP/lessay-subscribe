@@ -6,6 +6,7 @@ import { SupabaseAuthService } from '@/services/supabase-auth.service'
 import { useRouter } from 'next/navigation'
 import { MockAuthService } from '@/services/mock-auth-service.service'
 import logger from '@/utils/logger'
+import { UserProfileProvider } from '@/context/user-profile-context'
 
 interface AuthContextType {
   user: User | null
@@ -94,8 +95,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user, session } = await authService.register(email, password)
       setUser(user)
       setSession(session)
+      
+      // User profile creation happens automatically in the UserProfileProvider
+      // when the user state changes
+      
       if (user) {
-        router.push('/app/lessons')
+        router.push('/app/onboarding') // Redirect to onboarding instead of lessons
       }
     } catch (error) {
       const message = error instanceof AuthError 
@@ -150,7 +155,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       clearError 
     }}>
-      {children}
+      <UserProfileProvider>
+        {children}
+      </UserProfileProvider>
     </AuthContext.Provider>
   )
 }

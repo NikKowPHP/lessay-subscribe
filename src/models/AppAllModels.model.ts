@@ -125,12 +125,14 @@ export interface UserProfileModel {
   id: string;
   userId: string;
   email: string;
+  name?: string;
   nativeLanguage?: string;
   targetLanguage?: string;
   proficiencyLevel?: 'beginner' | 'intermediate' | 'advanced';
   learningPurpose?: string;
   onboardingCompleted: boolean;
   createdAt: Date;
+  initialAssessmentCompleted: boolean;
   updatedAt: Date;
 }
 
