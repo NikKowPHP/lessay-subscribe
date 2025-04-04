@@ -53,11 +53,11 @@ export async function updateOnboardingAction(step: string) {
 
 
 export async function markOnboardingCompleteAndGenerateInitialLessonsAction() {
+  logger.info('marking onboarding complete and generating initial lessons');
   const onboardingService = createOnboardingService();
   const completedOnboarding =
     await onboardingService.markOnboardingAsCompleteAndGenerateLessons();
-
-  logger.log('completed onboarding:', completedOnboarding);
+  logger.info('completed onboarding:', completedOnboarding);
   return completedOnboarding;
 }
 

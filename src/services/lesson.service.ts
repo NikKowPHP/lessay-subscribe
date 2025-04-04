@@ -230,7 +230,8 @@ export default class LessonService {
       );
     }
 
-    // TODO: Check for audio analysis
+    // here we have already the audiometrics from the onboarding assessment
+
 
     // Extract necessary data for lesson generation
     const targetLanguage = onboardingData.targetLanguage || 'German';
@@ -260,8 +261,10 @@ export default class LessonService {
     // TODO: track user topics 
     
     // Define topics based on learning purpose
-    const topics = this.getTopicsFromLearningPurpose(learningPurpose);
+    // aggregate the summary and the 3 top topics from the proposedTopics of assessment resutls and audio metrics and take into consideration the learning purpose
+    // TODO: aggregate the summary and the 3 top topics from the proposedTopics of assessment resutls and audio metrics and take into consideration the learning purpose
 
+    const topics = this.getTopicsFromLearningPurpose(learningPurpose)
     // Generate lessons for each topic
     const lessonPromises = topics.map(async (topic) => {
       const generatedResult = await this.lessonGeneratorService.generateLesson(
@@ -285,7 +288,6 @@ export default class LessonService {
               sourceLanguage
             );
 
-          // TODO: Seperate into 2 promises, one will be sent to user to update the loading screen while fetching the audio .
           const lessonData = {
             focusArea: lessonItem.focusArea,
             targetSkills: lessonItem.targetSkills,

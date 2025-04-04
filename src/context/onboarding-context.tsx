@@ -132,7 +132,7 @@ export function OnboardingProvider({
       const completedOnboarding = await markOnboardingCompleteAndGenerateInitialLessonsAction();
       setOnboarding(completedOnboarding);
       toast.success(
-        'Onboarding completed! Generating your personalized lessons...'
+        'Onboarding completed! Lessons generated!'
       );
     });
   };
