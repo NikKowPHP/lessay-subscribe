@@ -8,6 +8,7 @@ import { MockAssessmentGeneratorService } from '@/__mocks__/generated-assessment
 import { ITTS } from '@/interfaces/tts.interface';
 import path from 'path';
 import fs from 'fs';
+import { LessonModel } from '@/models/AppAllModels.model';
 
 export interface ILessonGeneratorService {
   generateLesson: (
@@ -35,6 +36,22 @@ export interface ILessonGeneratorService {
     language: string,
     sourceLanguage: string
   ) => Promise<LessonStep[]>;
+  generateLessonCompletionResults: (
+    lesson: LessonModel,
+    userResponses: { stepId: string; response: string }[]
+  ) => Promise<{
+    metrics: {
+      accuracy: number;
+      pronunciationScore: number;
+      grammarScore: number;
+      vocabularyScore: number;
+      overallScore: number;
+      strengths: string[];
+      weaknesses: string[];
+    };
+    summary: string;
+    nextLessonSuggestions: string[];
+  }>;
 }
 
 class LessonGeneratorService implements ILessonGeneratorService {
@@ -459,6 +476,152 @@ class LessonGeneratorService implements ILessonGeneratorService {
           - Focuses particularly on: ${assessmentData.metrics?.weaknesses?.join(', ') || 'general improvement'}` : ''}
         
         Do not include user responses or contentAudioUrl fields as these will be populated during the lesson.`
+    };
+  }
+
+  async generateLessonCompletionResults(
+    lesson: LessonModel,
+    userResponses: { stepId: string; response: string }[]
+  ): Promise<{
+    metrics: {
+      accuracy: number;
+      pronunciationScore: number;
+      grammarScore: number;
+      vocabularyScore: number;
+      overallScore: number;
+      strengths: string[];
+      weaknesses: string[];
+    };
+    summary: string;
+    nextLessonSuggestions: string[];
+  }> {
+    logger.info('Generating lesson completion results', {
+      lessonId: lesson.id,
+      responseCount: userResponses.length
+    });
+    
+    const prompts = this.generateLessonCompletionPrompts(lesson, userResponses);
+    
+    try {
+      let aiResponse;
+      
+      if (this.useMock) {
+        // Mock results for testing
+        aiResponse = {
+          metrics: {
+            accuracy: 85,
+            pronunciationScore: 78,
+            grammarScore: 82,
+            vocabularyScore: 80,
+            overallScore: 81,
+            strengths: ['Basic vocabulary usage', 'Question formation'],
+            weaknesses: ['Article usage', 'Verb conjugation in past tense']
+          },
+          summary: `Good progress with ${lesson.focusArea}. You demonstrated solid understanding of the core concepts, though there are some areas to improve.`,
+          nextLessonSuggestions: ['Grammar fundamentals', 'Past tense expressions', 'Everyday conversation']
+        };
+      } else {
+        const result = await retryOperation(() =>
+          this.aiService.generateContent(
+            '',
+            prompts.userPrompt,
+            prompts.systemPrompt,
+            models.gemini_2_0_flash
+          )
+        );
+        
+        aiResponse = this.formatLessonCompletionResults(result);
+      }
+      
+      logger.info('Generated lesson completion results', { aiResponse });
+      return aiResponse;
+    } catch (error) {
+      logger.error('Error generating lesson completion results', { error });
+      throw new Error('Failed to generate lesson completion analysis');
+    }
+  }
+
+  private formatLessonCompletionResults(
+    aiResponse: Record<string, unknown>
+  ):{
+    metrics: {
+      accuracy: number;
+      pronunciationScore: number;
+      grammarScore: number;
+      vocabularyScore: number;
+      overallScore: number;
+      strengths: string[];
+      weaknesses: string[];
+    };
+    summary: string;
+    nextLessonSuggestions: string[];
+  } {
+    return {
+      metrics: aiResponse.metrics as any,
+      summary: aiResponse.summary as string,
+      nextLessonSuggestions: aiResponse.nextLessonSuggestions as string[]
+    };
+  }
+
+  private generateLessonCompletionPrompts(
+    lesson: LessonModel,
+    userResponses: { stepId: string; response: string }[]
+  ): { userPrompt: string; systemPrompt: string } {
+    // Create a map of step ID to user response for easier lookup
+    const responseMap = new Map(
+      userResponses.map(item => [item.stepId, item.response])
+    );
+    
+    // Format steps with user responses for analysis
+    const stepsWithResponses = lesson.steps.map(step => {
+      const userResponse = responseMap.get(step.id) || '';
+      
+      return {
+        stepNumber: step.stepNumber,
+        type: step.type,
+        content: step.content,
+        expectedAnswer: step.expectedAnswer,
+        userResponse,
+        correct: step.correct,
+        attempts: step.attempts
+      };
+    });
+    
+    return {
+      systemPrompt: `You are an expert language learning analyst. Your task is to evaluate a student's performance in a language lesson and provide comprehensive feedback.
+      
+      Analyze each step of the lesson, considering:
+      1. Accuracy - how correctly the student responded to exercises
+      2. Pronunciation - quality of spoken responses (inferred from text)
+      3. Grammar - proper sentence structure and form
+      4. Vocabulary - appropriate word choice and breadth of vocabulary
+      5. Overall performance - holistic assessment
+      
+      Identify specific strengths and areas for improvement based on patterns in the student's responses. 
+      Provide a summary that is encouraging but honest, and suggest topics for future lessons that would help address any weaknesses.`,
+      
+      userPrompt: `Analyze the following completed language lesson and provide detailed feedback and metrics.
+      
+      Lesson focus: ${lesson.focusArea}
+      Target skills: ${lesson.targetSkills.join(', ')}
+      
+      Steps with user responses:
+      ${JSON.stringify(stepsWithResponses, null, 2)}
+      
+      Format your response as JSON:
+      {
+        "metrics": {
+          "accuracy": number (0-100),
+          "pronunciationScore": number (0-100),
+          "grammarScore": number (0-100),
+          "vocabularyScore": number (0-100),
+          "overallScore": number (0-100),
+          "strengths": [array of 2-4 specific strengths],
+          "weaknesses": [array of 2-4 specific areas for improvement]
+        },
+        "summary": "A 2-3 sentence personalized summary of the student's performance",
+        "nextLessonSuggestions": [array of 2-4 recommended lesson topics]
+      }`
     };
   }
 }

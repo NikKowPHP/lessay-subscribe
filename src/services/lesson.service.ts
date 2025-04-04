@@ -102,10 +102,12 @@ export default class LessonService {
       errorPatterns?: string[];
     }
   ): Promise<LessonModel> {
+    // THIS ONLY WITH RECORDING ANALYSYS
     // TODO: Implement pronunciation check
     // TODO: Implement error pattern analysis
     // TODO: Implement accuracy calculation
     // TODO: Implement performance metrics calculation
+    //  END
 
     // Get the lesson with all steps to analyze performance
     const lesson = await this.getLessonById(lessonId);
@@ -121,64 +123,102 @@ export default class LessonService {
       return this.lessonRepository.completeLesson(lessonId, performanceMetrics);
     }
 
-    // Otherwise, calculate metrics based on lesson step data
-    const steps = lesson.steps;
-    logger.info(' steps in lesson completion', { steps });
-    // Calculate accuracy (percentage of correct responses)
-    const attemptedSteps = steps.filter((step) => step.attempts > 0);
-    logger.info(' attemptedSteps in lesson completion', { attemptedSteps });
-    const correctSteps = steps.filter((step) => step.correct);
-    logger.info(' correctSteps in lesson completion', { correctSteps });
-    const accuracy =
-      attemptedSteps.length > 0
+    try {
+      // Collect all user responses from the steps
+      const userResponses = lesson.steps
+        .filter(step => step.attempts > 0)
+        .map(step => {
+          // Get responses from history if available, otherwise use single response
+          const responseHistory = step.userResponseHistory 
+            ? (JSON.parse(step.userResponseHistory as string) as string[]) 
+            : [];
+            
+          // Use the most recent response (either from history or the single field)
+          const latestResponse = responseHistory.length > 0 
+            ? responseHistory[responseHistory.length - 1] 
+            : (step.userResponse || '');
+            
+          return {
+            stepId: step.id,
+            response: latestResponse,
+            // Optionally include full history if needed by analysis
+            allResponses: responseHistory.length > 0 ? responseHistory : (step.userResponse ? [step.userResponse] : [])
+          };
+        });
+
+      logger.info('Collected user responses for analysis', { 
+        responseCount: userResponses.length 
+      });
+
+      // Generate comprehensive lesson analysis using the LessonGeneratorService
+      const completionResults = await this.lessonGeneratorService.generateLessonCompletionResults(
+        lesson,
+        userResponses
+      );
+      
+      logger.info('Lesson completion analysis generated', { completionResults });
+
+      // Prepare comprehensive metrics for saving
+      const fullMetrics = {
+        accuracy: completionResults.metrics.accuracy,
+        pronunciationScore: completionResults.metrics.pronunciationScore,
+        grammarScore: completionResults.metrics.grammarScore,
+        vocabularyScore: completionResults.metrics.vocabularyScore,
+        overallScore: completionResults.metrics.overallScore,
+        strengths: completionResults.metrics.strengths,
+        weaknesses: completionResults.metrics.weaknesses,
+        summary: completionResults.summary,
+        nextLessonSuggestions: completionResults.nextLessonSuggestions
+      };
+
+      // Update the lesson repository with comprehensive metrics
+      const completedLesson = await this.lessonRepository.completeLesson(
+        lessonId, 
+        fullMetrics
+      );
+
+      // Update user's learning progress
+      await this.updateUserLearningProgress(lesson, fullMetrics);
+
+      return completedLesson;
+    } catch (error) {
+      logger.error('Error completing lesson with AI analysis', { error });
+      
+      // Fallback to basic metrics calculation if AI analysis fails
+      const steps = lesson.steps;
+      const attemptedSteps = steps.filter((step) => step.attempts > 0);
+      const correctSteps = steps.filter((step) => step.correct);
+      
+      const accuracy = attemptedSteps.length > 0
         ? Math.round((correctSteps.length / attemptedSteps.length) * 100)
         : 0;
+        
+      // Calculate a simple pronunciation score
+      const pronunciationScore = Math.min(
+        100,
+        Math.max(0, accuracy - 10 + Math.random() * 20)
+      );
 
-    // Analyze error patterns (collect common errors)
-    const allErrorPatterns = steps
-      .filter(
-        (step) =>
-          Array.isArray(step.errorPatterns) && step.errorPatterns.length > 0
-      )
-      .flatMap((step) => step.errorPatterns);
-    logger.info(' allErrorPatterns in lesson completion', { allErrorPatterns });
-    // Count occurrences of each error pattern
-    const errorPatternCount: Record<string, number> = {};
-    allErrorPatterns.forEach((pattern) => {
-      if (pattern) {
-        errorPatternCount[pattern] = (errorPatternCount[pattern] || 0) + 1;
-      }
-    });
-    logger.info(' errorPatternCount in lesson completion', {
-      errorPatternCount,
-    });
-    // Get the top error patterns (most frequent errors)
-    const topErrorPatterns = Object.entries(errorPatternCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([pattern]) => pattern);
-    logger.info(' topErrorPatterns in lesson completion', { topErrorPatterns });
-    // Calculate a simple pronunciation score (for now based on accuracy)
-    // In a real implementation, this would come from more sophisticated audio analysis
-    const pronunciationScore = Math.min(
-      100,
-      Math.max(0, accuracy - 10 + Math.random() * 20)
-    );
+      // Basic fallback metrics
+      const fallbackMetrics = {
+        accuracy,
+        pronunciationScore: Math.round(pronunciationScore),
+        errorPatterns: [], // No detailed error patterns in fallback mode
+        grammarScore: Math.round(accuracy * 0.9),
+        vocabularyScore: Math.round(accuracy * 0.95),
+        overallScore: accuracy,
+        strengths: [],
+        weaknesses: [],
+        summary: "Lesson completed successfully.",
+        nextLessonSuggestions: []
+      };
+      
+      logger.info('Using fallback metrics for lesson completion', {
+        fallbackMetrics
+      });
 
-    const calculatedMetrics = {
-      accuracy,
-      pronunciationScore: Math.round(pronunciationScore),
-      errorPatterns: topErrorPatterns,
-    };
-    logger.info(' calculatedMetrics in lesson completion', {
-      calculatedMetrics,
-    });
-    logger.info('Completing lesson with calculated metrics', {
-      lessonId,
-      metrics: calculatedMetrics,
-    });
-
-    return this.lessonRepository.completeLesson(lessonId, calculatedMetrics);
+      return this.lessonRepository.completeLesson(lessonId, fallbackMetrics);
+    }
   }
 
   async deleteLesson(lessonId: string): Promise<void> {
@@ -751,4 +791,24 @@ export default class LessonService {
     };
   }
 
+  // Helper method to update user's overall learning progress
+  private async updateUserLearningProgress(
+    lesson: LessonModel, 
+    metrics: any
+  ): Promise<void> {
+    try {
+      // Here you could implement logic to update overall user progress
+      // For example, tracking improvement over time, updating proficiency levels, etc.
+      logger.info('Updating user learning progress based on completed lesson', {
+        lessonId: lesson.id,
+        overallScore: metrics.overallScore
+      });
+      
+      // This could connect to a user progress service or repository
+      // For now, this is just a placeholder
+    } catch (error) {
+      logger.error('Error updating user learning progress', { error });
+      // Non-critical error, so we don't rethrow
+    }
+  }
 }
