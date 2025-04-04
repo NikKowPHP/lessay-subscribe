@@ -153,6 +153,8 @@ export default class OnboardingService {
       await this.assessmentGeneratorService.generateAssessmentResult(
         assessmentLesson,
       );
+    
+    // TODO: Check for audio analysis
 
     assessmentLesson.metrics = results.metrics;
     assessmentLesson.summary = results.summary;

@@ -230,6 +230,8 @@ export default class LessonService {
       );
     }
 
+    // TODO: Check for audio analysis
+
     // Extract necessary data for lesson generation
     const targetLanguage = onboardingData.targetLanguage || 'German';
     const proficiencyLevel =
@@ -255,6 +257,7 @@ export default class LessonService {
         };
       }
     }
+    // TODO: track user topics 
     
     // Define topics based on learning purpose
     const topics = this.getTopicsFromLearningPurpose(learningPurpose);
