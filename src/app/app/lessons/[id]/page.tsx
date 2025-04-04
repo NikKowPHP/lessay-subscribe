@@ -53,6 +53,7 @@ export default function LessonDetailPage() {
           return
         }
         try {
+          logger.info('Processing pronunciation recording', { sessionRecording, lesson });
           const recordingTime = sessionRecording.lastModified - sessionRecording.lastModified;
           const recordingSize = sessionRecording.size;
         
@@ -62,6 +63,7 @@ export default function LessonDetailPage() {
             recordingTime,
             recordingSize
           );
+          logger.info('Lesson with audio metrics', { lessonWithAudioMetrics });
           if (!lessonWithAudioMetrics.audioMetrics) {
             throw new Error('No audio metrics found');
           }
@@ -78,7 +80,7 @@ export default function LessonDetailPage() {
       }
     };
     processPronunciation();
-  }, [sessionRecording]);
+  }, [sessionRecording, lesson]);
 
   const handleStepComplete = async (
     step: LessonStep | AssessmentStepModel,
@@ -127,6 +129,7 @@ export default function LessonDetailPage() {
           </div>
 
           <div className="p-6">
+            {/* Basic Performance Summary */}
             <div className="mb-8">
               <h3 className="text-xl font-semibold mb-4">
                 Performance Summary
@@ -184,6 +187,175 @@ export default function LessonDetailPage() {
               )}
             </div>
 
+            {/* Detailed Pronunciation Results Section */}
+            {pronunciationResults && (
+              <div className="mb-8 border-t pt-8">
+                <h3 className="text-xl font-semibold mb-4">
+                  Detailed Language Analysis
+                </h3>
+                
+                {/* Proficiency Level and Trajectory */}
+                <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="font-medium text-gray-700">CEFR Level</span>
+                    <span className="text-lg font-bold bg-black text-white px-3 py-1 rounded">
+                      {pronunciationResults.proficiencyLevel}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">Learning Trajectory</span>
+                    <span className={`text-lg font-medium ${
+                      pronunciationResults.learningTrajectory === 'accelerating' ? 'text-green-600' :
+                      pronunciationResults.learningTrajectory === 'steady' ? 'text-blue-600' : 'text-yellow-600'
+                    }`}>
+                      {pronunciationResults.learningTrajectory.toLowerCase().replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Skill Scores */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  {/* Pronunciation Score */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-700">Pronunciation</span>
+                      <span className="text-xl font-bold">{pronunciationResults.pronunciationScore}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-purple-600 h-2.5 rounded-full"
+                        style={{ width: `${pronunciationResults.pronunciationScore}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  {/* Fluency Score */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-700">Fluency</span>
+                      <span className="text-xl font-bold">{pronunciationResults.fluencyScore}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full"
+                        style={{ width: `${pronunciationResults.fluencyScore}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  {/* Grammar Score */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-700">Grammar</span>
+                      <span className="text-xl font-bold">{pronunciationResults.grammarScore}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-green-600 h-2.5 rounded-full"
+                        style={{ width: `${pronunciationResults.grammarScore}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  {/* Vocabulary Score */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-700">Vocabulary</span>
+                      <span className="text-xl font-bold">{pronunciationResults.vocabularyScore}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-yellow-600 h-2.5 rounded-full"
+                        style={{ width: `${pronunciationResults.vocabularyScore}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Pronunciation Details */}
+                <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                  <h4 className="font-semibold mb-3 text-lg">Pronunciation Details</h4>
+                  
+                  {/* Problematic Sounds */}
+                  {pronunciationResults.pronunciationAssessment.problematic_sounds.length > 0 && (
+                    <div className="mb-4">
+                      <h5 className="font-medium text-gray-700 mb-2">Problematic Sounds</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {pronunciationResults.pronunciationAssessment.problematic_sounds.map((sound, idx) => (
+                          <span key={idx} className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">
+                            {sound}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Areas for Improvement */}
+                  <div className="mb-2">
+                    <h5 className="font-medium text-gray-700 mb-2">Areas for Improvement</h5>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {pronunciationResults.pronunciationAssessment.areas_for_improvement.map((area, idx) => (
+                        <li key={idx} className="text-gray-700">{area}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  {/* Strengths */}
+                  <div>
+                    <h5 className="font-medium text-gray-700 mb-2">Strengths</h5>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {pronunciationResults.pronunciationAssessment.strengths.map((strength, idx) => (
+                        <li key={idx} className="text-gray-700">{strength}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                
+                {/* Grammar Focus Areas */}
+                <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                  <h4 className="font-semibold mb-3 text-lg">Suggested Focus Areas</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h5 className="font-medium text-gray-700 mb-2">Grammar Focus</h5>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {pronunciationResults.grammarFocusAreas.map((area, idx) => (
+                          <li key={idx} className="text-gray-700">{area}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-700 mb-2">Next Skill Targets</h5>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {pronunciationResults.nextSkillTargets.map((skill, idx) => (
+                          <li key={idx} className="text-gray-700">{skill}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Suggested Topics */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-3 text-lg">Suggested Topics for Next Lessons</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {pronunciationResults.suggestedTopics.map((topic, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Loading State for Pronunciation Results */}
+            {pronunciationResultsLoading && !pronunciationResults && (
+              <div className="mb-8 text-center py-6">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-black mx-auto mb-4"></div>
+                <p className="text-lg">Analyzing your pronunciation and language skills...</p>
+              </div>
+            )}
+
             {/* Error Patterns */}
             <div className="mb-8">
               <h3 className="text-xl font-semibold mb-4">
@@ -239,12 +411,18 @@ export default function LessonDetailPage() {
                         </p>
                       </div>
                     )}
-                    {!step.correct && step.translation && (
+                    {!step.correct && step.expectedAnswer && (
                       <div className="mt-2">
                         <span className="text-gray-700 text-sm">Expected:</span>
                         <p className="font-medium text-gray-700">
-                          {step.translation}
+                          {step.expectedAnswer}
                         </p>
+                      </div>
+                    )}
+                    {/* Show max attempts notice */}
+                    {!step.correct && step.attempts >= step.maxAttempts && (
+                      <div className="mt-2 text-sm text-orange-600">
+                        Maximum attempts reached ({step.attempts}/{step.maxAttempts})
                       </div>
                     )}
                   </div>

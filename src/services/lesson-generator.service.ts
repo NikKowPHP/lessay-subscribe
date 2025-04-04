@@ -511,6 +511,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
       let aiResponse;
       
       if (this.useMock) {
+        logger.info('Using mock data for lesson completion results');
         // Mock results for testing
         aiResponse = {
           metrics: {
@@ -536,6 +537,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
         );
         
         aiResponse = this.formatLessonCompletionResults(result);
+        logger.info('Generated real lesson completion results', { aiResponse });
       }
       
       logger.info('Generated lesson completion results', { aiResponse });
