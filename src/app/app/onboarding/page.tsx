@@ -148,6 +148,7 @@ export default function OnboardingPage() {
     }
   };
 
+  // complete assessment lesson and generate initial lessons
   const handleOnAssessmentComplete = async () => {
     if (!assessmentLesson) {
       throw new Error('Assessment lesson not found');
@@ -167,6 +168,7 @@ export default function OnboardingPage() {
     }
   };
 
+  // just re-route to lessons page
   const handleGoToLessonsButtonClick = async () => {
     goToLessonsWithOnboardingComplete();
   };

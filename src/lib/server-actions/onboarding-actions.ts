@@ -24,7 +24,7 @@ function createOnboardingService() {
   );
   return new OnboardingService(
     repository,
-    new LessonService(lessonRepository, new LessonGeneratorService(new AIService(), true, new GoogleTTS()), repository),
+    new LessonService(lessonRepository, new LessonGeneratorService(new AIService(), new GoogleTTS()), repository),
     new AssessmentGeneratorService(new AIService(), new GoogleTTS())
   );
 }
