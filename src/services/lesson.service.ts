@@ -632,9 +632,10 @@ export default class LessonService {
 
     // send recording to AI
     let aiResponse :Record<string, unknown>;
-    if (process.env.MOCK_AI_RESPONSE === 'true') {
+    if (process.env.MOCK_RECORDING_AI_ANALYSIS === 'true') {
       aiResponse = mockAudioMetrics;
     } else {
+      logger.info('Sending recording to AI for analysis');
       aiResponse = await this.recordingService.submitLessonRecordingSession(
         fileUri, // Now using file URI instead of base64
         Number(recordingTime),
@@ -644,11 +645,12 @@ export default class LessonService {
       );
     }
 
+    logger.info('AI response received', { aiResponse });
+
     // 3. convert ai  response to audioMetrics model. 
     const audioMetrics = this.convertAiResponseToAudioMetrics(aiResponse)
-
-    // 4. update lesson with sessionRecordingMetrics, lesson should have a foreign key to audioMetrics
-    // TODO: Check repo if everything is ok
+    logger.info('Audio metrics generated', { audioMetrics });
+  
     return this.lessonRepository.updateLesson(lesson.id, { audioMetrics })
   }
 
@@ -792,6 +794,7 @@ export default class LessonService {
   }
 
   // Helper method to update user's overall learning progress
+  // TODO: implement
   private async updateUserLearningProgress(
     lesson: LessonModel, 
     metrics: any
