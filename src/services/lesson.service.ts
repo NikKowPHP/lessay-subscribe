@@ -102,12 +102,7 @@ export default class LessonService {
       errorPatterns?: string[];
     }
   ): Promise<LessonModel> {
-    // THIS ONLY WITH RECORDING ANALYSYS
-    // TODO: Implement pronunciation check
-    // TODO: Implement error pattern analysis
-    // TODO: Implement accuracy calculation
-    // TODO: Implement performance metrics calculation
-    //  END
+  
 
     // Get the lesson with all steps to analyze performance
     const lesson = await this.getLessonById(lessonId);
@@ -473,20 +468,31 @@ export default class LessonService {
     return topicMap[purpose.toLowerCase()] || topicMap['general'];
   }
 
+  async checkAndGenerateNewLessons(): Promise<LessonModel[]> {
+    // TODO: this should be done on the server
+    const currentLessons = await this.getLessons();
+    logger.info('currentLessons', { currentLessons });
+     // If there are no lessons or not all are complete, just return
+    if (currentLessons.length === 0) throw new Error('No lessons found');
+    const allComplete = currentLessons.every((lesson) => lesson.completed);
+    if (!allComplete) return [];
+
+    const newLessons = await this.generateNewLessonsBasedOnProgress();
+    return newLessons;
+  }
+
   async generateNewLessonsBasedOnProgress(): Promise<LessonModel[]> {
     // Get all completed lessons to analyze performance
     const allLessons = await this.getLessons();
     const completedLessons = allLessons.filter((lesson) => lesson.completed);
-
-    if (completedLessons.length === 0) {
-      throw new Error('No completed lessons found to analyze');
-    }
-
-    // Get user onboarding data for base preferences
     const onboardingData = await this.onboardingRepository.getOnboarding();
 
     if (!onboardingData) {
       throw new Error('User onboarding data not found');
+    }
+
+    if (completedLessons.length === 0) {
+      throw new Error('No completed lessons found to analyze');
     }
 
     // Extract base preferences
@@ -495,24 +501,30 @@ export default class LessonService {
       onboardingData.proficiencyLevel?.toLowerCase() || 'beginner';
     const sourceLanguage = onboardingData.nativeLanguage || 'English';
 
-    // Aggregate performance metrics from completed lessons
-    const errorPatterns = this.aggregateErrorPatterns(completedLessons);
-    const avgAccuracy = this.calculateAverageAccuracy(completedLessons);
-
-    // Determine focus areas based on performance
-    const focusAreas = this.determineFocusAreas(
-      errorPatterns,
-      avgAccuracy,
-      proficiencyLevel
-    );
+    // Aggregate metrics from completed lessons (both performance metrics and audio metrics)
+    const aggregatedMetrics = this.aggregateMetrics(completedLessons);
+    
+    // Determine focus areas based on aggregated metrics
+    const focusAreas = this.determineFocusAreas(aggregatedMetrics, proficiencyLevel);
 
     // Generate new lessons for each focus area
     const lessonPromises = focusAreas.map(async (topic) => {
+      // Create a request with user's learning data for more personalized lessons
+      const adaptiveRequest = aggregatedMetrics.audioAnalysisAvailable ? 
+        this.createAdaptiveLessonRequest(
+          completedLessons, 
+          aggregatedMetrics, 
+          onboardingData,
+          topic
+        ) : undefined;
+      
+      // Generate lesson with adaptive data when available
       const generatedResult = await this.lessonGeneratorService.generateLesson(
         topic,
         targetLanguage,
         proficiencyLevel,
-        sourceLanguage
+        sourceLanguage,
+        adaptiveRequest
       );
 
       const lessonItems = Array.isArray(generatedResult.data)
@@ -528,7 +540,7 @@ export default class LessonService {
               targetLanguage,
               sourceLanguage
             );
-          logger.info('generating audio for  LESSON steps', { audioSteps });
+          logger.info('generating audio for LESSON steps', { audioSteps });
           const lessonData = {
             focusArea: lessonItem.focusArea,
             targetSkills: lessonItem.targetSkills,
@@ -546,7 +558,271 @@ export default class LessonService {
     return lessonsNested.flat();
   }
 
-  // Helper methods for analyzing performance and determining new focus areas
+  // Add new method to aggregate metrics from completed lessons
+  private aggregateMetrics(completedLessons: LessonModel[]): {
+    errorPatterns: string[];
+    avgAccuracy: number;
+    avgPronunciationScore: number;
+    avgGrammarScore: number;
+    avgVocabularyScore: number;
+    avgFluencyScore: number;
+    weaknesses: string[];
+    strengths: string[];
+    audioAnalysisAvailable: boolean;
+    recommendedTopics: string[];
+    mostRecentAudioMetrics?: AudioMetrics;
+  } {
+    // Initialize aggregated metrics
+    const result = {
+      errorPatterns: this.aggregateErrorPatterns(completedLessons),
+      avgAccuracy: this.calculateAverageAccuracy(completedLessons),
+      avgPronunciationScore: 0,
+      avgGrammarScore: 0,
+      avgVocabularyScore: 0,
+      avgFluencyScore: 0,
+      weaknesses: [] as string[],
+      strengths: [] as string[],
+      audioAnalysisAvailable: false,
+      recommendedTopics: [] as string[],
+      mostRecentAudioMetrics: undefined as AudioMetrics | undefined
+    };
+
+    // Find lessons with audio metrics
+    const lessonsWithAudioMetrics = completedLessons
+      .filter(lesson => lesson.audioMetrics)
+      .sort((a, b) => 
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+
+    if (lessonsWithAudioMetrics.length > 0) {
+      result.audioAnalysisAvailable = true;
+      
+      // Store most recent audio metrics for detailed insights
+      result.mostRecentAudioMetrics = lessonsWithAudioMetrics[0].audioMetrics;
+      
+      // Calculate average scores from audio metrics
+      const audioMetricsScores = {
+        pronunciation: [] as number[],
+        grammar: [] as number[],
+        vocabulary: [] as number[],
+        fluency: [] as number[]
+      };
+      
+      // Collect strengths, weaknesses, and topics from all audio metrics
+      const allWeaknesses = new Set<string>();
+      const allStrengths = new Set<string>();
+      const allTopics = new Set<string>();
+      
+      lessonsWithAudioMetrics.forEach(lesson => {
+        if (lesson.audioMetrics) {
+          // Add scores for averaging
+          audioMetricsScores.pronunciation.push(lesson.audioMetrics.pronunciationScore);
+          audioMetricsScores.grammar.push(lesson.audioMetrics.grammarScore);
+          audioMetricsScores.vocabulary.push(lesson.audioMetrics.vocabularyScore);
+          audioMetricsScores.fluency.push(lesson.audioMetrics.fluencyScore);
+          
+          // Collect areas for improvement
+          lesson.audioMetrics.pronunciationAssessment.areas_for_improvement.forEach(area => 
+            allWeaknesses.add(area)
+          );
+          
+          // Collect strengths
+          lesson.audioMetrics.pronunciationAssessment.strengths.forEach(strength => 
+            allStrengths.add(strength)
+          );
+          lesson.audioMetrics.grammarAssessment.grammar_strengths.forEach(strength => 
+            allStrengths.add(strength)
+          );
+          
+          // Collect suggested topics
+          lesson.audioMetrics.suggestedTopics.forEach(topic => 
+            allTopics.add(topic)
+          );
+        }
+      });
+      
+      // Calculate averages
+      const calculateAverage = (arr: number[]) => 
+        arr.length > 0 ? arr.reduce((sum, val) => sum + val, 0) / arr.length : 0;
+      
+      result.avgPronunciationScore = calculateAverage(audioMetricsScores.pronunciation);
+      result.avgGrammarScore = calculateAverage(audioMetricsScores.grammar);
+      result.avgVocabularyScore = calculateAverage(audioMetricsScores.vocabulary);
+      result.avgFluencyScore = calculateAverage(audioMetricsScores.fluency);
+      
+      // Store weaknesses, strengths, and topics
+      result.weaknesses = Array.from(allWeaknesses);
+      result.strengths = Array.from(allStrengths);
+      result.recommendedTopics = Array.from(allTopics);
+    }
+    
+    return result;
+  }
+
+  // Updated method to determine focus areas based on rich metrics data
+  private determineFocusAreas(
+    metrics: ReturnType<typeof this.aggregateMetrics>,
+    proficiencyLevel: string
+  ): string[] {
+    const focusAreas = new Set<string>();
+    
+    // If we have audio analysis, use it to determine priorities
+    if (metrics.audioAnalysisAvailable && metrics.mostRecentAudioMetrics) {
+      // First prioritize topics directly recommended from audio analysis
+      if (metrics.recommendedTopics.length > 0) {
+        // Take the top 2 recommended topics
+        metrics.recommendedTopics.slice(0, 2).forEach(topic => 
+          focusAreas.add(topic)
+        );
+      }
+      
+      // Then prioritize areas of weakness
+      const audioMetrics = metrics.mostRecentAudioMetrics;
+      
+      // Identify weakest area to focus on
+      const scoreMap = [
+        { area: "Pronunciation Practice", score: metrics.avgPronunciationScore },
+        { area: "Grammar Skills", score: metrics.avgGrammarScore },
+        { area: "Vocabulary Building", score: metrics.avgVocabularyScore },
+        { area: "Speaking Fluency", score: metrics.avgFluencyScore }
+      ];
+      
+      // Sort by lowest score first
+      scoreMap.sort((a, b) => a.score - b.score);
+      
+      // Add the weakest area if not already covered by recommendations
+      if (scoreMap[0].score < 75 && !Array.from(focusAreas).some(topic => 
+        topic.toLowerCase().includes(scoreMap[0].area.toLowerCase()))) {
+        focusAreas.add(scoreMap[0].area);
+      }
+      
+      // Add grammar focus areas if grammar is weak
+      if (metrics.avgGrammarScore < 70) {
+        audioMetrics.grammarFocusAreas.slice(0, 1).forEach(area => 
+          focusAreas.add(area)
+        );
+      }
+      
+      // Add vocabulary domains if vocabulary is weak
+      if (metrics.avgVocabularyScore < 70) {
+        audioMetrics.vocabularyDomains.slice(0, 1).forEach(domain => 
+          focusAreas.add(domain)
+        );
+      }
+    } else {
+      // Fall back to error pattern-based focus areas if no audio metrics
+      metrics.errorPatterns.forEach(pattern => {
+        if (pattern.includes('pronunciation')) focusAreas.add('Pronunciation Practice');
+        else if (pattern.includes('grammar')) focusAreas.add('Grammar Rules');
+        else if (pattern.includes('vocabulary')) focusAreas.add('Vocabulary Building');
+        else focusAreas.add('General Practice');
+      });
+      
+      // Adjust based on accuracy
+      if (metrics.avgAccuracy < 50) {
+        focusAreas.add('Vocabulary Building');
+      } else if (metrics.avgAccuracy > 80 && proficiencyLevel === 'beginner') {
+        focusAreas.add('Conversational Practice');
+      }
+    }
+    
+    // Ensure we have at least one topic
+    if (focusAreas.size === 0) {
+      focusAreas.add('General Practice');
+    }
+    
+    // Limit to 3 focus areas
+    return Array.from(focusAreas).slice(0, 3);
+  }
+
+  // Helper method to create an adaptive lesson request based on user's learning data
+  private createAdaptiveLessonRequest(
+    completedLessons: LessonModel[],
+    metrics: ReturnType<typeof this.aggregateMetrics>,
+    onboardingData: OnboardingModel,
+    focusTopic: string
+  ): any {
+    // Use the most recent audio metrics if available
+    if (!metrics.mostRecentAudioMetrics) {
+      return undefined;
+    }
+    
+    const audioMetrics = metrics.mostRecentAudioMetrics;
+    const mostRecentLesson = completedLessons.sort((a, b) => 
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    )[0];
+    
+    // Extract grammar rules to focus on
+    const grammarRulesToFocus = audioMetrics.grammarAssessment.grammar_rules_to_review.map(rule => ({
+      rule: typeof rule === 'object' && 'rule' in rule ? rule.rule : String(rule),
+      priority: typeof rule === 'object' && 'priority' in rule ? String(rule.priority) : 'medium'
+    }));
+    
+    // Extract common grammar errors (handling possible type variations)
+    const grammarCommonErrors = audioMetrics.grammarAssessment.error_patterns.map(pattern => ({
+      category: typeof pattern === 'object' && 'category' in pattern ? pattern.category : 'general',
+      description: typeof pattern === 'object' && 'description' in pattern ? pattern.description : String(pattern)
+    }));
+    
+    // Extract vocabulary areas for improvement
+    const vocabularyAreas = audioMetrics.vocabularyAssessment.areas_for_expansion.map(area => ({
+      topic: typeof area === 'object' && 'topic' in area ? area.topic : 'general',
+      suggestedVocabulary: typeof area === 'object' && 'suggested_vocabulary' in area ? 
+        Array.isArray(area.suggested_vocabulary) ? area.suggested_vocabulary : [] : []
+    }));
+    
+    return {
+      // User profile information
+      userInfo: {
+        nativeLanguage: onboardingData.nativeLanguage || 'English',
+        targetLanguage: onboardingData.targetLanguage || 'English',
+        proficiencyLevel: audioMetrics.proficiencyLevel,
+        learningPurpose: onboardingData.learningPurpose || 'general'
+      },
+      
+      // Current focus topic
+      focusTopic,
+      
+      // Performance metrics from audio analysis
+      performanceMetrics: {
+        pronunciationScore: audioMetrics.pronunciationScore,
+        fluencyScore: audioMetrics.fluencyScore,
+        grammarAccuracy: audioMetrics.grammarScore,
+        vocabularyScore: audioMetrics.vocabularyScore,
+        overallPerformance: audioMetrics.overallPerformance
+      },
+      
+      // Areas needing improvement
+      improvementAreas: {
+        pronunciation: audioMetrics.pronunciationAssessment.problematic_sounds,
+        grammar: {
+          rulesToFocus: grammarRulesToFocus,
+          commonErrors: grammarCommonErrors
+        },
+        vocabulary: vocabularyAreas
+      },
+      
+      // Learning recommendations
+      learningRecommendations: {
+        suggestedTopics: audioMetrics.suggestedTopics,
+        focusAreas: audioMetrics.grammarFocusAreas,
+        nextSkillTargets: audioMetrics.nextSkillTargets
+      },
+      
+      // Learning style insights
+      learningStyle: {
+        effectiveApproaches: audioMetrics.effectiveApproaches,
+        preferredPatterns: audioMetrics.preferredPatterns
+      },
+      
+      // Previous lesson data
+      previousLesson: mostRecentLesson ? {
+        id: mostRecentLesson.id,
+        focusArea: mostRecentLesson.focusArea,
+        targetSkills: mostRecentLesson.targetSkills
+      } : undefined
+    };
+  }
 
   private aggregateErrorPatterns(completedLessons: LessonModel[]): string[] {
     // Collect all error patterns from completed lessons
@@ -603,35 +879,6 @@ export default class LessonService {
     );
   }
 
-  private determineFocusAreas(
-    errorPatterns: string[],
-    avgAccuracy: number,
-    proficiencyLevel: string
-  ): string[] {
-    // Map error patterns to appropriate topics
-    const topicsFromErrors = errorPatterns.map((pattern) => {
-      // Map common error patterns to specific topics
-      // This is a simplified example - in a real app, you'd have more sophisticated mapping
-      if (pattern.includes('pronunciation')) return 'Pronunciation Practice';
-      if (pattern.includes('grammar')) return 'Grammar Rules';
-      if (pattern.includes('vocabulary')) return 'Vocabulary Building';
-      return 'General Practice';
-    });
-
-    // Add topics based on accuracy and proficiency
-    if (avgAccuracy < 50) {
-      // If accuracy is low, focus on fundamentals
-      // TODO: change to more dynamic
-      topicsFromErrors.push('Vocabulary Building');
-    } else if (avgAccuracy > 80 && proficiencyLevel === 'beginner') {
-      // If doing well as a beginner, add slightly more advanced topics
-      topicsFromErrors.push('General Practice');
-    }
-
-    // Remove duplicates and limit to 3 topics
-    return [...new Set(topicsFromErrors)].slice(0, 3);
-  }
-
   async processLessonRecording(
     sessionRecording: Blob,
     recordingTime: number,
@@ -663,6 +910,8 @@ export default class LessonService {
      mimeType,
      size: buffer.length
    });
+
+  
    
    const fileUri = await this.recordingService.uploadFile(
      buffer,

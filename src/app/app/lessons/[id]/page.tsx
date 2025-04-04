@@ -27,6 +27,7 @@ export default function LessonDetailPage() {
     recordStepAttempt,
     loading,
     processLessonRecording,
+    checkAndGenerateNewLessons
   } = useLesson();
   const [lesson, setLesson] = useState<LessonModel | null>(null);
   const [results, setResults] = useState<LessonModel | null>(null);
@@ -69,8 +70,11 @@ export default function LessonDetailPage() {
             throw new Error('No audio metrics found');
           }
           setPronunciationResults(lessonWithAudioMetrics.audioMetrics);
-          // TODO: render the pronunciation resuilts metrics
-          // TODO: render a seperate pronunciation loading state
+    // TODO: generate new lessons only when metrics are present. 
+    // here should be lesson generation logic
+
+          // Check if all lessons are complete and generate new ones if needed
+           await checkAndGenerateNewLessons();
 
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
@@ -81,6 +85,7 @@ export default function LessonDetailPage() {
       }
     };
     processPronunciation();
+
   }, [sessionRecording, lesson]);
 
   const handleStepComplete = async (
@@ -100,6 +105,7 @@ export default function LessonDetailPage() {
     }
   };
 
+  // onComplete from children lessonChat call is here 
   const handleLessonComplete = async (sessionRecording: Blob | null) => {
     if (lesson) {
       setSessionRecording(sessionRecording);

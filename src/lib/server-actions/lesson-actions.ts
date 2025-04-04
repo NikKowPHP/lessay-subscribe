@@ -132,6 +132,11 @@ export async function generateNewLessonsAction(): Promise<LessonModel[]> {
   }
 }
 
+export async function checkAndGenerateNewLessonsAction() {
+  const lessonService = createLessonService();
+  return await lessonService.checkAndGenerateNewLessons();
+}
+
 export async function processLessonRecordingAction(
   sessionRecording: Blob,
   recordingTime: number,

@@ -12,6 +12,7 @@ import {
   getStepHistoryAction,
   generateNewLessonsAction,
   processLessonRecordingAction,
+  checkAndGenerateNewLessonsAction,
 } from '@/lib/server-actions/lesson-actions';
 import logger from '@/utils/logger';
 import {
@@ -158,8 +159,9 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
         setCurrentLesson(completedLesson);
       }
 
-      // Check if all lessons are complete and generate new ones if needed
-      await checkAndGenerateNewLessons();
+      // check and generate new lessons was here. 
+
+
 
       return completedLesson;
     });
@@ -219,24 +221,10 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
 
   // Add new method to check if all lessons are complete and generate new ones
   const checkAndGenerateNewLessons = async () => {
-    // First get the latest list of lessons
-    // TODO: this should be done on the server
-    const currentLessons = await getLessonsAction();
-
-    // If there are no lessons or not all are complete, just return
-    if (currentLessons.length === 0) return;
-
-    const allComplete = currentLessons.every((lesson) => lesson.completed);
-
-    if (!allComplete) return;
-
-    logger.info('All lessons complete, generating new lessons');
 
     try {
-      // Generate new lessons based on aggregated results
-      const newLessons = await generateNewLessonsAction();
 
-      // TODO: ui does only this check and sets the new lessons, or skips.
+      const newLessons = await checkAndGenerateNewLessonsAction();
       // Update local state with new lessons
       setLessons((prevLessons) => [...newLessons, ...prevLessons]);
 
