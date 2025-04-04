@@ -583,7 +583,6 @@ export default class LessonService {
   }
 
   async checkAndGenerateNewLessons(): Promise<LessonModel[]> {
-    // TODO: this should be done on the server
     const currentLessons = await this.getLessons();
     logger.info('currentLessons', { currentLessons });
      // If there are no lessons or not all are complete, just return

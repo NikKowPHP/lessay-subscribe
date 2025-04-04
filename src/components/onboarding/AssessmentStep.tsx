@@ -101,7 +101,7 @@ export default function AssessmentStep({
         }
         setLessonAudioMetricsLoading(true);
         try {
-          const recordingTime = 10000;
+          const recordingTime = sessionRecording.recordingTime || 10000;
           const recordingSize = sessionRecording.size;
 
           logger.info('processing pronunciation', { recordingTime, recordingSize });

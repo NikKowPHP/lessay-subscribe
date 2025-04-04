@@ -116,22 +116,7 @@ class RecordingService {
         aiResponse = await retryOperation(() => this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_0_flash));
       }
 
-      // TODO: create metrics for ai logging
-      // const endTime = Date.now();
-      // const responseTime = endTime - startTime;
-
-      // Collect interaction data with retry logic.
-      // await retryOperation(() =>
-      //   this.metricsService.collectInteractionData(
-      //     userIP,
-      //     fileUri,
-      //     aiResponse,
-      //     recordingTime,
-      //     responseTime,
-      //     recordingSize,
-      //     detectedTargetLanguage
-      //   )
-      // );
+     
 
       return aiResponse;
     } catch (error) {

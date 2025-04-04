@@ -56,8 +56,10 @@ export default function LessonDetailPage() {
         }
         try {
           logger.info('Processing pronunciation recording', { sessionRecording, lesson });
-          const recordingTime = 10000; // TODO: get from recording
+          const recordingTime = sessionRecording.recordingTime || 10000;
           const recordingSize = sessionRecording.size;
+
+          logger.info('recordingTime', { recordingTime });
         
           const lessonWithAudioMetrics = await processLessonRecording(
             sessionRecording,
@@ -70,10 +72,6 @@ export default function LessonDetailPage() {
             throw new Error('No audio metrics found');
           }
           setPronunciationResults(lessonWithAudioMetrics.audioMetrics);
-    // TODO: generate new lessons only when metrics are present. 
-    // here should be lesson generation logic
-
-          // Check if all lessons are complete and generate new ones if needed
            await checkAndGenerateNewLessons();
 
         } catch (error) {

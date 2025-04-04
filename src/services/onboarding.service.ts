@@ -101,7 +101,6 @@ export default class OnboardingService {
         );
       logger.info('generated audio steps', audioSteps);
 
-      // TODO: save audios to the storage and persist the audio urls in the database
 
 
       const assessmentLesson = {
@@ -154,7 +153,6 @@ export default class OnboardingService {
         assessmentLesson,
       );
     
-    // TODO: Check for audio analysis
 
     assessmentLesson.metrics = results.metrics;
     assessmentLesson.summary = results.summary;

@@ -92,7 +92,6 @@ class LessonGeneratorService implements ILessonGeneratorService {
       useAudioGeneratorMock: this.useAudioGeneratorMock,
       useAudioUploadMock: this.useAudioUploadMock
     });
-    // TODO: Text lesson gen prod
 
   }
 
@@ -155,7 +154,6 @@ class LessonGeneratorService implements ILessonGeneratorService {
         aiResponse = mockLesson;
       } else {
      
-        // TODO: after lessons created we should refresh the ui 
         logger.info('Generated prompts for lesson', { prompts });
 
         aiResponse = await retryOperation(() =>
