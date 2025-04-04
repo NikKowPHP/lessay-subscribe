@@ -22,7 +22,6 @@ export interface IAssessmentGeneratorService {
   ) => Promise<AssessmentStep[]>;
   generateAssessmentResult: (
     assessmentLesson: AssessmentLesson,
-    userResponse: string
   ) => Promise<AiAssessmentResultResponse>;
   generateAudioForSteps: (
     steps: AssessmentStep[],
@@ -131,22 +130,60 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
     }
   }
 
+  private getUserResponses(assessmentLesson: AssessmentLesson): { stepId: string; response: string; allResponses: string[] }[] {
+    try {
+      // Collect all user responses from the steps
+      const userResponses = assessmentLesson.steps
+        .filter(step => step.attempts > 0)
+        .map(step => {
+          // Get responses from history if available, otherwise use single response
+          const responseHistory = step.userResponseHistory 
+            ? (JSON.parse(step.userResponseHistory as string) as string[]) 
+            : [];
+            
+          // Use the most recent response (either from history or the single field)
+          const latestResponse = responseHistory.length > 0 
+            ? responseHistory[responseHistory.length - 1] 
+            : (step.userResponse || '');
+            
+          return {
+            stepId: step.id,
+            response: latestResponse,
+            // Optionally include full history if needed by analysis
+            allResponses: responseHistory.length > 0 ? responseHistory : (step.userResponse ? [step.userResponse] : [])
+          };
+        });
+
+      logger.info('Collected user responses for analysis', { 
+        responseCount: userResponses.length 
+      });
+      return userResponses;
+    } catch (error) {
+      logger.error('Error collecting user responses for analysis', { error });
+      throw error;
+    }
+  }
+
   public async generateAssessmentResult(
     assessmentLesson: AssessmentLesson,
-    userResponse: string
   ): Promise<AiAssessmentResultResponse> {
     try {
       if (this.useMock) {
         logger.info('Using mock assessment generator');
+        let userResponse = 'test';
         return MockAssessmentGeneratorService.generateAssessmentResult(
           assessmentLesson,
           userResponse
         );
       }
+      // getting user responses
+      const userResponses = this.getUserResponses(assessmentLesson);
+
+
 
       const prompts = this.generateOnboardingAssessmentEvaluationPrompts(
         assessmentLesson.steps as AssessmentStep[],
-        userResponse
+        userResponses
       );
 
       logger.info('Generated assessment prompts ', { prompts });
@@ -440,7 +477,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   // You can add this method to evaluate the onboarding assessment results
   private generateOnboardingAssessmentEvaluationPrompts(
     assessmentSteps: AssessmentStep[],
-    userResponses: Record<number, string>
+    userResponses: { stepId: string; response: string; allResponses: string[] }[]
   ): { userPrompt: string; systemPrompt: string } {
     return {
       systemPrompt: `You are an expert language assessment evaluator specializing in determining a user's 

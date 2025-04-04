@@ -152,7 +152,6 @@ export default class OnboardingService {
     const results =
       await this.assessmentGeneratorService.generateAssessmentResult(
         assessmentLesson,
-        userResponse
       );
 
     assessmentLesson.metrics = results.metrics;
