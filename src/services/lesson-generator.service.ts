@@ -582,6 +582,9 @@ class LessonGeneratorService implements ILessonGeneratorService {
     // Format steps with user responses for analysis
     const stepsWithResponses = lesson.steps.map(step => {
       const userResponse = responseMap.get(step.id) || '';
+      const userResponseHistory = step.userResponseHistory 
+        ? (JSON.parse(step.userResponseHistory as string) as string[]) 
+        : [];
       
       return {
         stepNumber: step.stepNumber,
@@ -589,6 +592,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
         content: step.content,
         expectedAnswer: step.expectedAnswer,
         userResponse,
+        userResponseHistory,
         correct: step.correct,
         attempts: step.attempts
       };

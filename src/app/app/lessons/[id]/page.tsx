@@ -186,6 +186,72 @@ export default function LessonDetailPage() {
                       ></div>
                     </div>
                   </div>
+                  
+                  {/* Grammar Score */}
+                  {results.performanceMetrics.grammarScore !== undefined && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-700">
+                          Grammar
+                        </span>
+                        <span className="text-xl font-bold">
+                          {results.performanceMetrics.grammarScore}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-purple-600 h-2.5 rounded-full"
+                          style={{
+                            width: `${results.performanceMetrics.grammarScore}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Vocabulary Score */}
+                  {results.performanceMetrics.vocabularyScore !== undefined && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-700">
+                          Vocabulary
+                        </span>
+                        <span className="text-xl font-bold">
+                          {results.performanceMetrics.vocabularyScore}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-yellow-600 h-2.5 rounded-full"
+                          style={{
+                            width: `${results.performanceMetrics.vocabularyScore}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Overall Score */}
+                  {results.performanceMetrics.overallScore !== undefined && (
+                    <div className="bg-gray-50 p-4 rounded-lg col-span-1 md:col-span-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-700">
+                          Overall Performance
+                        </span>
+                        <span className="text-xl font-bold">
+                          {results.performanceMetrics.overallScore}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-indigo-600 h-2.5 rounded-full"
+                          style={{
+                            width: `${results.performanceMetrics.overallScore}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-gray-500">
@@ -193,6 +259,86 @@ export default function LessonDetailPage() {
                 </p>
               )}
             </div>
+
+            {/* Lesson Summary Section */}
+            {results.performanceMetrics && 
+            isPerformanceMetrics(results.performanceMetrics) && 
+            results.performanceMetrics.summary && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold mb-4">
+                  Lesson Summary
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-gray-700">
+                    {results.performanceMetrics.summary}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Strengths and Weaknesses */}
+            {results.performanceMetrics && 
+            isPerformanceMetrics(results.performanceMetrics) && 
+            (results.performanceMetrics.strengths && results.performanceMetrics.strengths.length > 0 || 
+             results.performanceMetrics.weaknesses && results.performanceMetrics.weaknesses.length > 0) && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold mb-4">
+                  Strengths and Areas for Improvement
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Strengths */}
+                  {results.performanceMetrics.strengths && 
+                  results.performanceMetrics.strengths.length > 0 && (
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <h4 className="font-semibold mb-3 text-green-800">Strengths</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {results.performanceMetrics.strengths.map((strength, index) => (
+                          <li key={index} className="text-gray-700">
+                            {strength}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {/* Weaknesses */}
+                  {results.performanceMetrics.weaknesses && 
+                  results.performanceMetrics.weaknesses.length > 0 && (
+                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                      <h4 className="font-semibold mb-3 text-orange-800">Areas to Focus On</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {results.performanceMetrics.weaknesses.map((weakness, index) => (
+                          <li key={index} className="text-gray-700">
+                            {weakness}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Next Lesson Suggestions */}
+            {results.performanceMetrics && 
+            isPerformanceMetrics(results.performanceMetrics) && 
+            results.performanceMetrics.nextLessonSuggestions && 
+            results.performanceMetrics.nextLessonSuggestions.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold mb-4">
+                  Recommended Next Steps
+                </h3>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex flex-wrap gap-2">
+                    {results.performanceMetrics.nextLessonSuggestions.map((suggestion, index) => (
+                      <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                        {suggestion}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Detailed Pronunciation Results Section */}
             {pronunciationResults && (
@@ -366,7 +512,7 @@ export default function LessonDetailPage() {
             {/* Error Patterns */}
             <div className="mb-8">
               <h3 className="text-xl font-semibold mb-4">
-                Areas for Improvement
+                Common Errors
               </h3>
               {results.performanceMetrics &&
               isPerformanceMetrics(results.performanceMetrics) &&

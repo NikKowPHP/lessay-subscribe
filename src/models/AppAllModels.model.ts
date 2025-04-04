@@ -83,6 +83,13 @@ export interface LessonModel {
   performanceMetrics?: JsonValue | null | {
     accuracy?: number;
     pronunciationScore?: number;
+    grammarScore?: number;
+    vocabularyScore?: number;
+    overallScore?: number;
+    strengths?: string[];
+    weaknesses?: string[];
+    summary?: string;
+    nextLessonSuggestions?: string[];
     errorPatterns?: string[];
   };
   audioMetrics?: AudioMetrics | null;
@@ -144,6 +151,13 @@ export function isAssessmentMetrics(obj: JsonValue): obj is {
 export function isPerformanceMetrics(obj: JsonValue): obj is {
   accuracy?: number;
   pronunciationScore?: number;
+  grammarScore?: number;
+  vocabularyScore?: number;
+  overallScore?: number;
+  strengths?: string[];
+  weaknesses?: string[];
+  summary?: string;
+  nextLessonSuggestions?: string[];
   errorPatterns?: string[];
 } {
   return typeof obj === 'object' && obj !== null && !Array.isArray(obj);
