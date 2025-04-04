@@ -48,13 +48,14 @@ export default function LessonDetailPage() {
 
   useEffect(() => {
     const processPronunciation = async () => {
+      logger.info('processPronunciation', { sessionRecording, lesson });
       if (sessionRecording && lesson) {
         if (!sessionRecording.lastModified || !sessionRecording.size) {
           return
         }
         try {
           logger.info('Processing pronunciation recording', { sessionRecording, lesson });
-          const recordingTime = sessionRecording.lastModified - sessionRecording.lastModified;
+          const recordingTime = 10000; // TODO: get from recording
           const recordingSize = sessionRecording.size;
         
           const lessonWithAudioMetrics = await processLessonRecording(

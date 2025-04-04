@@ -647,17 +647,31 @@ export default class LessonService {
     const sourceLanguage = onboardingData.nativeLanguage || 'English';
 
 
-    // 2. process recording
-    const arrayBuffer = await sessionRecording.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
 
-    const fileUri = await this.recordingService.uploadFile(
-      buffer,
-      sessionRecording.type,
-      `lesson-${lesson.id}-${Date.now()}.webm`
-    );
-    logger.log('File URI:', fileUri);
-
+    // 3. Determine proper mime type
+   // 2. Convert the Blob to a Buffer for upload
+   const arrayBuffer = await sessionRecording.arrayBuffer();
+   const buffer = Buffer.from(arrayBuffer);
+   
+   // 3. Determine proper mime type
+   const mimeType = sessionRecording.type || 'audio/webm';
+   
+   // 4. Upload the file
+   const fileName = `lesson-${lesson.id}-${Date.now()}.webm`;
+   logger.info('Uploading recording file', { 
+     fileName,
+     mimeType,
+     size: buffer.length
+   });
+   
+   const fileUri = await this.recordingService.uploadFile(
+     buffer,
+     mimeType,
+     fileName
+   );
+   logger.log('File URI:', fileUri);
+ 
+   logger.log('Sending recording to AI for analysis');
     // send recording to AI
     let aiResponse :Record<string, unknown>;
     // if (process.env.MOCK_RECORDING_AI_ANALYSIS === 'true') {

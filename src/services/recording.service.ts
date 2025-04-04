@@ -108,7 +108,7 @@ class RecordingService {
       try {
 
         aiResponse = await retryOperation(() =>
-          this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_5_pro_exp)
+          this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_0_flash)
         );
         logger.log("AI Response:", aiResponse);
       } catch (error) {

@@ -175,7 +175,7 @@ class AIService implements  IUploadableAIService{
           ...(fileUri ? [{
             fileData: {
               fileUri: fileUri,
-              mimeType: "audio/aac-adts"
+              mimeType: "audio/webm"
             }
           }] : []),
           { text: userMessage }

@@ -91,6 +91,7 @@ export default function LessonChat({
   const recordingPausedTimeRef = useRef<number>(0);
   const [fullSessionRecording, setFullSessionRecording] =
     useState<RecordingBlob | null>(null);
+  const [lessonCompleted, setLessonCompleted] = useState(false);
 
   // Add state for recording playback
   const [recordingAudioURL, setRecordingAudioURL] = useState<string | null>(
@@ -414,26 +415,33 @@ export default function LessonChat({
           const recordingDuration =
             Date.now() -
             recordingStartTimeRef.current -
-            recordingPausedTimeRef.current;
+            (recordingPausedTimeRef.current || 0);
           const recordingSize = audioBlob.size;
 
-          // Include these values with the Blob
-          const recordingWithMetadata = audioBlob;
-          (recordingWithMetadata as any).recordingTime = recordingDuration;
-          (recordingWithMetadata as any).recordingSize = recordingSize;
+          // Create a new blob with the metadata
+          const recordingWithMetadata = new Blob([audioBlob], {
+            type: mimeType,
+          }) as RecordingBlob;
+          
+          // Add metadata properties
+          recordingWithMetadata.lastModified = Date.now();
+          recordingWithMetadata.recordingTime = recordingDuration;
+          recordingWithMetadata.recordingSize = recordingSize;
 
-          setFullSessionRecording(recordingWithMetadata as RecordingBlob);
+          logger.info('Recording completed with metadata', {
+            size: recordingSize,
+            duration: recordingDuration,
+            lastModified: recordingWithMetadata.lastModified
+          });
+
+          // Set the full session recording, which will trigger the useEffect
+          setFullSessionRecording(recordingWithMetadata);
 
           // Create URL for playback in mock mode
           if (isMockMode) {
             const url = URL.createObjectURL(audioBlob);
             setRecordingAudioURL(url);
           }
-
-          logger.info('Full session recording completed', {
-            size: recordingSize,
-            duration: recordingDuration,
-          });
         };
       } catch (error) {
         logger.error('Error initializing media recorder:', error);
@@ -537,11 +545,11 @@ export default function LessonChat({
 
   const handleSubmitStep = async (
     step: LessonStep | AssessmentStep,
-    response: string
+    userInput: string
   ) => {
     try {
       // setFeedback('Processing...');
-      logger.info('Processing response:', response);
+      logger.info('Processing response:', userInput);
 
       // For instruction and summary steps, just acknowledge them without requiring user response
       if (
@@ -572,8 +580,8 @@ export default function LessonChat({
           setShouldPlayAudio(true);
         } else {
           // If this was the last step, complete the lesson
-
           stopRecordingCompletely();
+          setLessonCompleted(true);
 
           if (!isMockMode) {
             onComplete(fullSessionRecording);
@@ -586,7 +594,7 @@ export default function LessonChat({
       }
 
       // Original handling for other step types...
-      const updatedStep = await onStepComplete(step, response);
+      const updatedStep = await onStepComplete(step, userInput);
       if (!updatedStep.correct) {
         setFeedback('');
         setUserResponse('');
@@ -604,7 +612,7 @@ export default function LessonChat({
         // Add next prompt immediately
         setChatHistory((prev) => [
           ...prev,
-          { type: 'response', content: response },
+          { type: 'response', content: userInput },
           { type: 'prompt', content: nextStep.content },
         ]);
 
@@ -614,6 +622,7 @@ export default function LessonChat({
         startListening();
       } else {
         stopRecordingCompletely();
+        setLessonCompleted(true);
 
         // Check if we're in mock mode
         if (isMockMode) {
@@ -622,7 +631,7 @@ export default function LessonChat({
           logger.info('Lesson ready to complete');
           setChatHistory((prev) => [
             ...prev,
-            { type: 'response', content: response },
+            { type: 'response', content: userInput },
             {
               type: 'prompt',
               content:
@@ -630,9 +639,6 @@ export default function LessonChat({
             },
           ]);
         } else {
-          // Normal completion
-
-          onComplete(fullSessionRecording);
         }
       }
     } catch (error) {
@@ -746,6 +752,26 @@ export default function LessonChat({
     setUserResponse(text);
   };
 
+  // Add a new function to handle lesson completion
+  const handleCompleteLesson = () => {
+    
+    // Reset the ready state
+    setLessonReadyToComplete(false);
+  };
+
+  // Add this useEffect to trigger onComplete when recording is ready
+  useEffect(() => {
+    if (fullSessionRecording && lessonCompleted && !loading) {
+      logger.info('Lesson completed with recording', {
+        recordingSize: fullSessionRecording.size,
+        recordingTime: (fullSessionRecording as any).recordingTime,
+      });
+      
+      // Call onComplete with the recording
+      onComplete(fullSessionRecording);
+    }
+  }, [fullSessionRecording, lessonCompleted, loading, onComplete]);
+
   return (
     lesson && (
       <div className="flex flex-col h-full border rounded-[4px] bg-neutral-2 overflow-hidden">
@@ -851,7 +877,7 @@ export default function LessonChat({
             {lessonReadyToComplete && (
               <button
                 type="button"
-                onClick={() => onComplete(fullSessionRecording)}
+                onClick={handleCompleteLesson}
                 className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-accent-6 hover:bg-accent-7"
               >
                 Complete Lesson
