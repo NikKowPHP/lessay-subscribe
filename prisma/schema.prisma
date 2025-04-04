@@ -146,6 +146,7 @@ model LessonStep {
   userResponse    String?
   userResponseHistory Json?
   attempts        Int      @default(0)
+  maxAttempts     Int      @default(3)  // Maximum attempts before showing correct answer
   correct         Boolean  @default(false)
   lastAttemptAt   DateTime?
   errorPatterns   String[]
