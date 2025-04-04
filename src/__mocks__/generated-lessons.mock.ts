@@ -29,14 +29,15 @@ export const MockLessonGeneratorService = {
             stepNumber: 1,
             type: LessonStepType.instruction,
             content: 'Welcome to the Travel Vocabulary lesson! In this lesson, you\'ll learn essential words and phrases for navigating airports and asking for directions.',
-            // // contentAudioUrl: '/audio-test.mp3',
-            translation: 'Willkommen zur Reisevokabular-Lektion! In dieser Lektion lernen Sie wichtige Wörter und Sätze, um sich auf Flughäfen zurechtzufinden und nach dem Weg zu fragen.'
+            translation: 'Willkommen zur Reisevokabular-Lektion! In dieser Lektion lernen Sie wichtige Wörter und Sätze, um sich auf Flughäfen zurechtzufinden und nach dem Weg zu fragen.',
+            maxAttempts: 1
           },
           {
             stepNumber: 2,
             type: LessonStepType.prompt,
             content: 'How to say "where is" in German?',
             translation: 'wo ist',
+            maxAttempts: 3,
             expectedAnswer: 'wo ist'
           },
           {
@@ -49,7 +50,8 @@ export const MockLessonGeneratorService = {
             stepNumber: 4,
             type: LessonStepType.prompt,
             content: 'How to say "the airport" in German?',
-            expectedAnswer: 'der Flughafen'
+            expectedAnswer: 'der Flughafen',
+            maxAttempts: 3,
           },
           {
             stepNumber: 5,
@@ -62,27 +64,26 @@ export const MockLessonGeneratorService = {
             type: LessonStepType.prompt,
             content: 'How do you ask "Where is the airport?" in German?',
             expectedAnswer: 'wo ist der Flughafen',
+            maxAttempts: 3,
             translation: 'Wie fragt man "Wo ist der Flughafen?" auf Deutsch?'
           },
           {
             stepNumber: 7,
             type: LessonStepType.feedback,
             content: 'Lets add some more words to our vocabulary',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: ''
           },
           {
             stepNumber: 8,
             type: LessonStepType.new_word,
             content: 'Das Gate',
-            // // contentAudioUrl: '/audio-test.mp3',
+            maxAttempts: 3,
             translation: 'das Gate'
           },
           {
             stepNumber: 9,
             type: LessonStepType.summary,
             content: 'Great job! You\'ve completed the Travel Vocabulary lesson. You\'ve learned how to ask for directions and use key airport terminology in German.',
-            // // contentAudioUrl: '/audio-test.mp3',
             translation: 'Gut gemacht! Sie haben die Reisevokabular-Lektion abgeschlossen. Sie haben gelernt, wie man nach dem Weg fragt und wichtige Flughafenterminologie auf Deutsch verwendet.'
           }
         ]
@@ -97,13 +98,15 @@ export const MockLessonGeneratorService = {
             stepNumber: 1,
             type: LessonStepType.instruction,
             content: 'Welcome to the Hotel Booking lesson! In this lesson, you\'ll learn essential phrases for making hotel reservations and requesting services.',
-            translation: 'Willkommen zur Hotelbuchungslektion! In dieser Lektion lernen Sie wichtige Sätze für Hotelbuchungen und das Anfordern von Dienstleistungen.'
+            translation: 'Willkommen zur Hotelbuchungslektion! In dieser Lektion lernen Sie wichtige Sätze für Hotelbuchungen und das Anfordern von Dienstleistungen.',
+            maxAttempts: 1
           },
           {
             stepNumber: 2,
             type: LessonStepType.new_word,
             content: 'das Hotel',
             translation: 'the hotel',
+            maxAttempts: 3,
             expectedAnswer: 'das Hotel'
           },
           {
@@ -116,20 +119,23 @@ export const MockLessonGeneratorService = {
             stepNumber: 4,
             type: LessonStepType.practice,
             content: 'Repeat the word for hotel: das Hotel',
-            expectedAnswer: 'das Hotel'
+            expectedAnswer: 'das Hotel',
+            maxAttempts: 3
           },
           {
             stepNumber: 5,
               type: LessonStepType.feedback,
             content: 'Well done! Now, let\'s learn how to make a reservation.',
-            translation: 'Gut gemacht! Jetzt lernen wir, wie man eine Reservierung macht.'
+            translation: 'Gut gemacht! Jetzt lernen wir, wie man eine Reservierung macht.',
+            maxAttempts: 1
           },
           {
             stepNumber: 6,
             type: LessonStepType.prompt,
             content: 'How do you say "I have a reservation" in German?',
             expectedAnswer: 'Ich habe eine Reservierung',
-            translation: 'Wie sagt man "Ich habe eine Reservierung" auf Deutsch?'
+            translation: 'Wie sagt man "Ich habe eine Reservierung" auf Deutsch?',
+            maxAttempts: 3
           },
           {
             stepNumber: 7,
@@ -154,33 +160,38 @@ export const MockLessonGeneratorService = {
             stepNumber: 1,
             type: LessonStepType.instruction,
             content: 'Welcome to the Pronunciation Practice lesson! In this lesson, you\'ll work on perfecting your German pronunciation and reducing your accent.',
-            translation: 'Willkommen zur Ausspracheübungslektion! In dieser Lektion werden Sie an der Verbesserung Ihrer deutschen Aussprache arbeiten und Ihren Akzent reduzieren.'
+            translation: 'Willkommen zur Ausspracheübungslektion! In dieser Lektion werden Sie an der Verbesserung Ihrer deutschen Aussprache arbeiten und Ihren Akzent reduzieren.',
+            maxAttempts: 1
           },
           {
             stepNumber: 2,
             type: LessonStepType.prompt,
             content: 'To start, say "ready to practice pronunciation"',
-            translation: 'Um zu beginnen, sagen Sie "bereit für die Ausspracheübung"'
+            translation: 'Um zu beginnen, sagen Sie "bereit für die Ausspracheübung"',
+            maxAttempts: 3
           },
           {
             stepNumber: 3,
             type: LessonStepType.new_word,
             content: 'die Aussprache',
             translation: 'the pronunciation',
-            expectedAnswer: 'die Aussprache'
+            expectedAnswer: 'die Aussprache',
+            maxAttempts: 3
           },
           {
             stepNumber: 4,
             type: LessonStepType.practice,
             content: 'die Aussprache',
-            expectedAnswer: 'die Aussprache'
+            expectedAnswer: 'die Aussprache',
+            maxAttempts: 3
           },
           {
             stepNumber: 5,
             type: LessonStepType.new_word,
             content: 'schwierig',
             translation: 'difficult',
-            expectedAnswer: 'schwierig'
+            expectedAnswer: 'schwierig',
+            maxAttempts: 3
           },
           {
             stepNumber: 6,
@@ -193,7 +204,6 @@ export const MockLessonGeneratorService = {
             stepNumber: 7,
             type: LessonStepType.summary,
             content: 'Excellent work! You\'ve completed the Pronunciation Practice lesson. Your German pronunciation has improved, and you\'re on your way to speaking more naturally.',
-            // contentAudioUrl: '/audio-test.mp3',
             translation: 'Ausgezeichnete Arbeit! Sie haben die Ausspracheübungslektion abgeschlossen. Ihre deutsche Aussprache hat sich verbessert und Sie sind auf dem Weg, natürlicher zu sprechen.'
           }
         ]
@@ -206,54 +216,50 @@ export const MockLessonGeneratorService = {
             stepNumber: 1,
             type: LessonStepType.instruction,
             content: 'Welcome to the Grammar Fundamentals lesson! In this lesson, you\'ll learn basic German sentence structure and verb conjugation patterns.',
-            // contentAudioUrl: '/audio-test.mp3',
-            translation: 'Willkommen zur Lektion über Grammatik-Grundlagen! In dieser Lektion lernen Sie die grundlegende deutsche Satzstruktur und Verbkonjugationsmuster.'
+            translation: 'Willkommen zur Lektion über Grammatik-Grundlagen! In dieser Lektion lernen Sie die grundlegende deutsche Satzstruktur und Verbkonjugationsmuster.',
+            maxAttempts: 1
           },
           {
             stepNumber: 2,
             type: LessonStepType.prompt,
             content: 'To start, say "I am ready to learn grammar"',
-            // contentAudioUrl: '/audio-test.mp3',
-            translation: 'Um zu beginnen, sagen Sie "Ich bin bereit, Grammatik zu lernen"'
+            translation: 'Um zu beginnen, sagen Sie "Ich bin bereit, Grammatik zu lernen"',
+            maxAttempts: 3
           },
           {
             stepNumber: 3,
             type: LessonStepType.new_word,
             content: 'die Grammatik',
-            // contentAudioUrl: '/audio-test.mp3',
-            // expectedAnswerAudioUrl: '/audio-test.mp3',
             translation: 'the grammar',
-            expectedAnswer: 'die Grammatik'
+            expectedAnswer: 'die Grammatik',
+            maxAttempts: 3
           },
           {
             stepNumber: 4,
             type: LessonStepType.practice,
             content: 'die Grammatik',
-            // contentAudioUrl: '/audio-test.mp3',
-            // expectedAnswerAudioUrl: '/audio-test.mp3',
-            expectedAnswer: 'die Grammatik'
+            expectedAnswer: 'die Grammatik',
+            maxAttempts: 3
           },
           {
             stepNumber: 5,
             type: LessonStepType.prompt,
             content: 'How do you say "I learn grammar"?',
-            // contentAudioUrl: '/audio-test.mp3',
-            translation: 'Wie sagt man "Ich lerne Grammatik"?'
+            translation: 'Wie sagt man "Ich lerne Grammatik"?',
+            maxAttempts: 3
           },
           {
             stepNumber: 6,
             type: LessonStepType.feedback,
             content: 'Ich lerne Grammatik',
-            // contentAudioUrl: '/audio-test.mp3',
-            // expectedAnswerAudioUrl: '/audio-test.mp3',
             translation: 'I learn grammar',
-            expectedAnswer: 'Ich lerne Grammatik'
+            expectedAnswer: 'Ich lerne Grammatik',
+            maxAttempts: 3
           },
           {
             stepNumber: 7,
             type: LessonStepType.summary,
             content: 'Congratulations! You\'ve completed the Grammar Fundamentals lesson. You now understand basic German sentence structures and can form simple sentences with proper verb conjugation.',
-            // contentAudioUrl: '/audio-test.mp3',
             translation: 'Herzlichen Glückwunsch! Sie haben die Lektion zu den Grammatik-Grundlagen abgeschlossen. Sie verstehen jetzt die grundlegenden deutschen Satzstrukturen und können einfache Sätze mit korrekter Verbkonjugation bilden.'
           }
         ]
@@ -279,19 +285,21 @@ export const MockLessonGeneratorService = {
           type: LessonStepType.new_word,
           content: 'Hallo',
           translation: 'Hello',
-          expectedAnswer: 'Hello'
+          expectedAnswer: 'Hallo',
+          maxAttempts: 3
         },
         {
           stepNumber: 3,
           type: LessonStepType.feedback,
-          content: 'Excellent! Now let\'s practice saying "Hello".',
-          translation: 'Ausgezeichnet! Jetzt üben wir, "Hello" zu sagen.'
+          content: 'Excellent! Now let\'s practice saying "Hallo".',
+          translation: 'Ausgezeichnet! Jetzt üben wir, "Hallo" zu sagen.'
         },
         {
           stepNumber: 4,
           type: LessonStepType.practice,
-          content: 'Repeat: Hello',
-          expectedAnswer: 'Hello'
+          content: 'Repeat: Hallo',
+          expectedAnswer: 'Hallo',
+          maxAttempts: 3
         },
         {
           stepNumber: 5,

@@ -195,6 +195,26 @@ export default class OnboardingService {
       if (!step) {
         throw new Error('Step not found');
       }
+
+      // Check if max attempts has been reached
+      if (step.attempts >= step.maxAttempts) {
+        logger.info('Maximum attempts reached', { 
+          stepId, 
+          attempts: step.attempts,
+          maxAttempts: step.maxAttempts 
+        });
+        
+        // Record the attempt but mark as incorrect, preserving user response
+        return this.onboardingRepository.recordStepAttempt(
+          lessonId,
+          stepId,
+          {
+            userResponse,
+            correct: true, // to proceed on the frontend
+          }
+        );
+      }
+      
       // Validate user response for most step types
       if (
         step.type !== 'instruction' &&

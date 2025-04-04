@@ -105,6 +105,7 @@ export interface LessonStep {
   userResponse?: string | null;
   userResponseHistory?: JsonValue | null;
   attempts: number;
+  maxAttempts: number;
   correct: boolean;
   lastAttemptAt?: Date | null;
   errorPatterns: string[];

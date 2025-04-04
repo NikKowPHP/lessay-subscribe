@@ -433,33 +433,38 @@ class LessonGeneratorService implements ILessonGeneratorService {
               "type": "new_word",
               "content": "New vocabulary in ${targetLanguage}",
               "translation": "Translation in ${sourceLanguage}",
-              "expectedAnswer": "Expected pronunciation/response"
+              "expectedAnswer": "Expected pronunciation/response",
+              "maxAttempts": 3
             },
             {
               "stepNumber": 3,
               "type": "practice",
               "content": "Practice prompt in ${targetLanguage} or ${sourceLanguage}",
               "translation": "Translation if needed",
-              "expectedAnswer": "Expected answer in ${targetLanguage}"
+              "expectedAnswer": "Expected answer in ${targetLanguage}",
+              "maxAttempts": 2
             },
             {
               "stepNumber": 4,
               "type": "feedback",
               "content": "Supportive feedback in ${sourceLanguage}",
-              "translation": "Translation in ${targetLanguage}"
+              "translation": "Translation in ${targetLanguage}",
+              "maxAttempts": 2
             },
             {
               "stepNumber": 5,
               "type": "prompt",
               "content": "Question or task for the user in ${sourceLanguage}",
               "translation": "Translation if needed",
-              "expectedAnswer": "Expected answer in ${targetLanguage}"
+              "expectedAnswer": "Expected answer in ${targetLanguage}",
+              "maxAttempts": 2
             },
             {
               "stepNumber": 6,
               "type": "summary",
               "content": "Summary of what was learned in ${sourceLanguage}",
-              "translation": "Translation in ${targetLanguage}"
+              "translation": "Translation in ${targetLanguage}",
+              "maxAttempts": 2
             }
           ]
         }

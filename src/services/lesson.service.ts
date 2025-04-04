@@ -324,6 +324,26 @@ export default class LessonService {
       throw new Error('Step not found');
     }
 
+
+     // Check if max attempts has been reached
+    if (step.attempts >= step.maxAttempts) {
+      logger.info('Maximum attempts reached', { 
+        stepId, 
+        attempts: step.attempts,
+        maxAttempts: step.maxAttempts 
+      });
+      
+      // Record the attempt but mark as incorrect, preserving user response
+      return this.lessonRepository.recordStepAttempt(
+        lessonId,
+        stepId,
+        {
+          userResponse,
+          correct: true, // to proceed on the frontend
+        }
+      );
+    }
+
     // Validate user response for most step types
     if (
       step.type !== 'instruction' &&
@@ -632,7 +652,8 @@ export default class LessonService {
 
     // send recording to AI
     let aiResponse :Record<string, unknown>;
-    if (process.env.MOCK_RECORDING_AI_ANALYSIS === 'true') {
+    // if (process.env.MOCK_RECORDING_AI_ANALYSIS === 'true') {
+    if(false) {
       aiResponse = mockAudioMetrics;
     } else {
       logger.info('Sending recording to AI for analysis');
