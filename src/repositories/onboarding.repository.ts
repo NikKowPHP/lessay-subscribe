@@ -613,12 +613,25 @@ export class OnboardingRepository implements IOnboardingRepository {
       if (!step) {
         throw new Error('Step not found in the assessment');
       }
+      logger.info('existingStep in repo', { step })
+      // 2. Get existing response history
+      let responseHistory: string[] = [];
+      try {
+        responseHistory = step.userResponseHistory
+          ? JSON.parse(step.userResponseHistory as string)
+          : [];
+      } catch (e) {
+        logger.error('Error parsing response history', { error: e });
+        responseHistory = [];
+      }
+      responseHistory.push(data.userResponse);
 
       // Update the step with the attempt data
       return await prisma.assessmentStep.update({
         where: { id: stepId },
         data: {
           userResponse: data.userResponse,
+          userResponseHistory: JSON.stringify(responseHistory),
           attempts: { increment: 1 },
           correct: data.correct,
           lastAttemptAt: new Date(),

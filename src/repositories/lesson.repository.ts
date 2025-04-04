@@ -246,7 +246,7 @@ export class LessonRepository implements ILessonRepository {
     const existingStep = await prisma.lessonStep.findFirst({
       where: { 
         lessonId,
-        id: stepId
+        id: stepId,
       }
     })
 
@@ -254,7 +254,17 @@ export class LessonRepository implements ILessonRepository {
       throw new Error(`Step ${stepNumber} not found in lesson ${lessonId}`)
     }
     logger.info('existingStep in repo', { existingStep })
-
+    // 2. Get existing response history
+    let responseHistory: string[] = [];
+    try {
+      responseHistory = existingStep.userResponseHistory
+        ? JSON.parse(existingStep.userResponseHistory as string)
+        : [];
+    } catch (e) {
+      logger.error('Error parsing response history', { error: e });
+      responseHistory = [];
+    }
+    responseHistory.push(data.userResponse);
     // Update using the database ID from existing step
     return prisma.lessonStep.update({
       where: { 
@@ -264,6 +274,7 @@ export class LessonRepository implements ILessonRepository {
       data: {
         attempts: { increment: 1 },
         userResponse: data.userResponse,
+        userResponseHistory: JSON.stringify(responseHistory),
         correct: data.correct,
         lastAttemptAt: new Date()
       }

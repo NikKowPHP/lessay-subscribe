@@ -52,6 +52,7 @@ export interface AssessmentStep {
   expectedAnswerAudioUrl?: string | null;
   maxAttempts: number;
   userResponse?: string | null;
+  userResponseHistory?: JsonValue | null;
   attempts: number;
   correct: boolean;
   lastAttemptAt?: Date | null;
@@ -102,6 +103,7 @@ export interface LessonStep {
   expectedAnswer?: string | null;
   expectedAnswerAudioUrl?: string | null;
   userResponse?: string | null;
+  userResponseHistory?: JsonValue | null;
   attempts: number;
   correct: boolean;
   lastAttemptAt?: Date | null;

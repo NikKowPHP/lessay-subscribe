@@ -102,6 +102,7 @@ model AssessmentStep {
   expectedAnswerAudioUrl String?
   maxAttempts       Int              @default(3)  // Maximum attempts before showing correct answer
   userResponse      String?
+  userResponseHistory Json?
   attempts          Int              @default(0)
   correct           Boolean          @default(false)
   lastAttemptAt     DateTime?
@@ -143,6 +144,7 @@ model LessonStep {
   expectedAnswer  String?
   expectedAnswerAudioUrl String?
   userResponse    String?
+  userResponseHistory Json?
   attempts        Int      @default(0)
   correct         Boolean  @default(false)
   lastAttemptAt   DateTime?
