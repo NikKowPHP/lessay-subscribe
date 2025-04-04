@@ -11,6 +11,7 @@ import LearningPurposeStep from '@/components/onboarding/LearningPurposeStep';
 import ProficiencyStep from '@/components/onboarding/ProficiencyStep';
 import AssessmentStep from '@/components/onboarding/AssessmentStep';
 import { AssessmentLesson } from '@/models/AppAllModels.model';
+import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -104,6 +105,7 @@ export default function OnboardingPage() {
       assessmentLesson.completed &&
       assessmentLesson.metrics && assessmentLesson.audioMetrics // only after audio metrics are generated
     ) {
+      logger.info('generating the initial lessons');
       markOnboardingAsCompleteAndGenerateLessons();
     }
   }, [assessmentLesson, currentStep]);
@@ -173,6 +175,14 @@ export default function OnboardingPage() {
     goToLessonsWithOnboardingComplete();
   };
 
+  const processAssessmentLessonRecording = async (sessionRecording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number) => {
+    logger.info('processing assessment lesson recording', { sessionRecording, lesson, recordingTime, recordingSize });
+    const LessonWithMetrics = await completeAssessmentLesson(lesson.id, 'Assessment completed');
+    setAssessmentLesson((prev) => ({ ...prev, ...LessonWithMetrics }));
+    logger.info('LessonWithMetrics', LessonWithMetrics);
+    return LessonWithMetrics;
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 'welcome':
@@ -216,6 +226,7 @@ export default function OnboardingPage() {
             lesson={assessmentLesson}
             onGoToLessonsButtonClick={() => handleGoToLessonsButtonClick()}
             areMetricsGenerated={areMetricsGenerated}
+            processAssessmentLessonRecording={processAssessmentLessonRecording}
           />
         );
       default:

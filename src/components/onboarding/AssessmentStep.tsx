@@ -20,6 +20,7 @@ interface AssessmentStepProps {
   lesson: AssessmentLesson | null;
   onAssessmentComplete: () => void;
   onGoToLessonsButtonClick: () => void;
+  processAssessmentLessonRecording: (sessionRecording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number) => Promise<AssessmentLesson>;
 }
 
 export default function AssessmentStep({
@@ -29,17 +30,17 @@ export default function AssessmentStep({
   lesson,
   onAssessmentComplete,
   onGoToLessonsButtonClick,
+  processAssessmentLessonRecording,
 }: AssessmentStepProps) {
-  const { recordAssessmentStepAttempt, processAssessmentLessonRecording } =
+  const { recordAssessmentStepAttempt } =
     useOnboarding();
   const [isCompleting, setIsCompleting] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [sessionRecording, setSessionRecording] =
     useState<RecordingBlob | null>(null);
   // Handle step completion - align with lesson page approach
-  const [pronunciationResults, setPronunciationResults] =
     useState<AudioMetrics | null>(null);
-  const [pronunciationResultsLoading, setPronunciationResultsLoading] =
+  const [lessonAudioMetricsLoading, setLessonAudioMetricsLoading] =
     useState<boolean>(false);
 
   const handleStepComplete = async (
@@ -91,14 +92,19 @@ export default function AssessmentStep({
 
   useEffect(() => {
     const processPronunciation = async () => {
+
+      logger.info('sessionRecording', sessionRecording);
+      logger.info('lesson', lesson);
       if (sessionRecording && lesson) {
         if (!sessionRecording.lastModified || !sessionRecording.size) {
           return;
         }
+        setLessonAudioMetricsLoading(true);
         try {
-          const recordingTime =
-            sessionRecording.lastModified - sessionRecording.lastModified;
+          const recordingTime = 10000;
           const recordingSize = sessionRecording.size;
+
+          logger.info('processing pronunciation', { recordingTime, recordingSize });
 
           const lessonWithAudioMetrics = await processAssessmentLessonRecording(
             sessionRecording,
@@ -106,17 +112,16 @@ export default function AssessmentStep({
             recordingTime,
             recordingSize
           );
+          logger.info('lessonWithAudioMetrics', lessonWithAudioMetrics);
           if (!lessonWithAudioMetrics.audioMetrics) {
             throw new Error('No audio metrics found');
           }
-          setPronunciationResults(lessonWithAudioMetrics.audioMetrics);
-          // TODO: render the pronunciation resuilts metrics
-          // TODO: render a seperate pronunciation loading state
+          
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
           toast.error('Failed to process pronunciation');
         } finally {
-          setPronunciationResultsLoading(false);
+          setLessonAudioMetricsLoading(false);
         }
       }
     };
@@ -236,8 +241,20 @@ export default function AssessmentStep({
               </div>
             )}
 
+            {lessonAudioMetricsLoading && (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin mr-3 h-5 w-5 text-accent-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <span className="text-neutral-9">Loading pronunciation analysis...</span>
+              </div>
+            )}
+
             {/* Pronunciation Results */}
-            {pronunciationResults && (
+            {lesson.audioMetrics && (
               <div className="p-4 bg-neutral-2 rounded-lg border border-neutral-4">
                 <h3 className="font-medium text-lg mb-3">Pronunciation Analysis</h3>
                 
@@ -247,32 +264,32 @@ export default function AssessmentStep({
                     <div className="bg-neutral-1 p-3 rounded border border-neutral-3 text-center">
                       <p className="text-sm text-neutral-7">Pronunciation</p>
                       <p className="text-xl font-bold text-accent-8">
-                        {pronunciationResults.pronunciationScore}%
+                        {lesson.audioMetrics.pronunciationScore}%
                       </p>
                     </div>
                     <div className="bg-neutral-1 p-3 rounded border border-neutral-3 text-center">
                       <p className="text-sm text-neutral-7">Fluency</p>
                       <p className="text-xl font-bold text-accent-8">
-                        {pronunciationResults.fluencyScore}%
+                        {lesson.audioMetrics.fluencyScore}%
                       </p>
                     </div>
                     <div className="bg-neutral-1 p-3 rounded border border-neutral-3 text-center">
                       <p className="text-sm text-neutral-7">CEFR Level</p>
                       <p className="text-xl font-bold text-accent-8">
-                        {pronunciationResults.proficiencyLevel}
+                        {lesson.audioMetrics.proficiencyLevel}
                       </p>
                     </div>
                     <div className="bg-neutral-1 p-3 rounded border border-neutral-3 text-center">
                       <p className="text-sm text-neutral-7">Trajectory</p>
                       <p className="text-xl font-bold text-accent-8">
-                        {pronunciationResults.learningTrajectory}
+                        {lesson.audioMetrics.learningTrajectory}
                       </p>
                     </div>
                   </div>
                 </div>
                 
                 {/* Detailed Pronunciation */}
-                {pronunciationResults.pronunciationAssessment && (
+                {lesson.audioMetrics.pronunciationAssessment && (
                   <div className="mb-4">
                     <h4 className="text-md font-medium text-accent-8 mb-2">Pronunciation Details</h4>
                     
@@ -280,14 +297,14 @@ export default function AssessmentStep({
                     <div className="mb-3">
                       <p className="text-sm font-medium">Native Language Influence: 
                         <span className="ml-1 font-normal">
-                          {pronunciationResults.pronunciationAssessment.native_language_influence.level}
+                          {lesson.audioMetrics.pronunciationAssessment.native_language_influence.level}
                         </span>
                       </p>
-                      {pronunciationResults.pronunciationAssessment.native_language_influence.specific_features.length > 0 && (
+                      {lesson.audioMetrics.pronunciationAssessment.native_language_influence.specific_features.length > 0 && (
                         <div className="mt-1">
                           <p className="text-sm text-neutral-7">Specific features:</p>
                           <ul className="list-disc pl-5 text-sm">
-                            {pronunciationResults.pronunciationAssessment.native_language_influence.specific_features.map((feature, idx) => (
+                            {lesson.audioMetrics.pronunciationAssessment.native_language_influence.specific_features.map((feature, idx) => (
                               <li key={idx} className="text-neutral-8">{feature}</li>
                             ))}
                           </ul>
@@ -296,11 +313,11 @@ export default function AssessmentStep({
                     </div>
                     
                     {/* Problematic Sounds */}
-                    {pronunciationResults.pronunciationAssessment.problematic_sounds.length > 0 && (
+                    {lesson.audioMetrics.pronunciationAssessment.problematic_sounds.length > 0 && (
                       <div className="mb-3">
                         <p className="text-sm font-medium">Sounds to Practice:</p>
                         <div className="flex flex-wrap gap-2 mt-1">
-                          {pronunciationResults.pronunciationAssessment.problematic_sounds.map((sound, idx) => (
+                          {lesson.audioMetrics.pronunciationAssessment.problematic_sounds.map((sound, idx) => (
                             <span key={idx} className="bg-warning-light text-warning-dark px-2 py-1 rounded text-sm">
                               {sound}
                             </span>
@@ -310,11 +327,11 @@ export default function AssessmentStep({
                     )}
                     
                     {/* Pronunciation Strengths */}
-                    {pronunciationResults.pronunciationAssessment.strengths.length > 0 && (
+                    {lesson.audioMetrics.pronunciationAssessment.strengths.length > 0 && (
                       <div className="mb-3">
                         <p className="text-sm font-medium text-success">Strengths:</p>
                         <ul className="list-disc pl-5 text-sm">
-                          {pronunciationResults.pronunciationAssessment.strengths.map((strength, idx) => (
+                          {lesson.audioMetrics.pronunciationAssessment.strengths.map((strength, idx) => (
                             <li key={idx} className="text-neutral-8">{strength}</li>
                           ))}
                         </ul>
@@ -322,11 +339,11 @@ export default function AssessmentStep({
                     )}
                     
                     {/* Areas for Improvement */}
-                    {pronunciationResults.pronunciationAssessment.areas_for_improvement.length > 0 && (
+                    {lesson.audioMetrics.pronunciationAssessment.areas_for_improvement.length > 0 && (
                       <div>
                         <p className="text-sm font-medium text-warning">Areas to Improve:</p>
                         <ul className="list-disc pl-5 text-sm">
-                          {pronunciationResults.pronunciationAssessment.areas_for_improvement.map((area, idx) => (
+                          {lesson.audioMetrics.pronunciationAssessment.areas_for_improvement.map((area, idx) => (
                             <li key={idx} className="text-neutral-8">{area}</li>
                           ))}
                         </ul>
@@ -336,7 +353,7 @@ export default function AssessmentStep({
                 )}
                 
                 {/* Fluency Assessment */}
-                {pronunciationResults.fluencyAssessment && (
+                {lesson.audioMetrics.fluencyAssessment && (
                   <div className="mb-4 border-t border-neutral-3 pt-3 mt-4">
                     <h4 className="text-md font-medium text-accent-8 mb-2">Fluency Analysis</h4>
                     
@@ -344,23 +361,23 @@ export default function AssessmentStep({
                       <div className="bg-neutral-1 p-3 rounded border border-neutral-3">
                         <p className="text-sm text-neutral-7">Speech Rate</p>
                         <p className="text-md">
-                          <span className="font-medium">{pronunciationResults.fluencyAssessment.speech_rate.words_per_minute}</span> words/min
-                          <span className="ml-2 text-sm">({pronunciationResults.fluencyAssessment.speech_rate.evaluation})</span>
+                          <span className="font-medium">{lesson.audioMetrics.fluencyAssessment.speech_rate.words_per_minute}</span> words/min
+                          <span className="ml-2 text-sm">({lesson.audioMetrics.fluencyAssessment.speech_rate.evaluation})</span>
                         </p>
                       </div>
                       
                       <div className="bg-neutral-1 p-3 rounded border border-neutral-3">
                         <p className="text-sm text-neutral-7">Hesitation</p>
                         <p className="text-md">
-                          <span className="font-medium">{pronunciationResults.fluencyAssessment.hesitation_patterns.frequency}</span>
-                          <span className="ml-2 text-sm">({pronunciationResults.fluencyAssessment.hesitation_patterns.average_pause_duration.toFixed(1)}s avg pause)</span>
+                          <span className="font-medium">{lesson.audioMetrics.fluencyAssessment.hesitation_patterns.frequency}</span>
+                          <span className="ml-2 text-sm">({lesson.audioMetrics.fluencyAssessment.hesitation_patterns.average_pause_duration.toFixed(1)}s avg pause)</span>
                         </p>
                       </div>
                       
                       <div className="bg-neutral-1 p-3 rounded border border-neutral-3">
                         <p className="text-sm text-neutral-7">Naturalness</p>
                         <p className="text-md font-medium">
-                          {pronunciationResults.fluencyAssessment.rhythm_and_intonation.naturalness}%
+                          {lesson.audioMetrics.fluencyAssessment.rhythm_and_intonation.naturalness}%
                         </p>
                       </div>
                     </div>
