@@ -324,6 +324,8 @@ export default class LessonService {
       throw new Error('Step not found');
     }
 
+    
+
 
      // Check if max attempts has been reached
     if (step.attempts >= step.maxAttempts) {
@@ -332,17 +334,23 @@ export default class LessonService {
         attempts: step.attempts,
         maxAttempts: step.maxAttempts 
       });
+
+      if (!step.expectedAnswer) {
+        throw new Error('Expected answer not found');
+      }
       
       // Record the attempt but mark as incorrect, preserving user response
       return this.lessonRepository.recordStepAttempt(
         lessonId,
         stepId,
         {
-          userResponse,
+          userResponse: step.expectedAnswer,
           correct: true, // to proceed on the frontend
         }
       );
     }
+
+    logger.info('step.type ', step.type);
 
     // Validate user response for most step types
     if (

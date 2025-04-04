@@ -265,6 +265,8 @@ export const MockLessonGeneratorService = {
         ]
       }
     };
+    // TODO: AUTH USER CREATES THE USER PROFILE 
+    // TODO: USER SKILL PROGRESSION 
 
     // If topic is not specified, pick a random one
     const selectedTopic = topic || getRandomTopic(allLessonTemplates);
