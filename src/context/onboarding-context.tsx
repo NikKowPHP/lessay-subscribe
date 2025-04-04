@@ -8,7 +8,7 @@ import {
   getAssessmentLessonAction,
   completeAssessmentLessonAction,
   getOnboardingAction,
-  completeOnboardingAction,
+  markOnboardingCompleteAndGenerateInitialLessonsAction,
   recordAssessmentStepAttemptAction,
   updateOnboardingLessonAction,
   processAssessmentLessonRecordingAction
@@ -34,7 +34,7 @@ interface OnboardingContextType {
     lessonId: string,
     userResponse: string
   ) => Promise<AssessmentLesson>;
-  completeOnboardingWithLessons: () => Promise<void>;
+  markOnboardingAsCompleteAndGenerateLessons: () => Promise<void>;
   onboarding: OnboardingModel | null;
   recordAssessmentStepAttempt: (
     lessonId: string,
@@ -127,9 +127,9 @@ export function OnboardingProvider({
     });
   };
 
-  const completeOnboardingWithLessons = async () => {
+  const markOnboardingAsCompleteAndGenerateLessons = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const completedOnboarding = await completeOnboardingAction();
+      const completedOnboarding = await markOnboardingCompleteAndGenerateInitialLessonsAction();
       setOnboarding(completedOnboarding);
       toast.success(
         'Onboarding completed! Generating your personalized lessons...'
@@ -245,7 +245,7 @@ export function OnboardingProvider({
         getOnboarding,
         getAssessmentLesson,
         completeAssessmentLesson,
-        completeOnboardingWithLessons,
+        markOnboardingAsCompleteAndGenerateLessons,
         onboarding,
         recordAssessmentStepAttempt,
         goToLessonsWithOnboardingComplete,

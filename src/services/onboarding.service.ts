@@ -56,7 +56,7 @@ export default class OnboardingService {
     return this.onboardingRepository.updateOnboarding(step);
   };
 
-  completeOnboardingWithLessons = async (): Promise<OnboardingModel> => {
+  markOnboardingAsCompleteAndGenerateLessons = async (): Promise<OnboardingModel> => {
     const onboarding = await this.onboardingRepository.completeOnboarding();
     await this.lessonService.generateInitialLessons();
     return onboarding;
@@ -159,6 +159,7 @@ export default class OnboardingService {
     assessmentLesson.metrics = results.metrics;
     assessmentLesson.summary = results.summary;
     assessmentLesson.proposedTopics = results.proposedTopics;
+    
 
     logger.info(`Assessment lesson: ${JSON.stringify(assessmentLesson)}`);
 

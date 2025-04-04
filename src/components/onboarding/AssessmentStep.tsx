@@ -125,7 +125,7 @@ export default function AssessmentStep({
 
   // Navigate to lessons after viewing results
   const handleFinishAndGoToLessons = () => {
-    // completeOnboardingWithLessons();
+    // markOnboardingAsCompleteAndGenerateLessons();
     // onComplete();
     onGoToLessonsButtonClick();
   };

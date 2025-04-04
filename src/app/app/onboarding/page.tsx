@@ -21,7 +21,7 @@ export default function OnboardingPage() {
     loading,
     getOnboarding,
     getAssessmentLesson,
-    completeOnboardingWithLessons,
+    markOnboardingAsCompleteAndGenerateLessons,
     completeAssessmentLesson,
     goToLessonsWithOnboardingComplete,
   } = useOnboarding();
@@ -102,9 +102,9 @@ export default function OnboardingPage() {
     if (
       assessmentLesson &&
       assessmentLesson.completed &&
-      assessmentLesson.metrics
+      assessmentLesson.metrics && assessmentLesson.audioMetrics // only after audio metrics are generated
     ) {
-      completeOnboardingWithLessons();
+      markOnboardingAsCompleteAndGenerateLessons();
     }
   }, [assessmentLesson, currentStep]);
 
