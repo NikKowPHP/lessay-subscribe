@@ -14,6 +14,7 @@ interface AuthContextType {
   error: string | null
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
+  loginWithGoogle: () => Promise<void>
   logout: () => Promise<void>
   clearError: () => void
 }
@@ -106,6 +107,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     }
   }
+  
+  const loginWithGoogle = async () => {
+    setError(null)
+    setLoading(true)
+    try {
+      await authService.loginWithGoogle()
+      // No need to set user/session here as it will be handled by the auth state change
+    } catch (error) {
+      const message = error instanceof AuthError 
+        ? error.message 
+        : 'Google login failed'
+      setError(message)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const logout = async () => {
     setError(null)
@@ -128,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       login, 
       register,
+      loginWithGoogle,
       logout,
       clearError 
     }}>

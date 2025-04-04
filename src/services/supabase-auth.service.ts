@@ -24,6 +24,18 @@ export class SupabaseAuthService implements IAuthService {
     return data
   }
 
+  async loginWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/app/lessons`
+      }
+    })
+    
+    if (error) throw new Error(error.message)
+    // No need to return data as this will redirect the browser
+  }
+
   async logout() {
     const { error } = await supabase.auth.signOut()
     if (error) throw new Error(error.message)
