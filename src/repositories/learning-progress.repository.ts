@@ -17,8 +17,6 @@ export interface ILearningProgressRepository {
 }
 
 export class LearningProgressRepository implements ILearningProgressRepository {
-  // Removed authService as direct DB access via Prisma doesn't need it here
-  // If row-level security or user context from auth is needed, re-add it.
 
   constructor() {
     // Constructor can be empty or take Prisma client if not using global instance
@@ -57,8 +55,11 @@ export class LearningProgressRepository implements ILearningProgressRepository {
     try {
       const progress = await prisma.learningProgress.upsert({
         where: { userId },
-        update: data as Prisma.LearningProgressUpdateInput, // Prisma needs specific type here
-        create: { ...data, userId } as Prisma.LearningProgressCreateInput, // Ensure userId is included
+        update: data as Prisma.LearningProgressUpdateInput,
+        create: {
+          ...data,
+          user: { connect: { id: userId } }  // Use relation instead of direct userId
+        } as unknown as Prisma.LearningProgressCreateInput  // Double assertion needed
       });
       return progress as LearningProgressModel;
     } catch (error) {
@@ -68,15 +69,19 @@ export class LearningProgressRepository implements ILearningProgressRepository {
   }
 
   async upsertTopicProgress(learningProgressId: string, topicData: Prisma.TopicProgressUncheckedCreateInput | Prisma.TopicProgressUpdateInput): Promise<TopicProgressModel> {
-    const topicName = (topicData as any).topicName; // Extract topicName for the where clause
-     if (!topicName) {
-       throw new Error('topicName is required for upserting TopicProgress');
-     }
+    const topicName = (topicData as any).topicName;
+    if (!topicName) {
+      throw new Error('topicName is required for upserting TopicProgress');
+    }
     try {
+      const { learningProgressId: _, ...cleanData } = topicData as any; // Exclude learningProgressId from spread
       const topicProgress = await prisma.topicProgress.upsert({
         where: { learningProgressId_topicName: { learningProgressId, topicName } },
         update: topicData as Prisma.TopicProgressUpdateInput,
-        create: { ...topicData, learningProgressId } as Prisma.TopicProgressCreateInput,
+        create: {
+          ...cleanData,
+          learningProgress: { connect: { id: learningProgressId } } // Use relation instead of direct ID
+        } as unknown as Prisma.TopicProgressCreateInput
       });
       return topicProgress as TopicProgressModel;
     } catch (error) {
@@ -86,15 +91,19 @@ export class LearningProgressRepository implements ILearningProgressRepository {
   }
 
    async upsertWordProgress(learningProgressId: string, wordData: Prisma.WordProgressUncheckedCreateInput | Prisma.WordProgressUpdateInput): Promise<WordProgressModel> {
-    const word = (wordData as any).word; // Extract word for the where clause
-     if (!word) {
-        throw new Error('word is required for upserting WordProgress');
-     }
+    const word = (wordData as any).word;
+    if (!word) {
+      throw new Error('word is required for upserting WordProgress');
+    }
     try {
+      const { learningProgressId: _, ...cleanData } = wordData as any; // Exclude learningProgressId from spread
       const wordProgress = await prisma.wordProgress.upsert({
         where: { learningProgressId_word: { learningProgressId, word } },
         update: wordData as Prisma.WordProgressUpdateInput,
-        create: { ...wordData, learningProgressId } as Prisma.WordProgressCreateInput,
+        create: {
+          ...cleanData,
+          learningProgress: { connect: { id: learningProgressId } } // Use relation instead of direct ID
+        } as unknown as Prisma.WordProgressCreateInput
       });
       return wordProgress as WordProgressModel;
     } catch (error) {
