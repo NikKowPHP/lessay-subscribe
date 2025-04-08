@@ -1,7 +1,7 @@
 import React from 'react'
 
 interface ProficiencyStepProps {
-  onNext: (data: { proficiencyLevel: string }) => void
+  onNext: (data: { proficiencyLevel: string }) => Promise<void>
   onAssessmentGeneration: () => void
   formData: {
     nativeLanguage: string
@@ -20,10 +20,9 @@ export default function ProficiencyStep({
 }: ProficiencyStepProps) {
   const [proficiencyLevel, setProficiencyLevel] = React.useState(formData.proficiencyLevel || '')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onNext({ proficiencyLevel })
-    // Trigger assessment lesson generation immediately after submitting proficiency
+    await onNext({ proficiencyLevel })
     onAssessmentGeneration()
   }
 

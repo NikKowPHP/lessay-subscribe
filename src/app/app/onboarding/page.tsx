@@ -35,6 +35,12 @@ export default function OnboardingPage() {
     proficiencyLevel: '',
   });
 
+
+
+  useEffect(() => {
+    console.log('onboarding data form onbarding page', formData);
+  }, [formData]);
+
   // State to hold the generated assessment lesson and its loading status
   const [assessmentLesson, setAssessmentLesson] =
     useState<AssessmentLesson | null>(null);
@@ -112,12 +118,17 @@ export default function OnboardingPage() {
   }, [assessmentLesson, currentStep]);
 
   const handleNextStep = async (step: string, data?: any) => {
-    if (data) {
-      setFormData((prev) => ({ ...prev, ...data }));
-    }
+    // Merge new data with existing form data immediately
+    const mergedFormData = data ? { ...formData, ...data } : formData;
 
     try {
-      await markStepComplete(step);
+      // Update local state
+      if (data) {
+        setFormData(mergedFormData);
+      }
+      console.log('mergedFormData', mergedFormData);
+      // Pass the merged data to the backend
+      await markStepComplete(step, mergedFormData);
       setCurrentStep(getNextStep(step));
     } catch (error) {
       logger.error('Error moving to next step:', error);

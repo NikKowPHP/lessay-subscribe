@@ -215,7 +215,7 @@ class AIService implements  IUploadableAIService{
           .replace(/```json/g, '')
           .replace(/```/g, '')
           .trim();
-        logger.log("Cleaned JSON:", cleanedJson);
+        logger.log("Cleaned JSON:", cleanedJson)
 
         try {
           const analysisData = JSON.parse(cleanedJson);

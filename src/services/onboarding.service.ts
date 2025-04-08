@@ -49,11 +49,12 @@ export default class OnboardingService {
   };
 
   createOnboarding = async (): Promise<OnboardingModel> => {
+    
     return this.onboardingRepository.createOnboarding();
   };
 
-  updateOnboarding = async (step: string): Promise<OnboardingModel> => {
-    return this.onboardingRepository.updateOnboarding(step);
+  updateOnboarding = async (step: string, formData: any): Promise<OnboardingModel> => {
+    return this.onboardingRepository.updateOnboarding(step, formData);
   };
 
   markOnboardingAsCompleteAndGenerateLessons = async (): Promise<OnboardingModel> => {
@@ -82,12 +83,16 @@ export default class OnboardingService {
       // Get onboarding data to get language preferences
       const onboarding = await this.onboardingRepository.getOnboarding();
 
+      if (!onboarding?.targetLanguage || !onboarding?.nativeLanguage || !onboarding?.proficiencyLevel) {
+        throw new Error('Missing required parameters');
+      }
+
       // Generate assessment steps
       const steps =
         await this.assessmentGeneratorService.generateAssessmentSteps(
-          onboarding?.targetLanguage || 'German',
-          onboarding?.nativeLanguage || 'English',
-          onboarding?.proficiencyLevel || 'beginner'
+          onboarding?.targetLanguage,
+          onboarding?.nativeLanguage,
+          onboarding?.proficiencyLevel
         );
 
       logger.info(`Generated ${steps} assessment steps without audio`);

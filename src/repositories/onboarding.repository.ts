@@ -69,7 +69,7 @@ export class OnboardingRepository implements IOnboardingRepository {
     }
   }
 
-  async updateOnboarding(step: string): Promise<OnboardingModel> {
+  async updateOnboarding(step: string, formData: any): Promise<OnboardingModel> {
     try {
       const session = await this.getSession();
       const onboarding = await prisma.onboarding.findUnique({
@@ -83,11 +83,18 @@ export class OnboardingRepository implements IOnboardingRepository {
       const steps = onboarding.steps as { [key: string]: boolean };
       steps[step] = true;
 
+      // Only update fields that are present in formData
+      const updateData: any = {
+        steps: steps,
+        ...(formData?.nativeLanguage && { nativeLanguage: formData.nativeLanguage }),
+        ...(formData?.targetLanguage && { targetLanguage: formData.targetLanguage }),
+        ...(formData?.learningPurpose && { learningPurpose: formData.learningPurpose }),
+        ...(formData?.proficiencyLevel && { proficiencyLevel: formData.proficiencyLevel }),
+      };
+
       return await prisma.onboarding.update({
         where: { userId: session.user.id },
-        data: {
-          steps: steps,
-        },
+        data: updateData
       });
     } catch (error) {
       logger.error('Error updating onboarding:', error);

@@ -41,12 +41,12 @@ export async function getOnboardingAction() {
   return onboarding;
 }
 
-export async function updateOnboardingAction(step: string) {
+export async function updateOnboardingAction(step: string, formData: any) {
   if (!step) {
     throw new Error('Step is required');
   }
   const onboardingService = createOnboardingService();
-  const updatedOnboarding = await onboardingService.updateOnboarding(step);
+  const updatedOnboarding = await onboardingService.updateOnboarding(step, formData);
   logger.log('updated onboarding:', updatedOnboarding);
   return updatedOnboarding;
 }

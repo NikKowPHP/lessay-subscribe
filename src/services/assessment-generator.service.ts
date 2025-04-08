@@ -16,9 +16,9 @@ import * as path from 'path';
 
 export interface IAssessmentGeneratorService {
   generateAssessmentSteps: (
-    sourceLanguage?: string,
-    targetLanguage?: string,
-    proficiencyLevel?: string
+    targetLanguage: string,
+    sourceLanguage: string,
+    proficiencyLevel: string
   ) => Promise<AssessmentStep[]>;
   generateAssessmentResult: (
     assessmentLesson: AssessmentLesson,
@@ -75,15 +75,19 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   }
 
   async generateAssessmentSteps(
-    targetLanguage: string = 'German',
-    sourceLanguage: string = 'English',
-    proficiencyLevel: string = 'beginner'
+    targetLanguage: string,
+    sourceLanguage: string,
+    proficiencyLevel: string
   ): Promise<any> {
     logger.info('Generating assessment lesson', {
       targetLanguage,
       sourceLanguage,
       proficiencyLevel,
     });
+
+    if (!targetLanguage || !sourceLanguage || !proficiencyLevel) {
+      throw new Error('Missing required parameters');
+    }
 
     let aiResponse: Record<string, unknown> | Record<string, unknown>[] = [];
     try {

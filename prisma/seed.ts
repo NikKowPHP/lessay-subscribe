@@ -13,74 +13,74 @@ async function main() {
   await prisma.user.deleteMany({}); // Finally delete users
 
   // Create test user (matching the mock auth service)
-  const user = await prisma.user.create({
-    data: {
-      id: 'mock-user-id', // Use the same ID as in your mock auth service
-      email: 'mock@example.com',
-      name: 'Mock User',
-    },
-  })
+  // const user = await prisma.user.create({
+  //   data: {
+  //     id: 'mock-user-id', // Use the same ID as in your mock auth service
+  //     email: 'mock@example.com',
+  //     name: 'Mock User',
+  //   },
+  // })
 
   // Create onboarding data
-  const onboarding = await prisma.onboarding.create({
-    data: {
-      userId: user.id,
-      steps: {
-        welcome: true,
-        purpose: true,
-        languages: true,
-        proficiency: false
-      },
-      completed: false,
-      learningPurpose: 'Travel',
-      nativeLanguage: 'English',
-      targetLanguage: 'German',
-      proficiencyLevel: ProficiencyLevel.beginner,
-      initialAssessmentCompleted: false,
-    },
-  })
+  // const onboarding = await prisma.onboarding.create({
+  //   data: {
+  //     userId: user.id,
+  //     steps: {
+  //       welcome: true,
+  //       purpose: false,
+  //       languages: false,
+  //       proficiency: false
+  //     },
+  //     completed: false,
+  //     // learningPurpose: 'Relocation',
+  //     // nativeLanguage: '',
+  //     // targetLanguage: '',
+  //     // proficiencyLevel: ProficiencyLevel.beginner,
+  //     initialAssessmentCompleted: false,
+  //   },
+  // })
 
   // Create assessment lesson from mock data
-  for (const assessmentData of assessmentMockDataJson) {
-    const assessmentLesson = await prisma.assessmentLesson.create({
-      data: {
-        id: assessmentData.id,
-        userId: user.id,
-        description: assessmentData.description,
-        completed: false,
-        sourceLanguage: assessmentData.sourceLanguage,
-        targetLanguage: assessmentData.targetLanguage,
-        metrics: assessmentData.metrics,
-        proposedTopics: assessmentData.proposedTopics,
-        summary: assessmentData.summary,
-        createdAt: new Date(assessmentData.createdAt),
-        updatedAt: new Date(assessmentData.updatedAt),
-        sessionRecordingUrl: assessmentData.sessionRecordingUrl,
-        steps: {
-          create: assessmentData.steps.map(step => ({
-            id: step.id,
-            stepNumber: step.stepNumber,
-            type: step.type as AssessmentStepType,
-            content: step.content,
-            contentAudioUrl: step.contentAudioUrl,
-            translation: step.translation,
-            expectedAnswer: step.expectedAnswer,
-            expectedAnswerAudioUrl: step.expectedAnswerAudioUrl,
-            maxAttempts: step.maxAttempts,
-            userResponse: null,
-            attempts: 0,
-            correct: false,
-            lastAttemptAt: null,
-            feedback: null,
-            createdAt: new Date(step.createdAt),
-            updatedAt: new Date(step.updatedAt)
-          }))
-        }
-      },
-    });
+  // for (const assessmentData of assessmentMockDataJson) {
+  //   const assessmentLesson = await prisma.assessmentLesson.create({
+  //     data: {
+  //       id: assessmentData.id,
+  //       userId: user.id,
+  //       description: assessmentData.description,
+  //       completed: false,
+  //       sourceLanguage: assessmentData.sourceLanguage,
+  //       targetLanguage: assessmentData.targetLanguage,
+  //       metrics: assessmentData.metrics,
+  //       proposedTopics: assessmentData.proposedTopics,
+  //       summary: assessmentData.summary,
+  //       createdAt: new Date(assessmentData.createdAt),
+  //       updatedAt: new Date(assessmentData.updatedAt),
+  //       sessionRecordingUrl: assessmentData.sessionRecordingUrl,
+  //       steps: {
+  //         create: assessmentData.steps.map(step => ({
+  //           id: step.id,
+  //           stepNumber: step.stepNumber,
+  //           type: step.type as AssessmentStepType,
+  //           content: step.content,
+  //           contentAudioUrl: step.contentAudioUrl,
+  //           translation: step.translation,
+  //           expectedAnswer: step.expectedAnswer,
+  //           expectedAnswerAudioUrl: step.expectedAnswerAudioUrl,
+  //           maxAttempts: step.maxAttempts,
+  //           userResponse: null,
+  //           attempts: 0,
+  //           correct: false,
+  //           lastAttemptAt: null,
+  //           feedback: null,
+  //           createdAt: new Date(step.createdAt),
+  //           updatedAt: new Date(step.updatedAt)
+  //         }))
+  //       }
+  //     },
+  //   });
 
-    console.log(`Created assessment lesson: ${assessmentLesson.id} with ${assessmentData.steps.length} steps`);
-  }
+  //   console.log(`Created assessment lesson: ${assessmentLesson.id} with ${assessmentData.steps.length} steps`);
+  // }
 
   // Create regular lessons - Lesson 1: Greetings and Introductions
   // const lesson1 = await prisma.lesson.create({
@@ -395,8 +395,8 @@ async function main() {
   //   }
   // })
 
-  console.log(`Created user: ${user.email}`)
-  console.log(`Created onboarding for user: ${onboarding.id}`)
+  // console.log(`Created user: ${user.email}`)
+  // console.log(`Created onboarding for user: ${onboarding.id}`)
   // console.log(`Created assessment lesson with ${assessmentLesson.steps.length} steps`)
   // console.log(`Created lesson 1: ${lesson1.focusArea} with ${lesson1.steps.length} steps`)
   // console.log(`Created lesson 2: ${lesson2.focusArea} with ${lesson2.steps.length} steps`)

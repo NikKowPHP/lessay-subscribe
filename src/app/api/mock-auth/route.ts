@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/utils/logger';
 
+
+
+const DATA = {
+  access_token: `mock-access-token-${Date.now()}`,
+  refresh_token: `mock-refresh-token-${Date.now()}`,
+  expires_in: 3600,
+  token_type: 'Bearer',
+  user: {
+    id: 'mock-user-id',
+    email: 'mock.email@example.com',
+    aud: 'authenticated',
+    role: 'authenticated',
+    app_metadata: {},
+    user_metadata: {},
+    identities: [],
+    factors: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    email_confirmed_at: new Date().toISOString(),
+    phone_confirmed_at: new Date().toISOString(),
+    last_sign_in_at: new Date().toISOString(),
+  }
+};
 // In-memory store for mock sessions
 let mockSessionStore: any = null;
 
@@ -66,7 +89,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true });
 
       case 'getSession':
-        return NextResponse.json({ session: mockSessionStore });
+        return NextResponse.json({ session: DATA });
 
       case 'googleLogin':
         const googleSession = {

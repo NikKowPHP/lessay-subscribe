@@ -1,110 +1,123 @@
-'use client'
+'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { useAuth } from '@/context/auth-context'
-import { UserProfileModel } from '@/models/AppAllModels.model'
-import logger from '@/utils/logger'
-import { getUserProfileAction, createUserProfileAction, updateUserProfileAction } from '@/lib/server-actions/user-actions'
+import { createContext, useContext, useEffect, useState } from 'react';
+import { useAuth } from '@/context/auth-context';
+import { UserProfileModel } from '@/models/AppAllModels.model';
+import logger from '@/utils/logger';
+import {
+  getUserProfileAction,
+  createUserProfileAction,
+  updateUserProfileAction,
+} from '@/lib/server-actions/user-actions';
 
 interface UserProfileContextType {
-  profile: UserProfileModel | null
-  loading: boolean
-  error: string | null
-  updateProfile: (data: Partial<UserProfileModel>) => Promise<void>
-  saveInitialProfile: (email: string) => Promise<void>
-  clearError: () => void
+  profile: UserProfileModel | null;
+  loading: boolean;
+  error: string | null;
+  updateProfile: (data: Partial<UserProfileModel>) => Promise<void>;
+  saveInitialProfile: (email: string) => Promise<UserProfileModel | null>;
+  clearError: () => void;
 }
 
-const UserProfileContext = createContext<UserProfileContextType | undefined>(undefined)
+const UserProfileContext = createContext<UserProfileContextType | undefined>(
+  undefined
+);
 
-export function UserProfileProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
-  const [profile, setProfile] = useState<UserProfileModel | null>(null)
-  const [loading, setLoading] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
+export function UserProfileProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<UserProfileModel | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Load user profile when auth user changes
   useEffect(() => {
     if (user?.id && user.email) {
-      fetchUserProfile(user.id)
+      fetchUserProfile(user.id);
     } else {
-      setProfile(null)
+      setProfile(null);
     }
-  }, [user])
+  }, [user]);
 
   const fetchUserProfile = async (userId: string) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      // here we should check if it exists if not create a new one 
+      // here we should check if it exists if not create a new one
       logger.info('get user profile in context', userId);
-      const userProfile = await getUserProfileAction(userId)
-      debugger
+      let userProfile = await getUserProfileAction(userId);
       logger.info('get user profile in context', userProfile);
       if (!userProfile && user?.email) {
-        saveInitialProfile(user?.email)
+        userProfile = await saveInitialProfile(user?.email);
       }
-      setProfile(userProfile)
+      setProfile(userProfile);
     } catch (error) {
-      logger.error('Error fetching user profile:', error)
-      setError(error instanceof Error ? error.message : 'Failed to load profile')
+      logger.error('Error fetching user profile:', error);
+      setError(
+        error instanceof Error ? error.message : 'Failed to load profile'
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const saveInitialProfile = async (email: string) => {
+  const saveInitialProfile = async (
+    email: string
+  ): Promise<UserProfileModel | null> => {
     if (!user?.id) {
-      setError('User not authenticated')
-      return
+      setError('User not authenticated');
+      return null;
     }
 
-    setLoading(true)
+    setLoading(true);
     try {
       const initialProfile = {
         userId: user.id,
         email,
         onboardingCompleted: false,
-      }
+      };
 
-      const newProfile = await createUserProfileAction(initialProfile)
-      if (newProfile) {
-        setProfile(newProfile)
-      } else {
-        throw new Error('Failed to create user profile')
-      }
+      const userProfile = await createUserProfileAction(initialProfile);
+      return userProfile;
     } catch (error) {
-      logger.error('Error creating user profile:', error)
-      setError(error instanceof Error ? error.message : 'Failed to create profile')
-      throw error
+      logger.error('Error creating user profile:', error);
+      setError(
+        error instanceof Error ? error.message : 'Failed to create profile'
+      );
+      throw error;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const updateProfile = async (data: Partial<UserProfileModel>) => {
     if (!profile || !user?.id) {
-      setError('No profile to update or user not authenticated')
-      return
+      setError('No profile to update or user not authenticated');
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
     try {
-      const updatedProfile = await updateUserProfileAction(user.id, data)
+      const updatedProfile = await updateUserProfileAction(user.id, data);
       if (updatedProfile) {
-        setProfile(updatedProfile)
+        setProfile(updatedProfile);
       } else {
-        throw new Error('Failed to update user profile')
+        throw new Error('Failed to update user profile');
       }
     } catch (error) {
-      logger.error('Error updating user profile:', error)
-      setError(error instanceof Error ? error.message : 'Failed to update profile')
-      throw error
+      logger.error('Error updating user profile:', error);
+      setError(
+        error instanceof Error ? error.message : 'Failed to update profile'
+      );
+      throw error;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const clearError = () => setError(null)
+  const clearError = () => setError(null);
 
   return (
     <UserProfileContext.Provider
@@ -114,18 +127,18 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         error,
         updateProfile,
         saveInitialProfile,
-        clearError
+        clearError,
       }}
     >
       {children}
     </UserProfileContext.Provider>
-  )
+  );
 }
 
 export const useUserProfile = () => {
-  const context = useContext(UserProfileContext)
+  const context = useContext(UserProfileContext);
   if (context === undefined) {
-    throw new Error('useUserProfile must be used within a UserProfileProvider')
+    throw new Error('useUserProfile must be used within a UserProfileProvider');
   }
-  return context
-}
+  return context;
+};

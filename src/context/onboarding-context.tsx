@@ -25,7 +25,7 @@ interface OnboardingContextType {
   isOnboardingComplete: boolean;
   goToLessonsWithOnboardingComplete: () => Promise<void>;
   checkOnboardingStatus: () => Promise<boolean>;
-  markStepComplete: (step: string) => Promise<void>;
+  markStepComplete: (step: string, formData: any) => Promise<void>;
   loading: boolean;
   error: string | null;
   clearError: () => void;
@@ -106,9 +106,9 @@ export function OnboardingProvider({
     });
   };
 
-  const markStepComplete = async (step: string) => {
+  const markStepComplete = async (step: string, formData: any) => {
     return withLoadingAndErrorHandling(async () => {
-      await updateOnboardingAction(step);
+      await updateOnboardingAction(step, formData);
       await checkOnboardingStatus();
     });
   };

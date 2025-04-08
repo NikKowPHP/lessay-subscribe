@@ -4,7 +4,7 @@ import { LessonModel, GeneratedLesson, LessonStep } from '@/models/AppAllModels.
 export  interface IOnboardingRepository {
   getOnboarding(): Promise<OnboardingModel | null>
   createOnboarding(): Promise<OnboardingModel>
-  updateOnboarding(step: string): Promise<OnboardingModel>
+  updateOnboarding(step: string, formData: any): Promise<OnboardingModel>
   completeOnboarding(): Promise<OnboardingModel>
   deleteOnboarding(): Promise<void>
   getStatus(): Promise<boolean>
