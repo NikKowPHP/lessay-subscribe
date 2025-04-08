@@ -20,12 +20,17 @@ import RecordingService from './recording.service';
 import { JsonValue } from '@prisma/client/runtime/library';
 import { mockAudioMetrics } from '@/__mocks__/generated-audio-metrics.mock';
 import { ComprehensionLevel, HesitationFrequency, LanguageInfluenceLevel, LearningTrajectory, SpeechRateEvaluation, VocabularyRange } from '@prisma/client';
+import LearningProgressService from './learning-progress.service';
+import { LearningProgressRepository } from '@/repositories/learning-progress.repository';
 
 export default class LessonService {
   private lessonRepository: ILessonRepository;
   private lessonGeneratorService: ILessonGeneratorService;
   private onboardingRepository: IOnboardingRepository;
   private recordingService: RecordingService;
+
+  private learningProgressService: LearningProgressService;
+
 
   constructor(
     lessonRepository: ILessonRepository,
@@ -36,6 +41,10 @@ export default class LessonService {
     this.lessonGeneratorService = lessonGeneratorService;
     this.onboardingRepository = onboardingRepository;
     this.recordingService = new RecordingService();
+    const progressRepository = new LearningProgressRepository();
+    this.learningProgressService = new LearningProgressService(progressRepository); // Instantiate it here
+  
+
   }
 
   async getLessons(): Promise<LessonModel[]> {
@@ -172,8 +181,15 @@ export default class LessonService {
         fullMetrics
       );
 
-      // Update user's learning progress
-      await this.updateUserLearningProgress(lesson, fullMetrics);
+      this.learningProgressService.updateProgressAfterLesson(completedLesson.userId, completedLesson)
+      .catch(err => {
+          logger.error('Failed to update learning progress after lesson completion', {
+              userId: completedLesson.userId,
+              lessonId: completedLesson.id,
+              error: err
+          });
+          // Decide if this failure needs further handling
+      });
 
       return completedLesson;
     } catch (error) {
@@ -1199,7 +1215,7 @@ export default class LessonService {
   }
 
   // Helper method to update user's overall learning progress
-  // TODO: implement
+  // TODO: implement with ai 
   private async updateUserLearningProgress(
     lesson: LessonModel, 
     metrics: any

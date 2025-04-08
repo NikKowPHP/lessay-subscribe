@@ -1,4 +1,4 @@
-import { ProficiencyLevel, AssessmentStepType, LessonStepType, LearningTrajectory, LanguageInfluenceLevel, SpeechRateEvaluation, HesitationFrequency, PriorityLevel, SeverityLevel, VocabularyRange, ComprehensionLevel } from '@prisma/client'
+import { ProficiencyLevel, AssessmentStepType, LessonStepType, LearningTrajectory, LanguageInfluenceLevel, SpeechRateEvaluation, HesitationFrequency, PriorityLevel, SeverityLevel, VocabularyRange, ComprehensionLevel, MasteryLevel } from '@prisma/client'
 import type { JsonValue } from '@prisma/client/runtime/library'
 
 export interface OnboardingModel {
@@ -134,6 +134,12 @@ export interface UserProfileModel {
   createdAt: Date;
   initialAssessmentCompleted: boolean;
   updatedAt: Date;
+  learningProgressSummary?: {
+    estimatedProficiencyLevel: ProficiencyLevel;
+    overallScore?: number | null;
+    learningTrajectory: LearningTrajectory;
+  }
+  
 }
 
 // Add a type guard for assessment metrics
@@ -483,3 +489,52 @@ export function buildAdaptiveLessonRequest(
     }
   };
 }
+
+export interface LearningProgressModel {
+  id: string;
+  userId: string;
+  estimatedProficiencyLevel: ProficiencyLevel;
+  overallScore?: number | null;
+  learningTrajectory: LearningTrajectory;
+  strengths: string[];
+  weaknesses: string[];
+  lastLessonCompletedAt?: Date | null;
+  lastAssessmentCompletedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  // Optional: Include related topics/words if fetched
+  topics?: TopicProgressModel[];
+  words?: WordProgressModel[];
+}
+
+export interface TopicProgressModel {
+  id: string;
+  learningProgressId: string;
+  topicName: string;
+  masteryLevel: MasteryLevel;
+  lastStudiedAt?: Date | null;
+  relatedLessonIds: string[];
+  relatedAssessmentIds: string[];
+  score?: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WordProgressModel {
+  id: string;
+  learningProgressId: string;
+  word: string;
+  translation?: string | null;
+  masteryLevel: MasteryLevel;
+  timesCorrect: number;
+  timesIncorrect: number;
+  firstSeenAt: Date;
+  lastReviewedAt?: Date | null;
+  relatedLessonStepIds: string[];
+  relatedAssessmentStepIds: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+
+// TODO: DEFINE LEARNING PROGRESS MODEL
