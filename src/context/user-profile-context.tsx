@@ -25,7 +25,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
 
   // Load user profile when auth user changes
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && user.email) {
       fetchUserProfile(user.id)
     } else {
       setProfile(null)
@@ -35,7 +35,14 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
   const fetchUserProfile = async (userId: string) => {
     setLoading(true)
     try {
+      // here we should check if it exists if not create a new one 
+      logger.info('get user profile in context', userId);
       const userProfile = await getUserProfileAction(userId)
+      debugger
+      logger.info('get user profile in context', userProfile);
+      if (!userProfile && user?.email) {
+        saveInitialProfile(user?.email)
+      }
       setProfile(userProfile)
     } catch (error) {
       logger.error('Error fetching user profile:', error)

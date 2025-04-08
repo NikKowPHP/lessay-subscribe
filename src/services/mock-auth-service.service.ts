@@ -1,175 +1,173 @@
+// src/services/mock-auth-service.service.ts
 import { IAuthService } from '@/services/auth.service'
 import { Session, User, AuthChangeEvent, Subscription } from '@supabase/supabase-js'
 import logger from '@/utils/logger'
+
+// In-memory store for the mock session (persists only while the server process runs)
+let mockSessionStore: Session | null = null;
+
+// Store the auth state callback globally within this module for the mock service
+let globalAuthStateCallback: ((event: AuthChangeEvent, session: Session | null) => Promise<void> | void) | null = null;
+
+// Helper to notify auth state change
+const notifyAuthStateChange = (event: AuthChangeEvent, session: Session | null) => {
+  if (globalAuthStateCallback) {
+    // Use Promise.resolve().then() to mimic async behavior of real auth changes
+    Promise.resolve().then(() => {
+      if (globalAuthStateCallback) { // Check again inside the promise in case it was unset
+        globalAuthStateCallback(event, session);
+      }
+    });
+  }
+};
+
 export class MockAuthService implements IAuthService {
+
+
   private authStateCallback: ((event: AuthChangeEvent, session: Session | null) => Promise<void> | void) | null = null;
+  private readonly API_URL = '/api/mock-auth';
+
+
 
   async login(email: string, password: string): Promise<{ user: User | null; session: Session | null }> {
-    logger.log('login (mocked)', email, password)
-    return {
-      user: {
-        id: 'mock-user-id',
-        email: email,
-        aud: 'authenticated',
-        role: 'authenticated',
-        app_metadata: {},
-        user_metadata: {},
-        identities: [],
-        factors: [],
-        created_at: '2023-10-20T00:00:00Z',
-        updated_at: '2023-10-20T00:00:00Z',
-        email_confirmed_at: '2023-10-20T00:00:00Z',
-        phone_confirmed_at: '2023-10-20T00:00:00Z',
-        last_sign_in_at: '2023-10-20T00:00:00Z',
+
+
+
+    logger.log('login (mocked)', email, password);
+    const response = await fetch(this.API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      session: {
-        access_token: 'mock-access-token',
-        refresh_token: 'mock-refresh-token',
-        expires_in: 1000,
-        token_type: 'Bearer',
-        user: null,
-      } as unknown as Session,
-    };
+      body: JSON.stringify({
+        action: 'login',
+        email,
+        password
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Mock login failed');
+    }
+
+    const { user, session } = await response.json();
+
+    if (this.authStateCallback) {
+      this.authStateCallback('SIGNED_IN', session);
+    }
+
+    return { user, session };
   }
 
   async logout(): Promise<void> {
-    logger.log('logout (mocked)')
-    return;
-  }
-
-  async getSession(): Promise<Session | null> {
-    return {
-      access_token: 'mock-access-token',
-      refresh_token: 'mock-refresh-token',
-      expires_in: 1000,
-      token_type: 'Bearer',
-      user: {
-        id: 'mock-user-id',
-        aud: 'authenticated',
-        role: 'authenticated',
-        email: 'mock@example.com',
-        email_confirmed_at: '2023-10-20T00:00:00Z',
-        phone_confirmed_at: '2023-10-20T00:00:00Z',
-        last_sign_in_at: '2023-10-20T00:00:00Z',
-        app_metadata: {},
-        user_metadata: {},
-        identities: [],
-        factors: [],
-        created_at: '2023-10-20T00:00:00Z',
-        updated_at: '2023-10-20T00:00:00Z',
-      }
-    } as Session;
-  }
-
-  async register(email: string, password: string): Promise<{ user: User | null; session: Session | null }> {
-    logger.log('register (mocked)', email, password)
-    return {
-      user: {
-        id: 'mock-user-id',
-        aud: 'authenticated',
-        role: 'authenticated',
-        email: 'mock@example.com',
-        email_confirmed_at: '2023-10-20T00:00:00Z',
-        phone_confirmed_at: '2023-10-20T00:00:00Z',
-        last_sign_in_at: '2023-10-20T00:00:00Z',
-        app_metadata: {},
-        user_metadata: {},
-        identities: [],
-        factors: [],
-        created_at: '2023-10-20T00:00:00Z',
-        updated_at: '2023-10-20T00:00:00Z',
+    logger.log('logout (mocked)');
+    await fetch(this.API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      session: {
-        access_token: 'mock-access-token',
-        refresh_token: 'mock-refresh-token',
-        expires_in: 1000,
-        token_type: 'Bearer',
-        user: {
-          id: 'mock-user-id',
-          aud: 'authenticated',
-          role: 'authenticated',
-          email: 'mock@example.com',
-        }
-      } as unknown as Session,
+      body: JSON.stringify({
+        action: 'logout'
+      })
+    });
+
+    if (this.authStateCallback) {
+      this.authStateCallback('SIGNED_OUT', null);
     }
   }
 
-  async loginWithGoogle(): Promise<void> {
-    logger.log('loginWithGoogle (mocked)')
-    // Simulate successful Google login by returning a mock user/session
-    const mockUser = {
-      id: 'mock-user-id',
-      aud: 'authenticated',
-      role: 'authenticated',
-      email: 'mock@example.com',
-      email_confirmed_at: '2023-10-20T00:00:00Z',
-      phone_confirmed_at: '2023-10-20T00:00:00Z',
-      last_sign_in_at: '2023-10-20T00:00:00Z',
-      app_metadata: {},
-      user_metadata: {},
-      identities: [],
-      factors: [],
-      created_at: '2023-10-20T00:00:00Z',
-      updated_at: '2023-10-20T00:00:00Z',
-    } as User;
-    
-    const mockSession = {
-      access_token: 'mock-google-access-token',
-      refresh_token: 'mock-google-refresh-token',
-      expires_in: 3600,
-      token_type: 'Bearer',
-      user: mockUser
-    } as Session;
-    
-    // Use the same callback mechanism as the onAuthStateChange to set the user
-    Promise.resolve().then(() => {
-      if (this.authStateCallback) {
-        this.authStateCallback('SIGNED_IN', mockSession);
-      }
+  async getSession(): Promise<Session | null> {
+    const response = await fetch(this.API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'getSession'
+      })
     });
-    
-    return;
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const { session } = await response.json();
+    return session;
+  }
+
+
+
+
+  async register(email: string, password: string): Promise<{ user: User | null; session: Session | null }> {
+    logger.log('register (mocked)', email, password);
+    const response = await fetch(this.API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'register',
+        email,
+        password
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Mock registration failed');
+    }
+
+    const { user, session } = await response.json();
+
+    if (this.authStateCallback) {
+      this.authStateCallback('SIGNED_IN', session);
+    }
+
+    return { user, session };
+  }
+
+  async loginWithGoogle(): Promise<void> {
+    logger.log('loginWithGoogle (mocked)');
+    const response = await fetch(this.API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'googleLogin'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Mock Google login failed');
+    }
+
+    const { session } = await response.json();
+
+    if (this.authStateCallback) {
+      this.authStateCallback('SIGNED_IN', session);
+    }
   }
 
   onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => Promise<void> | void) {
-    this.authStateCallback = callback;
-    
-    const mockSession = {
-      access_token: 'mock-access-token',
-      refresh_token: 'mock-refresh-token',
-      expires_in: 1000,
-      token_type: 'Bearer',
-      user: {
-        id: 'mock-user-id',
-        aud: 'authenticated',
-        role: 'authenticated',
-        email: 'mock@example.com',
-        email_confirmed_at: '2023-10-20T00:00:00Z',
-        phone_confirmed_at: '2023-10-20T00:00:00Z',
-        last_sign_in_at: '2023-10-20T00:00:00Z',
-        app_metadata: {},
-        user_metadata: {},
-        identities: [],
-        factors: [],
-        created_at: '2023-10-20T00:00:00Z',
-        updated_at: '2023-10-20T00:00:00Z',
-      }
-    } as Session;
+    logger.log('onAuthStateChange (mocked) - setting up listener');
+    globalAuthStateCallback = callback; // Store the callback globally for this module
 
-    // Simulate immediate 'SIGNED_IN' event with mock session
-    Promise.resolve().then(() => {
-      callback('SIGNED_IN', mockSession);
-    });
+    // Immediately notify with the current state
+    const currentSession = mockSessionStore ? { ...mockSessionStore } : null;
+    const initialEvent: AuthChangeEvent = currentSession ? 'INITIAL_SESSION' : 'SIGNED_OUT';
+    notifyAuthStateChange(initialEvent, currentSession);
 
-    // Return a mock subscription object with an unsubscribe method, wrapped in 'data'
+
+    // Return a mock subscription object with an unsubscribe method
     return {
       data: {
         subscription: {
           unsubscribe: () => {
-            console.log('Mock auth state subscription unsubscribed');
+            logger.log('Mock auth state subscription unsubscribed');
+            globalAuthStateCallback = null; // Clear the global callback
           }
         } as Subscription
       }
     };
   }
-} 
+}

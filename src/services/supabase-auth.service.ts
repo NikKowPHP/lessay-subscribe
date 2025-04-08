@@ -2,6 +2,7 @@ import { IAuthService } from '@/services/auth.service'
 import { supabase } from '@/repositories/supabase/supabase'
 import { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { MockAuthService } from './mock-auth-service.service'
+import logger from '@/utils/logger'
 
 export class SupabaseAuthService implements IAuthService {
   async login(email: string, password: string) {
@@ -31,7 +32,7 @@ export class SupabaseAuthService implements IAuthService {
         redirectTo: `${window.location.origin}/app/lessons`
       }
     })
-    
+
     if (error) throw new Error(error.message)
     // No need to return data as this will redirect the browser
   }
@@ -50,11 +51,19 @@ export class SupabaseAuthService implements IAuthService {
   onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => Promise<void> | void) {
     return supabase.auth.onAuthStateChange(callback)
   }
-} 
+}
 
 export function getAuthServiceBasedOnEnvironment() {
-  if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
-    return new MockAuthService()
+  logger.info('using the enviroment to get the auth service based on enviroment', process.env.NEXT_PUBLIC_MOCK_AUTH);
+
+  if(process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+    const mockAuthService = new MockAuthService()
+    logger.info('using mock auth service');
+    if (mockAuthService instanceof MockAuthService) {
+      (mockAuthService as any).API_URL = `http://localhost:3000/api/mock-auth`;
+    }
+    return mockAuthService
   }
+
   return new SupabaseAuthService()
 }

@@ -103,7 +103,7 @@ export default function LoginPage() {
             >
               {loading 
                 ? isRegistering ? 'Creating account...' : 'Signing in...' 
-                : 'Sign in'}
+                : 'Continue'}
             </button>
           </div>
           
@@ -136,7 +136,7 @@ export default function LoginPage() {
           </div>
           
           <div className="text-sm text-center text-gray-600">
-            Enter your email and password to sign in. If you don't have an account yet, we'll create one for you.
+            Enter your email and password to continue. If you don't have an account yet, we'll create one for you.
           </div>
         </form>
       </div>

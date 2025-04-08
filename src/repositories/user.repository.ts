@@ -1,7 +1,7 @@
 import { IAuthService } from '@/services/auth.service'
 import { ILessonRepository } from '@/lib/interfaces/all-interfaces'
 import logger from '@/utils/logger'
-import { LessonModel, LessonStep, OnboardingModel, UserProfileModel } from '@/models/AppAllModels.model'
+import { LessonModel, LessonStep, UserProfileModel } from '@/models/AppAllModels.model'
 import prisma from '@/lib/prisma'
 
 export interface IUserRepository {
@@ -22,6 +22,7 @@ export class UserRepository implements IUserRepository {
     if (!session?.user?.id) {
       throw new Error('Unauthorized')
     }
+    logger.info('session in user repository', session)
     return session
   }
 
@@ -66,14 +67,16 @@ export class UserRepository implements IUserRepository {
     try {
       // Verify session first - optional since this might be called during registration
       // when session isn't fully established yet
-      try {
-        await this.getSession()
-      } catch (error) {
-        logger.warn('Creating user profile without active session')
+      const session = await this.getSession()
+      logger.info('session', session)
+      if (session.user.id !== profile.userId) {
+        throw new Error('Unauthorized to create this profile')
       }
-      
+
       const { userId, email } = profile
-      
+
+      logger.info('creating user in repo', profile);
+
       if (!userId || !email) {
         throw new Error('Missing required fields: userId and email are required')
       }
@@ -116,15 +119,15 @@ export class UserRepository implements IUserRepository {
         id: user.id,
         userId: user.id,
         email: user.email || '',
-        name: user.name || null,
-        nativeLanguage: null,
-        targetLanguage: null,
-        proficiencyLevel: null,
-        learningPurpose: null,
+        // name: user.name || null,
+        // nativeLanguage: null,
+        // targetLanguage: null,
+        // proficiencyLevel: null,
+        // learningPurpose: null,
         onboardingCompleted: false,
         initialAssessmentCompleted: false,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+        updatedAt: user.updatedAt || new Date()
       }
     } catch (error) {
       logger.error('Error creating user profile:', error)
@@ -142,13 +145,13 @@ export class UserRepository implements IUserRepository {
 
       // Extract onboarding specific fields
       const onboardingData: any = {}
-      
+
       if ('nativeLanguage' in profile) onboardingData.nativeLanguage = profile.nativeLanguage
       if ('targetLanguage' in profile) onboardingData.targetLanguage = profile.targetLanguage
       if ('proficiencyLevel' in profile) onboardingData.proficiencyLevel = profile.proficiencyLevel
       if ('learningPurpose' in profile) onboardingData.learningPurpose = profile.learningPurpose
       if ('onboardingCompleted' in profile) onboardingData.completed = profile.onboardingCompleted
-      if ('initialAssessmentCompleted' in profile) 
+      if ('initialAssessmentCompleted' in profile)
         onboardingData.initialAssessmentCompleted = profile.initialAssessmentCompleted
 
       // Update the user and their onboarding data
@@ -175,11 +178,11 @@ export class UserRepository implements IUserRepository {
         id: user.id,
         userId: user.id,
         email: user.email || '',
-        name: user.name || null,
-        nativeLanguage: user.onboarding?.nativeLanguage || null,
-        targetLanguage: user.onboarding?.targetLanguage || null,
-        proficiencyLevel: user.onboarding?.proficiencyLevel || null,
-        learningPurpose: user.onboarding?.learningPurpose || null,
+        // name: user.name || null,
+        // nativeLanguage: user.onboarding?.nativeLanguage || null,
+        // targetLanguage: user.onboarding?.targetLanguage || null,
+        // proficiencyLevel: user.onboarding?.proficiencyLevel || null,
+        // learningPurpose: user.onboarding?.learningPurpose || null,
         onboardingCompleted: user.onboarding?.completed || false,
         initialAssessmentCompleted: user.onboarding?.initialAssessmentCompleted || false,
         createdAt: user.createdAt,

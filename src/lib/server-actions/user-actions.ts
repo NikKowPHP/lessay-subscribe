@@ -6,9 +6,9 @@ import { getAuthServiceBasedOnEnvironment } from '@/services/supabase-auth.servi
 import { UserProfileModel } from '@/models/AppAllModels.model';
 import logger from '@/utils/logger';
 
-// Create a factory function for user service
 function createUserService() {
-  const repository = new UserRepository(getAuthServiceBasedOnEnvironment());
+  const authService = getAuthServiceBasedOnEnvironment();
+  const repository = new UserRepository(authService);
   return new UserService(repository);
 }
 

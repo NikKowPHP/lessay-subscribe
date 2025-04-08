@@ -11,7 +11,7 @@ async function main() {
   await prisma.assessmentLesson.deleteMany({}); // Then delete assessment lessons
   await prisma.onboarding.deleteMany({}); // Then delete onboarding
   await prisma.user.deleteMany({}); // Finally delete users
-  
+
   // Create test user (matching the mock auth service)
   const user = await prisma.user.create({
     data: {
@@ -29,7 +29,7 @@ async function main() {
         welcome: true,
         purpose: true,
         languages: true,
-        proficiency: false 
+        proficiency: false
       },
       completed: false,
       learningPurpose: 'Travel',

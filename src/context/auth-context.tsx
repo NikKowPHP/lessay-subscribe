@@ -25,7 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isMock] = useState(() => process.env.NEXT_PUBLIC_MOCK_AUTH === 'true')
-  const [authService] = useState(() => 
+  const [authService] = useState(() =>
     isMock ? new MockAuthService() : new SupabaseAuthService()
   )
 
@@ -39,16 +39,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
- 
+
     authService.getSession().then((session) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
     })
-    .catch((error) => {
-      setError(error instanceof Error ? error.message : 'Session error occurred')
-      setLoading(false)
-    })
+      .catch((error) => {
+        setError(error instanceof Error ? error.message : 'Session error occurred')
+        setLoading(false)
+      })
 
     const { data: { subscription } } = authService.onAuthStateChange(
       async (event, session) => {
@@ -78,8 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push('/app/lessons')
       }
     } catch (error) {
-      const message = error instanceof AuthError 
-        ? error.message 
+      const message = error instanceof AuthError
+        ? error.message
         : 'Failed to login'
       setError(message)
       throw error
@@ -95,16 +95,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user, session } = await authService.register(email, password)
       setUser(user)
       setSession(session)
-      
-      // User profile creation happens automatically in the UserProfileProvider
-      // when the user state changes
-      
+
+      // if (!user?.email) return;
+
+
+      // set initial profile on register
+      // saveInitialProfile(user?.email);
+      // user context handles automatically the user
+
+
       if (user) {
         router.push('/app/onboarding') // Redirect to onboarding instead of lessons
       }
     } catch (error) {
-      const message = error instanceof AuthError 
-        ? error.message 
+      const message = error instanceof AuthError
+        ? error.message
         : 'Registration failed'
       setError(message)
       throw error
@@ -112,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     }
   }
-  
+
   const loginWithGoogle = async () => {
     setError(null)
     setLoading(true)
@@ -120,8 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authService.loginWithGoogle()
       // No need to set user/session here as it will be handled by the auth state change
     } catch (error) {
-      const message = error instanceof AuthError 
-        ? error.message 
+      const message = error instanceof AuthError
+        ? error.message
         : 'Google login failed'
       setError(message)
       throw error
@@ -144,16 +149,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearError = () => setError(null)
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      loading, 
+    <AuthContext.Provider value={{
+      user,
+      session,
+      loading,
       error,
-      login, 
+      login,
       register,
       loginWithGoogle,
       logout,
-      clearError 
+      clearError
     }}>
       <UserProfileProvider>
         {children}
