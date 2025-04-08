@@ -230,12 +230,16 @@ class AIService implements  IUploadableAIService{
           // Return the first item in the array as that's our analysis
           return analysisData;
         } catch (parseError) {
+          let errorMessage = 'Unknown parsing error';
+          if (parseError instanceof Error) {
+            errorMessage = parseError.message;
+          }
           logger.error("Error parsing Gemini response:", {
             error: parseError,
             response: response.data,
             cleanedJson
           });
-          throw new Error(`Failed to parse AI response: ${parseError.message}`);
+          throw new Error(`Failed to parse AI response: ${errorMessage}`);
         }
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -255,7 +259,7 @@ class AIService implements  IUploadableAIService{
           throw new Error(`API request failed: ${error.response?.status} ${error.response?.statusText} - ${JSON.stringify(error.response?.data)}`);
         }
         logger.error("Unexpected error in generateContent:", error);
-        throw new Error(`Unexpected error: ${error.message}`);
+        throw new Error(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     });
   }

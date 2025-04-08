@@ -68,8 +68,9 @@ export default class LearningProgressService {
       const updatedOverall = this.calculateOverallProgress(progress, lesson.performanceMetrics, lesson.audioMetrics);
 
       // 4. Save updated overall progress
+      const { userId: _, ...updateData } = updatedOverall;
       await this.progressRepository.upsertLearningProgress(userId, {
-        ...updatedOverall,
+        ...updateData,
         lastLessonCompletedAt: now,
         updatedAt: now,
       });
@@ -92,7 +93,9 @@ export default class LearningProgressService {
         if (!progress) {
           progress = await this.progressRepository.upsertLearningProgress(userId, {
             userId: userId,
-            estimatedProficiencyLevel: assessment.audioMetrics?.proficiencyLevel ?? ProficiencyLevel.beginner, // Or derive from assessment
+            estimatedProficiencyLevel: assessment.audioMetrics?.proficiencyLevel 
+              ? this.mapCefrToProficiency(assessment.audioMetrics.proficiencyLevel) 
+              : ProficiencyLevel.beginner,
             learningTrajectory: LearningTrajectory.steady,
             strengths: [],
             weaknesses: [],
@@ -125,8 +128,9 @@ export default class LearningProgressService {
         const updatedOverall = this.calculateOverallProgress(progress, assessment.metrics, assessment.audioMetrics);
 
          // 4. Save updated overall progress
+         const { userId: __, ...assessmentUpdateData } = updatedOverall;
          await this.progressRepository.upsertLearningProgress(userId, {
-           ...updatedOverall,
+           ...assessmentUpdateData,
            lastAssessmentCompletedAt: now,
            updatedAt: now,
          });
@@ -243,7 +247,7 @@ export default class LearningProgressService {
       currentProgress: LearningProgressModel,
       metrics: any, // Lesson or Assessment metrics
       audioMetrics?: AudioMetrics | null
-  ): Partial<LearningProgressModel> {
+  ): Omit<Partial<LearningProgressModel>, 'topics' | 'words'> {
       // Simplified Example: Average score, update proficiency based on audio metrics
       // TODO: Implement sophisticated logic using historical data, AI analysis of strengths/weaknesses
 
@@ -281,7 +285,7 @@ export default class LearningProgressService {
 
       return {
           overallScore: Math.round(calculatedScore),
-          estimatedProficiencyLevel,
+          estimatedProficiencyLevel: estimatedProficiencyLevel || ProficiencyLevel.beginner,
           learningTrajectory,
           strengths: Array.from(strengths).slice(-10), // Limit size
           weaknesses: Array.from(weaknesses).slice(-10), // Limit size
@@ -318,12 +322,12 @@ export default class LearningProgressService {
   }
 
   // --- Proficiency Level Mapping ---
-  private mapCefrToProficiency(cefr: string): ProficiencyLevel | null {
+  private mapCefrToProficiency(cefr: string): ProficiencyLevel {
       cefr = cefr.toUpperCase();
       if (cefr.startsWith('A1') || cefr.startsWith('A2')) return ProficiencyLevel.beginner;
       if (cefr.startsWith('B1') || cefr.startsWith('B2')) return ProficiencyLevel.intermediate;
       if (cefr.startsWith('C1') || cefr.startsWith('C2')) return ProficiencyLevel.advanced;
-      return null;
+      return ProficiencyLevel.beginner; // Default fallback instead of null
   }
 
   private proficiencyLevelToInt(level: ProficiencyLevel): number {
