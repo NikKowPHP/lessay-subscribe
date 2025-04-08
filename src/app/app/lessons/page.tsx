@@ -5,22 +5,25 @@ import { useRouter } from 'next/navigation'
 import { useLesson } from '@/context/lesson-context'
 import { useOnboarding } from '@/context/onboarding-context'
 import { LessonModel } from '@/models/AppAllModels.model'
+import { useAuth } from '@/context/auth-context'
 
 export default function LessonsPage() {
   const router = useRouter()
   const { onboarding } = useOnboarding()
+  const { user } = useAuth()
   const { lessons, getLessons, loading } = useLesson()
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
     const init = async () => {
+      if(!user) return;
       // Fetch lessons
       await getLessons()
       setInitialized(true)
     }
 
     init()
-  }, [])
+  }, [user])
 
 
   const handleStartLesson = (lesson: LessonModel) => {

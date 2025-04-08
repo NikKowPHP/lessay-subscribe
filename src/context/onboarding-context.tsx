@@ -221,6 +221,7 @@ export function OnboardingProvider({
   useEffect(() => {
    
     const initializeOnboarding = async () => {
+      if(!user) return;
       try {
         const isComplete = await checkOnboardingStatus();
         if (isComplete) {
@@ -234,8 +235,8 @@ export function OnboardingProvider({
         logger.error('Failed to initialize onboarding:', error);
       }
     };
-
     if(!user) router.replace('/app/login');
+
     initializeOnboarding();
   }, [user, router]);
 

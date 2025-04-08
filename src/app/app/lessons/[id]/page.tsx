@@ -15,10 +15,12 @@ import logger from '@/utils/logger';
 import { AudioMetrics } from '@/models/AppAllModels.model';
 import { toast } from 'react-hot-toast';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
+import { useAuth } from '@/context/auth-context';
 
 export default function LessonDetailPage() {
   const router = useRouter();
   const { id } = useParams();
+  const { user } = useAuth();
 
   const { onboarding } = useOnboarding();
   const {
@@ -40,12 +42,13 @@ export default function LessonDetailPage() {
   useEffect(() => {
     const init = async () => {
       logger.info('init', { id });
+      if(!user) return;
       const fetchedLesson = await getLessonById(id as string);
       setLesson(fetchedLesson);
       logger.info('fetchedLesson', { fetchedLesson });
     };
     init();
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     const processPronunciation = async () => {
