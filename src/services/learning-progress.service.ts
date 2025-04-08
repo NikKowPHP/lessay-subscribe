@@ -71,7 +71,7 @@ export default class LearningProgressService {
       await this.progressRepository.upsertLearningProgress(userId, {
         ...updatedOverall,
         lastLessonCompletedAt: now,
-        updatedAt: now, // Ensure updatedAt is set
+        updatedAt: now,
       });
 
       logger.info('Successfully updated learning progress after lesson', { userId, lessonId: lesson.id });
@@ -92,7 +92,7 @@ export default class LearningProgressService {
         if (!progress) {
           progress = await this.progressRepository.upsertLearningProgress(userId, {
             userId: userId,
-            estimatedProficiencyLevel: ProficiencyLevel.beginner, // Or derive from assessment
+            estimatedProficiencyLevel: assessment.audioMetrics?.proficiencyLevel ?? ProficiencyLevel.beginner, // Or derive from assessment
             learningTrajectory: LearningTrajectory.steady,
             strengths: [],
             weaknesses: [],
@@ -128,7 +128,7 @@ export default class LearningProgressService {
          await this.progressRepository.upsertLearningProgress(userId, {
            ...updatedOverall,
            lastAssessmentCompletedAt: now,
-           updatedAt: now, // Ensure updatedAt is set
+           updatedAt: now,
          });
 
          logger.info('Successfully updated learning progress after assessment', { userId, assessmentId: assessment.id });
@@ -170,16 +170,16 @@ export default class LearningProgressService {
         masteryLevel,
         score: Math.round(score),
         lastStudiedAt: now,
-        relatedLessonIds: existingTopic?.relatedLessonIds || [],
-        relatedAssessmentIds: existingTopic?.relatedAssessmentIds || [],
+        relatedLessonIds: existingTopic?.relatedLessonIds ?? [],
+        relatedAssessmentIds: existingTopic?.relatedAssessmentIds ?? [],
         updatedAt: now,
     };
 
-    if (lessonId && !updateData.relatedLessonIds.includes(lessonId)) {
-        updateData.relatedLessonIds.push(lessonId);
+    if (lessonId) {
+        (updateData.relatedLessonIds as string[]).push(lessonId);
     }
-    if (assessmentId && !updateData.relatedAssessmentIds.includes(assessmentId)) {
-        updateData.relatedAssessmentIds.push(assessmentId);
+    if (assessmentId) {
+        (updateData.relatedAssessmentIds as string[]).push(assessmentId);
     }
 
     await this.progressRepository.upsertTopicProgress(learningProgressId, updateData);
@@ -218,16 +218,16 @@ export default class LearningProgressService {
         timesCorrect,
         timesIncorrect,
         lastReviewedAt: now,
-        relatedLessonStepIds: existingWord?.relatedLessonStepIds || [],
-        relatedAssessmentStepIds: existingWord?.relatedAssessmentStepIds || [],
+        relatedLessonStepIds: existingWord?.relatedLessonStepIds ?? [],
+        relatedAssessmentStepIds: existingWord?.relatedAssessmentStepIds ?? [],
         updatedAt: now,
     };
 
-     if (lessonStepId && !updateData.relatedLessonStepIds.includes(lessonStepId)) {
-        updateData.relatedLessonStepIds.push(lessonStepId);
+     if (lessonStepId) {
+        (updateData.relatedLessonStepIds as string[]).push(lessonStepId);
     }
-    if (assessmentStepId && !updateData.relatedAssessmentStepIds.includes(assessmentStepId)) {
-        updateData.relatedAssessmentStepIds.push(assessmentStepId);
+    if (assessmentStepId) {
+        (updateData.relatedAssessmentStepIds as string[]).push(assessmentStepId);
     }
 
      // Set firstSeenAt only if it's a new word

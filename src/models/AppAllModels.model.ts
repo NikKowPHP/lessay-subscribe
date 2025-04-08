@@ -349,146 +349,59 @@ export function getExerciseCompletion(obj: JsonValue): ExerciseCompletion | null
 
 // Structure for sending to lesson generation
 export interface AdaptiveLessonGenerationRequest {
-  // User profile data
   userInfo: {
-    nativeLanguage: string,
-    targetLanguage: string,
-    proficiencyLevel: string, // Derived from CEFR in analysis
-    learningPurpose?: string
-  },
-  
-  // Key performance metrics
-  performanceMetrics: {
-    pronunciationScore: number,
-    fluencyScore: number,
-    grammarAccuracy: number,
-    vocabularyScore: number,
-    overallPerformance: number
-  },
-  
-  // Specific areas needing improvement
-  improvementAreas: {
-    pronunciation: string[], // Problematic sounds
-    grammar: {  
-      rulesToFocus: Array<{rule: string, priority: string}>,
-      commonErrors: Array<{category: string, description: string}>
-    },
-    vocabulary: Array<{topic: string, suggestedVocabulary: string[]}>
-  },
-  
-  // Learning suggestions from analysis
-  learningRecommendations: {
-    suggestedTopics: string[],
-    focusAreas: string[],
-    nextSkillTargets: string[]
-  },
-  
-  // Learning style insights
-  learningStyle: {
-    effectiveApproaches: string[],
-    preferredPatterns: string[]
-  },
-  
-  // Previous lesson data
-  previousLesson: {
-    id: string,
-    focusArea: string,
-    targetSkills: string[],
-    completionSuccessRate: number // Calculated from exercise completion
-  }
-}
+    nativeLanguage: string;
+    targetLanguage: string;
+    proficiencyLevel: string;
+    learningPurpose?: string;
+  };
+  focusTopic: string;
 
-/**
- * Builds an AdaptiveLessonGenerationRequest from existing application data
- * @param userProfile User profile information
- * @param audioMetrics Latest audio analysis metrics
- * @param previousLesson Most recent completed lesson
- * @returns Formatted request for adaptive lesson generation
- */
-export function buildAdaptiveLessonRequest(
-  userProfile: UserProfileModel,
-  audioMetrics: AudioMetrics,
-  previousLesson?: LessonModel
-): AdaptiveLessonGenerationRequest {
-  
-  // Extract grammar rules to focus on
-  const grammarRulesToFocus = audioMetrics.grammarAssessment.grammar_rules_to_review.map(rule => ({
-    rule: rule.rule,
-    priority: rule.priority.toString()
-  }));
-  
-  // Extract common grammar errors
-  const grammarCommonErrors = audioMetrics.grammarAssessment.error_patterns.map(pattern => ({
-    category: pattern.category,
-    description: pattern.description
-  }));
-  
-  // Extract vocabulary areas for improvement
-  const vocabularyAreas = audioMetrics.vocabularyAssessment.areas_for_expansion.map(area => ({
-    topic: area.topic,
-    suggestedVocabulary: area.suggested_vocabulary
-  }));
-  
-  // Calculate completion success rate if we have previous lesson data
-  const completionSuccessRate = previousLesson 
-    ? audioMetrics.exerciseCompletion.overall_score 
-    : 0;
-  
-  return {
-    // User profile information
-    userInfo: {
-      nativeLanguage: userProfile.nativeLanguage || 'English',
-      targetLanguage: userProfile.targetLanguage || 'English',
-      proficiencyLevel: audioMetrics.proficiencyLevel,
-      learningPurpose: userProfile.learningPurpose
-    },
-    
-    // Performance metrics from audio analysis
-    performanceMetrics: {
-      pronunciationScore: audioMetrics.pronunciationScore,
-      fluencyScore: audioMetrics.fluencyScore,
-      grammarAccuracy: audioMetrics.grammarScore,
-      vocabularyScore: audioMetrics.vocabularyScore,
-      overallPerformance: audioMetrics.overallPerformance
-    },
-    
-    // Areas needing improvement
-    improvementAreas: {
-      pronunciation: audioMetrics.pronunciationAssessment.problematic_sounds,
-      grammar: {
-        rulesToFocus: grammarRulesToFocus,
-        commonErrors: grammarCommonErrors
-      },
-      vocabulary: vocabularyAreas
-    },
-    
-    // Learning recommendations
-    learningRecommendations: {
-      suggestedTopics: audioMetrics.suggestedTopics,
-      focusAreas: audioMetrics.grammarFocusAreas,
-      nextSkillTargets: audioMetrics.nextSkillTargets
-    },
-    
-    // Learning style insights
-    learningStyle: {
-      effectiveApproaches: audioMetrics.effectiveApproaches,
-      preferredPatterns: audioMetrics.preferredPatterns
-    },
-    
-    // Previous lesson data (if available)
-    previousLesson: previousLesson ? {
-      id: previousLesson.id,
-      focusArea: previousLesson.focusArea,
-      targetSkills: previousLesson.targetSkills,
-      completionSuccessRate: completionSuccessRate
-    } : {
-      id: '',
-      focusArea: '',
-      targetSkills: [],
-      completionSuccessRate: 0
-    }
+  // New overall progress section
+  overallProgress?: {
+    estimatedProficiencyLevel: ProficiencyLevel;
+    overallScore?: number | null;
+    learningTrajectory: LearningTrajectory;
+    persistentStrengths: string[];
+    persistentWeaknesses: string[];
+    lowMasteryTopics?: string[];
+    lowMasteryWordsCount?: number;
+  };
+
+  performanceMetrics: {
+    avgAccuracy?: number;
+    avgPronunciationScore?: number;
+    avgFluencyScore?: number;
+    avgGrammarScore?: number;
+    avgVocabularyScore?: number;
+    strengths: string[];
+    weaknesses: string[];
+  };
+
+  detailedAudioAnalysis?: {
+    pronunciationScore: number;
+    fluencyScore: number;
+    grammarScore: number;
+    vocabularyScore: number;
+    overallPerformance: number;
+    problematicSounds: string[];
+    grammarRulesToReview: Array<{ rule: string; priority: string }>;
+    commonGrammarErrors: Array<{ category: string; description: string }>;
+    vocabularyAreasForExpansion: Array<{ topic: string; suggestedVocabulary: string[] }>;
+    suggestedTopics: string[];
+    grammarFocusAreas: string[];
+    nextSkillTargets: string[];
+    effectiveApproaches: string[];
+    preferredPatterns: string[];
+  };
+
+  previousLesson?: {
+    id: string;
+    focusArea: string;
+    targetSkills: string[];
   };
 }
+
 
 export interface LearningProgressModel {
   id: string;
@@ -537,4 +450,3 @@ export interface WordProgressModel {
 }
 
 
-// TODO: DEFINE LEARNING PROGRESS MODEL

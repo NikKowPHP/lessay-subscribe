@@ -9,6 +9,7 @@ import { ITTS } from '@/interfaces/tts.interface';
 import path from 'path';
 import fs from 'fs';
 import { LessonModel } from '@/models/AppAllModels.model';
+import { AdaptiveLessonGenerationRequest } from '@/models/AppAllModels.model';
 
 export interface ILessonGeneratorService {
   generateLesson: (
@@ -16,33 +17,7 @@ export interface ILessonGeneratorService {
     targetLanguage: string,
     difficultyLevel: string,
     sourceLanguage: string,
-    assessmentData?: {
-      metrics?: {
-        accuracy?: number;
-        pronunciationScore?: number;
-        grammarScore?: number;
-        vocabularyScore?: number;
-        overallScore?: number;
-        strengths?: string[];
-        weaknesses?: string[];
-      };
-      completedAssessment?: boolean;
-      proposedTopics?: string[];
-      summary?: string;
-      audioMetricsAvailable?: boolean;
-      audioMetrics?: {
-        pronunciationScore?: number;
-        fluencyScore?: number;
-        grammarScore?: number;
-        vocabularyScore?: number;
-        overallPerformance?: number;
-        problematicSounds?: string[];
-        grammarRulesToReview?: Array<{rule: string; priority: string}>;
-        vocabularyAreasForExpansion?: Array<{topic: string; suggestedVocabulary: string[]}>;
-        suggestedTopics?: string[];
-        proficiencyLevel?: string;
-      };
-    }
+    adaptiveRequest?: AdaptiveLessonGenerationRequest
   ) => Promise<Record<string, unknown>>;
   generateAudioForSteps: (
     steps: LessonStep[],
@@ -100,57 +75,44 @@ class LessonGeneratorService implements ILessonGeneratorService {
     targetLanguage: string,
     difficultyLevel: string,
     sourceLanguage: string,
-    assessmentData?: {
-      metrics?: {
-        accuracy?: number;
-        pronunciationScore?: number;
-        grammarScore?: number;
-        vocabularyScore?: number;
-        overallScore?: number;
-        strengths?: string[];
-        weaknesses?: string[];
-      };
-      completedAssessment?: boolean;
-      proposedTopics?: string[];
-      summary?: string;
-      audioMetricsAvailable?: boolean;
-      audioMetrics?: {
-        pronunciationScore?: number;
-        fluencyScore?: number;
-        grammarScore?: number;
-        vocabularyScore?: number;
-        overallPerformance?: number;
-        problematicSounds?: string[];
-        grammarRulesToReview?: Array<{rule: string; priority: string}>;
-        vocabularyAreasForExpansion?: Array<{topic: string; suggestedVocabulary: string[]}>;
-        suggestedTopics?: string[];
-        proficiencyLevel?: string;
-      };
-    }
+    adaptiveRequest?: AdaptiveLessonGenerationRequest
   ): Promise<Record<string, unknown>> {
-    logger.info('Generating lesson', {
-      topic,
-      targetLanguage,
-      difficultyLevel,
-      hasAssessmentData: !!assessmentData
+    // Derive effective values from adaptive request
+    const effectiveTopic = adaptiveRequest?.focusTopic || topic;
+    const effectiveTargetLanguage = adaptiveRequest?.userInfo.targetLanguage || targetLanguage;
+    const effectiveSourceLanguage = adaptiveRequest?.userInfo.nativeLanguage || sourceLanguage;
+    const effectiveDifficulty = adaptiveRequest?.overallProgress?.estimatedProficiencyLevel || 
+                              adaptiveRequest?.userInfo.proficiencyLevel || 
+                              difficultyLevel;
+
+    logger.info('Generating adaptive lesson', {
+        effectiveTopic,
+        effectiveTargetLanguage,
+        effectiveSourceLanguage,
+        effectiveDifficulty,
+        hasProgressData: !!adaptiveRequest?.overallProgress,
+        hasAudioAnalysis: !!adaptiveRequest?.detailedAudioAnalysis
     });
-    let aiResponse: Record<string, unknown> | Record<string, unknown>[] = [];
+
+    // Generate prompts with full adaptive context
     const prompts = this.generateLessonPrompts(
-      topic,
-      targetLanguage,
-      sourceLanguage,
-      difficultyLevel,
-      assessmentData
+        effectiveTopic,
+        effectiveTargetLanguage,
+        effectiveSourceLanguage,
+        effectiveDifficulty,
+        adaptiveRequest
     );
+
+    let aiResponse: Record<string, unknown> | Record<string, unknown>[] = [];
     try {
       if (this.useMock) {
-        logger.info('Using mock lesson generator for topic:', topic);
+        logger.info('Using mock lesson generator for topic:', effectiveTopic);
         const mockLesson = await MockLessonGeneratorService.generateLesson(
-          topic,
-          targetLanguage,
-          difficultyLevel
+          effectiveTopic,
+          effectiveTargetLanguage,
+          effectiveDifficulty
         );
-        logger.info('Mock lesson generated', { topic, mockLesson });
+        logger.info('Mock lesson generated', { effectiveTopic, mockLesson });
         aiResponse = mockLesson;
       } else {
      
@@ -196,9 +158,9 @@ class LessonGeneratorService implements ILessonGeneratorService {
       return { data: generatedLessons };
     } catch (error) {
       logger.error('Error generating lesson:', {
-        topic,
-        targetLanguage,
-        difficultyLevel,
+        effectiveTopic,
+        effectiveTargetLanguage,
+        effectiveDifficulty,
         error,
       });
       throw error;
@@ -370,196 +332,133 @@ class LessonGeneratorService implements ILessonGeneratorService {
     targetLanguage: string,
     sourceLanguage: string,
     difficultyLevel: string,
-    assessmentData?: {
-      metrics?: {
-        accuracy?: number;
-        pronunciationScore?: number;
-        grammarScore?: number;
-        vocabularyScore?: number;
-        overallScore?: number;
-        strengths?: string[];
-        weaknesses?: string[];
-      };
-      completedAssessment?: boolean;
-      proposedTopics?: string[];
-      summary?: string;
-      audioMetricsAvailable?: boolean;
-      audioMetrics?: {
-        pronunciationScore?: number;
-        fluencyScore?: number;
-        grammarScore?: number;
-        vocabularyScore?: number;
-        overallPerformance?: number;
-        problematicSounds?: string[];
-        grammarRulesToReview?: Array<{rule: string; priority: string}>;
-        vocabularyAreasForExpansion?: Array<{topic: string; suggestedVocabulary: string[]}>;
-        suggestedTopics?: string[];
-        proficiencyLevel?: string;
-      };
-    }
+    adaptiveRequest?: AdaptiveLessonGenerationRequest
   ): { userPrompt: string; systemPrompt: string } {
-    logger.info('Generating lesson prompts', {
-      topic,
-      targetLanguage,
-      sourceLanguage,
-      difficultyLevel,
-      hasAssessmentData: !!assessmentData,
-      hasAudioMetrics: !!assessmentData?.audioMetricsAvailable
-    });
-    
-    // Construct assessment context based on basic metrics
-    let assessmentContext = '';
-    if (assessmentData?.completedAssessment && assessmentData?.metrics) {
-      assessmentContext = `
-      The student has completed an initial assessment with the following results:
-      - Overall proficiency: ${assessmentData.metrics.overallScore || 'Not measured'}/100
-      - Pronunciation score: ${assessmentData.metrics.pronunciationScore || 'Not measured'}/100
-      - Grammar score: ${assessmentData.metrics.grammarScore || 'Not measured'}/100
-      - Vocabulary score: ${assessmentData.metrics.vocabularyScore || 'Not measured'}/100
-      - Accuracy: ${assessmentData.metrics.accuracy || 'Not measured'}/100
-      
-      Strengths: ${assessmentData.metrics.strengths?.join(', ') || 'None identified'}
-      
-      Areas for improvement: ${assessmentData.metrics.weaknesses?.join(', ') || 'None identified'}
-      
-      Assessment summary: ${assessmentData.summary || 'Not available'}
-      
-      Recommended topics: ${assessmentData.proposedTopics?.join(', ') || topic}`;
-    }
-    
-    // Add detailed audio metrics context if available
-    let audioMetricsContext = '';
-    if (assessmentData?.audioMetricsAvailable && assessmentData?.audioMetrics) {
-      const am = assessmentData.audioMetrics;
-      
-      // Format audio metrics context
-      audioMetricsContext = `
-      Audio metrics:
-      - Pronunciation score: ${am.pronunciationScore || 'Not measured'}/100
-      - Fluency score: ${am.fluencyScore || 'Not measured'}/100
-      - Grammar score: ${am.grammarScore || 'Not measured'}/100
-      - Vocabulary score: ${am.vocabularyScore || 'Not measured'}/100
-      - Overall performance: ${am.overallPerformance || 'Not measured'}/100
-      
-      Problematic sounds: ${am.problematicSounds?.join(', ') || 'None identified'}
-      
-      Grammar rules to review:
-      ${am.grammarRulesToReview?.map(rule => `- ${rule.rule} (Priority: ${rule.priority})`).join('\n') || 'None identified'}
-      
-      Vocabulary areas for expansion:
-      ${am.vocabularyAreasForExpansion?.map(area => 
-        `- ${area.topic}: ${area.suggestedVocabulary.join(', ')}`
-      ).join('\n') || 'None identified'}
-      
-      Suggested topics from speech analysis: ${am.suggestedTopics?.join(', ') || 'None identified'}
-      
-      Current proficiency level: ${am.proficiencyLevel || difficultyLevel}`;
-    }
-    
+    // Build context sections
+    const contextSections = {
+        overallProgress: this.buildOverallProgressContext(adaptiveRequest?.overallProgress),
+        performanceMetrics: this.buildPerformanceContext(adaptiveRequest?.performanceMetrics),
+        audioAnalysis: this.buildAudioAnalysisContext(adaptiveRequest?.detailedAudioAnalysis),
+        previousLesson: this.buildPreviousLessonContext(adaptiveRequest?.previousLesson)
+    };
+
     return {
-      systemPrompt: `You are an expert language tutor specialized in teaching ${targetLanguage} to ${sourceLanguage} speakers.
-        Your task is to create a comprehensive, engaging, and pedagogically sound lesson for ${difficultyLevel} level learners.
+        systemPrompt: this.buildSystemPrompt(targetLanguage, sourceLanguage, difficultyLevel, contextSections),
+        userPrompt: this.buildUserPrompt(topic, targetLanguage, sourceLanguage, difficultyLevel, contextSections)
+    };
+  }
+
+  private buildSystemPrompt(
+    targetLanguage: string,
+    sourceLanguage: string,
+    difficultyLevel: string,
+    contexts: { [key: string]: string }
+  ): string {
+    return `You are an expert language tutor specializing in teaching ${targetLanguage} to ${sourceLanguage} speakers.
+        Create personalized lessons using this adaptive framework:
+
+        1. DIAGNOSE: Analyze the student's:
+           - Overall progress: ${contexts.overallProgress || 'No progress data'}
+           - Recent performance: ${contexts.performanceMetrics || 'No recent metrics'}
+           ${contexts.audioAnalysis ? `- Audio analysis: ${contexts.audioAnalysis}` : ''}
         
-        The lesson should follow best practices in language education:
-        - Progressive difficulty that challenges but doesn't overwhelm learners
-        - Clear explanations with examples in both languages
-        - Varied practice opportunities and interactive elements
-        - Cultural context when relevant to vocabulary or expressions
-        - Supportive feedback that encourages learning
+        2. FOCUS: Prioritize:
+           - Persistent weaknesses from progress data
+           - Recent performance trends
+           - Audio analysis recommendations
         
-        Structure the lesson with a clear progression from introduction to practice to summary:
-        1. Start with an instruction explaining the lesson focus
-        2. Introduce new vocabulary or concepts with translations
-        3. Provide practice opportunities with expected answers
-        4. Include appropriate feedback for reinforcement
-        5. End with a summary that reviews what was learned
+        3. STRUCTURE: Include:
+           - Clear explanations with ${sourceLanguage} translations
+           - Targeted practice for identified needs
+           - Progressive difficulty adjustments
+           - Cultural context where relevant
         
-        For each step, consider how it builds on previous knowledge and prepares for the next step.
-        Your lesson should be optimized for audio-based learning, as most content will be spoken aloud.
-        ${assessmentData?.completedAssessment ? 
-          `\n\nYou have access to the student's assessment results. Use this information to personalize the lesson, 
-          focusing on addressing identified weaknesses while building upon their strengths.` : ''}
-        ${assessmentData?.audioMetricsAvailable ? 
-          `\n\nImportantly, you have detailed speech analysis metrics available. Pay special attention to:
-          - Problematic sounds that need pronunciation practice
-          - Grammar patterns that need reinforcement
-          - Vocabulary domains that should be expanded
-          - The student's actual proficiency level based on speech analysis` : ''}`,
+        4. OPTIMIZE: For:
+           - ${difficultyLevel} proficiency level
+           - Audio-based delivery
+           - Engagement and pedagogical effectiveness`;
+  }
+
+  private buildUserPrompt(
+    topic: string,
+    targetLanguage: string,
+    sourceLanguage: string,
+    difficultyLevel: string,
+    contexts: { [key: string]: string }
+  ): string {
+    return `Create a ${targetLanguage} lesson about "${topic}" for ${sourceLanguage} speakers (${difficultyLevel} level).
         
-      userPrompt: `Create a comprehensive lesson about "${topic}" in ${targetLanguage} 
-        for ${difficultyLevel} level students who speak ${sourceLanguage}.
-        ${assessmentData?.completedAssessment ? `\n${assessmentContext}\n` : ''}
-        ${assessmentData?.audioMetricsAvailable ? `\n${audioMetricsContext}\n` : ''}
+        CONTEXT:
+        ${contexts.overallProgress || 'No overall progress data'}
+        ${contexts.performanceMetrics || 'No recent performance data'}
+        ${contexts.audioAnalysis || 'No audio analysis available'}
+        ${contexts.previousLesson || 'No previous lesson context'}
         
-        Format the response as JSON with:
+        REQUIREMENTS:
+        - 5-8 steps with clear progression
+        - At least one practice per weakness category
+        - Vocabulary from expansion areas if relevant
+        - Grammar rules needing review
+        - Pronunciation practice for problematic sounds
+        
+        FORMAT: Valid JSON with:
         {
-          "focusArea": "The main focus of the lesson (e.g., Travel Vocabulary, Grammar Rules)",
-          "targetSkills": ["Array of specific skills being taught"],
+          "focusArea": "string",
+          "targetSkills": ["string"],
           "steps": [
             {
-              "stepNumber": 1,
-              "type": "instruction",
-              "content": "Clear instructions about the lesson in ${sourceLanguage}",
-              "translation": "Translation in ${targetLanguage} if applicable"
-            },
-            {
-              "stepNumber": 2,
-              "type": "new_word",
-              "content": "New vocabulary in ${targetLanguage}",
-              "translation": "Translation in ${sourceLanguage}",
-              "expectedAnswer": "Expected pronunciation/response",
-              "maxAttempts": 3
-            },
-            {
-              "stepNumber": 3,
-              "type": "practice",
-              "content": "Practice prompt in ${targetLanguage} or ${sourceLanguage}",
-              "translation": "Translation if needed",
-              "expectedAnswer": "Expected answer in ${targetLanguage}",
-              "maxAttempts": 2
-            },
-            {
-              "stepNumber": 4,
-              "type": "feedback",
-              "content": "Supportive feedback in ${sourceLanguage}",
-              "translation": "Translation in ${targetLanguage}",
-              "maxAttempts": 2
-            },
-            {
-              "stepNumber": 5,
-              "type": "prompt",
-              "content": "Question or task for the user in ${sourceLanguage}",
-              "translation": "Translation if needed",
-              "expectedAnswer": "Expected answer in ${targetLanguage}",
-              "maxAttempts": 2
-            },
-            {
-              "stepNumber": 6,
-              "type": "summary",
-              "content": "Summary of what was learned in ${sourceLanguage}",
-              "translation": "Translation in ${targetLanguage}",
-              "maxAttempts": 2
+              "stepNumber": number,
+              "type": "instruction|new_word|practice|feedback|summary",
+              "content": "string",
+              "translation": "string",
+              "expectedAnswer": "string?",
+              "maxAttempts": "number?"
             }
           ]
-        }
-        
-        Ensure the lesson:
-        - Is appropriate for ${difficultyLevel} level (vocabulary, grammar complexity)
-        - Contains 5-8 total steps that flow naturally
-        - Includes at least one instruction, one new_word, one practice, one prompt, and one summary step
-        - Has accurate translations and expected answers
-        - Provides clear, concise content suitable for audio delivery
-        ${assessmentData?.completedAssessment ? 
-          `- Directly addresses the student's weaknesses identified in their assessment
-          - Builds upon their strengths to maintain engagement and confidence
-          - Focuses particularly on: ${assessmentData.metrics?.weaknesses?.join(', ') || 'general improvement'}` : ''}
-        ${assessmentData?.audioMetricsAvailable ? 
-          `- Incorporates exercises for problematic sounds: ${assessmentData.audioMetrics?.problematicSounds?.join(', ') || 'general pronunciation'}
-          - Includes practice for key grammar rules: ${assessmentData.audioMetrics?.grammarRulesToReview?.slice(0, 2).map(r => r.rule).join(', ') || 'basic grammar structures'}
-          - Expands vocabulary in needed areas: ${assessmentData.audioMetrics?.vocabularyAreasForExpansion?.slice(0, 2).map(a => a.topic).join(', ') || 'essential vocabulary'}` : ''}
-        
-        Do not include user responses or contentAudioUrl fields as these will be populated during the lesson.`
-    };
+        }`;
+  }
+
+  private buildOverallProgressContext(progress?: AdaptiveLessonGenerationRequest['overallProgress']): string {
+    if (!progress) return '';
+    return `
+        Overall Progress:
+        - Proficiency: ${progress.estimatedProficiencyLevel}
+        - Score: ${progress.overallScore || 'N/A'}
+        - Trajectory: ${progress.learningTrajectory}
+        - Strengths: ${progress.persistentStrengths.slice(0, 3).join(', ')}
+        - Weaknesses: ${progress.persistentWeaknesses.slice(0, 3).join(', ')}
+        - Low Mastery Topics: ${progress.lowMasteryTopics?.slice(0, 3).join(', ') || 'None'}
+        - Vocabulary Needs: ${progress.lowMasteryWordsCount || 0} words needing practice`;
+  }
+
+  private buildPerformanceContext(metrics?: AdaptiveLessonGenerationRequest['performanceMetrics']): string {
+    if (!metrics) return '';
+    return `
+        Recent Performance:
+        - Accuracy: ${metrics.avgAccuracy?.toFixed(0) || 'N/A'}%
+        - Pronunciation: ${metrics.avgPronunciationScore?.toFixed(0) || 'N/A'}/100
+        - Grammar: ${metrics.avgGrammarScore?.toFixed(0) || 'N/A'}/100
+        - Vocabulary: ${metrics.avgVocabularyScore?.toFixed(0) || 'N/A'}/100
+        - Top Strengths: ${metrics.strengths.slice(0, 2).join(', ') || 'None'}
+        - Top Weaknesses: ${metrics.weaknesses.slice(0, 2).join(', ') || 'None'}`;
+  }
+
+  private buildAudioAnalysisContext(audio?: AdaptiveLessonGenerationRequest['detailedAudioAnalysis']): string {
+    if (!audio) return '';
+    return `
+        Audio Analysis:
+        - Problematic Sounds: ${audio.problematicSounds.slice(0, 3).join(', ') || 'None'}
+        - Grammar Focus: ${audio.grammarRulesToReview.slice(0, 2).map(r => `${r.rule} (${r.priority})`).join(', ')}
+        - Vocabulary Expansion: ${audio.vocabularyAreasForExpansion.slice(0, 2).map(v => `${v.topic}: ${v.suggestedVocabulary.slice(0, 3).join(', ')}`).join('; ')}
+        - Suggested Focus: ${audio.nextSkillTargets.slice(0, 2).join(', ') || 'None'}`;
+  }
+
+  private buildPreviousLessonContext(lesson?: AdaptiveLessonGenerationRequest['previousLesson']): string {
+    if (!lesson) return '';
+    return `
+        Previous Lesson:
+        - Focus: ${lesson.focusArea}
+        - Skills: ${lesson.targetSkills.slice(0, 3).join(', ')}`;
   }
 
   async generateLessonCompletionResults(

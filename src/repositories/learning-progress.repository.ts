@@ -17,6 +17,7 @@ export interface ILearningProgressRepository {
 }
 
 export class LearningProgressRepository implements ILearningProgressRepository {
+  // If row-level security or user context from auth is needed, re-add it.
 
   constructor() {
     // Constructor can be empty or take Prisma client if not using global instance
@@ -57,9 +58,9 @@ export class LearningProgressRepository implements ILearningProgressRepository {
         where: { userId },
         update: data as Prisma.LearningProgressUpdateInput,
         create: {
-          ...data,
-          user: { connect: { id: userId } }  // Use relation instead of direct userId
-        } as unknown as Prisma.LearningProgressCreateInput  // Double assertion needed
+          ...(data as Prisma.LearningProgressUncheckedCreateInput),
+          userId // Ensure userId is always set in create
+        }
       });
       return progress as LearningProgressModel;
     } catch (error) {
