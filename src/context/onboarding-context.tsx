@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useUpload } from '@/hooks/use-upload';
 import { useAuth } from './auth-context';
+import { useUserProfile } from './user-profile-context';
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;
@@ -68,7 +69,7 @@ export function OnboardingProvider({
   const router = useRouter();
 
   const { user } = useAuth();
-
+  const { profile } = useUserProfile();
   const { uploadFile } = useUpload();
 
   // Helper method to handle async operations with loading and error states
@@ -221,7 +222,8 @@ export function OnboardingProvider({
   useEffect(() => {
    
     const initializeOnboarding = async () => {
-      if(!user) return;
+      if (!user) return;
+      if(!profile) return;
       try {
         const isComplete = await checkOnboardingStatus();
         if (isComplete) {
@@ -238,7 +240,7 @@ export function OnboardingProvider({
     if(!user) router.replace('/app/login');
 
     initializeOnboarding();
-  }, [user, router]);
+  }, [user, router, profile]);
 
   return (
     <OnboardingContext.Provider
