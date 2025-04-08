@@ -9,6 +9,7 @@ import {
   LessonModel,
   LessonStep,
   OnboardingModel,
+  isPerformanceMetrics,
 } from '@/models/AppAllModels.model';
 
 import {
@@ -764,7 +765,7 @@ export default class LessonService {
       result.audioAnalysisAvailable = true;
       
       // Store most recent audio metrics for detailed insights
-      result.mostRecentAudioMetrics = lessonsWithAudioMetrics[0].audioMetrics;
+      result.mostRecentAudioMetrics = lessonsWithAudioMetrics[0].audioMetrics ?? undefined;
       
       // Calculate average scores from audio metrics
       const audioMetricsScores = {
@@ -820,12 +821,16 @@ export default class LessonService {
     
     // Add lesson performance metrics
     completedLessons.forEach(lesson => {
-        if (lesson.performanceMetrics && typeof lesson.performanceMetrics === 'object') {
-            if (Array.isArray(lesson.performanceMetrics.weaknesses)) {
-                lesson.performanceMetrics.weaknesses.forEach(w => allWeaknesses.add(w as string));
-            }
-            if (Array.isArray(lesson.performanceMetrics.strengths)) {
-                lesson.performanceMetrics.strengths.forEach(s => allStrengths.add(s as string));
+        // First check if performanceMetrics exists
+        if (lesson.performanceMetrics) {
+            // Then use type guard on the JsonValue
+            if (isPerformanceMetrics(lesson.performanceMetrics)) {
+                if (Array.isArray(lesson.performanceMetrics.weaknesses)) {
+                    lesson.performanceMetrics.weaknesses.forEach((w: string) => allWeaknesses.add(w));
+                }
+                if (Array.isArray(lesson.performanceMetrics.strengths)) {
+                    lesson.performanceMetrics.strengths.forEach((s: string) => allStrengths.add(s));
+                }
             }
         }
     });
@@ -850,7 +855,9 @@ export default class LessonService {
     // Add low mastery topics from learning progress
     if (learningProgress?.topics) {
         learningProgress.topics
-            .filter(t => [MasteryLevel.NotStarted, MasteryLevel.Seen, MasteryLevel.Learning].includes(t.masteryLevel))
+            .filter(t => t.masteryLevel === MasteryLevel.NotStarted || 
+                         t.masteryLevel === MasteryLevel.Seen || 
+                         t.masteryLevel === MasteryLevel.Learning)
             .sort((a, b) => (a.lastStudiedAt?.getTime() ?? 0) - (b.lastStudiedAt?.getTime() ?? 0))
             .slice(0, 2)
             .forEach(t => focusAreas.add(this.normalizeTopic(t.topicName)));
@@ -901,13 +908,6 @@ export default class LessonService {
       }
     } else {
       // Fall back to error pattern-based focus areas if no audio metrics
-      metrics.errorPatterns.forEach(pattern => {
-        if (pattern.includes('pronunciation')) focusAreas.add('Pronunciation Practice');
-        else if (pattern.includes('grammar')) focusAreas.add('Grammar Rules');
-        else if (pattern.includes('vocabulary')) focusAreas.add('Vocabulary Building');
-        else focusAreas.add('General Practice');
-      });
-      
       // Adjust based on accuracy
       if (metrics.avgAccuracy < 50) {
         focusAreas.add('Vocabulary Building');
