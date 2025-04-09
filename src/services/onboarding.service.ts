@@ -49,7 +49,7 @@ export default class OnboardingService {
   };
 
   createOnboarding = async (): Promise<OnboardingModel> => {
-    
+
     return this.onboardingRepository.createOnboarding();
   };
 
@@ -110,9 +110,8 @@ export default class OnboardingService {
 
       const assessmentLesson = {
         userId,
-        description: `Comprehensive ${
-          onboarding?.targetLanguage || 'German'
-        } language assessment`,
+        description: `Comprehensive ${onboarding?.targetLanguage || 'German'
+          } language assessment`,
         completed: false,
         sourceLanguage: onboarding?.nativeLanguage || 'English',
         targetLanguage: onboarding?.targetLanguage || 'German',
@@ -157,12 +156,12 @@ export default class OnboardingService {
       await this.assessmentGeneratorService.generateAssessmentResult(
         assessmentLesson,
       );
-    
+
 
     assessmentLesson.metrics = results.metrics;
     assessmentLesson.summary = results.summary;
     assessmentLesson.proposedTopics = results.proposedTopics;
-    
+
 
     logger.info(`Assessment lesson: ${JSON.stringify(assessmentLesson)}`);
 
@@ -204,12 +203,12 @@ export default class OnboardingService {
 
       // Check if max attempts has been reached
       if (step.attempts >= step.maxAttempts) {
-        logger.info('Maximum attempts reached', { 
-          stepId, 
+        logger.info('Maximum attempts reached', {
+          stepId,
           attempts: step.attempts,
-          maxAttempts: step.maxAttempts 
+          maxAttempts: step.maxAttempts
         });
-        
+
         // Record the attempt but mark as incorrect, preserving user response
         return this.onboardingRepository.recordStepAttempt(
           lessonId,
@@ -220,7 +219,7 @@ export default class OnboardingService {
           }
         );
       }
-      
+
       // Validate user response for most step types
       if (
         step.type !== 'instruction' &&
@@ -230,7 +229,7 @@ export default class OnboardingService {
         if (!userResponse) {
           throw new Error('No response provided');
         }
-        if (userResponse.length < 3) {
+        if (userResponse.length <= 1) {
           throw new Error('Response is too short');
         }
       }
@@ -364,30 +363,30 @@ export default class OnboardingService {
 
     // 3. Determine proper mime type
     const mimeType = sessionRecording.type || 'audio/webm';
-   
+
     // 4. Upload the file
     const fileName = `lesson-${lesson.id}-${Date.now()}.webm`;
-    logger.info('Uploading recording file', { 
+    logger.info('Uploading recording file', {
       fileName,
       mimeType,
       size: buffer.length
     });
- 
-   
-    
+
+
+
     const fileUri = await this.recordingService.uploadFile(
       buffer,
       mimeType,
       fileName
     );
     logger.log('File URI:', fileUri);
-  
+
     logger.log('Sending recording to AI for analysis');
 
     // send recording to AI
     let aiResponse: Record<string, unknown>;
-    if(false) {
-    // if (process.env.MOCK_AI_RESPONSE === 'true') {
+    if (false) {
+      // if (process.env.MOCK_AI_RESPONSE === 'true') {
       aiResponse = mockAudioMetrics;
     } else {
       aiResponse = await this.recordingService.submitLessonRecordingSession(
