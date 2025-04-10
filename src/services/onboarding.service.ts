@@ -27,6 +27,8 @@ import {
 import { JsonValue } from '@prisma/client/runtime/library';
 import { LearningProgressRepository } from '@/repositories/learning-progress.repository';
 import LearningProgressService from './learning-progress.service';
+import { randomUUID } from 'crypto';
+
 
 export default class OnboardingService {
   private onboardingRepository: IOnboardingRepository;
@@ -142,7 +144,7 @@ export default class OnboardingService {
       );
     } catch (error) {
       logger.error('Error generating assessment lesson:', error);
-      throw new Error('Failed to generate assessment lesson');
+      throw error;
     }
   }
 
@@ -182,15 +184,15 @@ export default class OnboardingService {
       );
 
     this.learningProgressService.updateProgressAfterAssessment(completedLesson.userId, completedLesson)
-    .catch(err => {
+      .catch(err => {
         logger.error('Failed to update learning progress after assessment completion', {
-            userId: completedLesson.userId,
-            assessmentId: completedLesson.id,
-            error: err
+          userId: completedLesson.userId,
+          assessmentId: completedLesson.id,
+          error: err
         });
-    });
-    
-   const completedOnboarding =
+      });
+
+    const completedOnboarding =
       await this.onboardingRepository.completeOnboarding();
     logger.info('completed onboarding', completedOnboarding);
     logger.info('completed lesson', completedLesson);
@@ -341,7 +343,7 @@ export default class OnboardingService {
       return updatedStep;
     } catch (error) {
       logger.error('Error recording step attempt:', error);
-      throw new Error('Failed to record step attempt');
+      throw error;
     }
   }
 
@@ -444,8 +446,8 @@ export default class OnboardingService {
         ? aiResponse.overallPerformance
         : 0;
 
-    // Generate a unique ID for the metrics
-    const id = crypto.randomUUID();
+
+    const id = randomUUID();
 
     // Extract CEFR level and learning trajectory
     const proficiencyLevel =
