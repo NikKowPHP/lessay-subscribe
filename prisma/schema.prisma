@@ -17,7 +17,7 @@ datasource db {
 model Onboarding {
   id                      String   @id @default(cuid())
   userId                  String   @unique
-  user                    User     @relation(fields: [userId], references: [id])
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   steps                   Json
   completed               Boolean  @default(false)
   learningPurpose         String?
@@ -85,7 +85,7 @@ enum MasteryLevel {
 model AssessmentLesson {
   id                String   @id @default(cuid())
   userId            String   @unique // Only one assessment per user
-  user              User     @relation(fields: [userId], references: [id])
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   description       String?  // Brief description if needed
   completed         Boolean  @default(false)
   sourceLanguage    String   // User's native language
@@ -129,7 +129,7 @@ model AssessmentStep {
 model Lesson {
   id                  String    @id @default(cuid())
   userId              String
-  user                User      @relation(fields: [userId], references: [id])
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   lessonId            String
   focusArea           String
   targetSkills        String[]
