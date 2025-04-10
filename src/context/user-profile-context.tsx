@@ -10,6 +10,8 @@ import {
   updateUserProfileAction,
 } from '@/lib/server-actions/user-actions';
 
+import { SubscriptionStatus } from '@prisma/client'; // Import if needed for default values
+
 interface UserProfileContextType {
   profile: UserProfileModel | null;
   loading: boolean;
@@ -17,6 +19,8 @@ interface UserProfileContextType {
   updateProfile: (data: Partial<UserProfileModel>) => Promise<void>;
   saveInitialProfile: (email: string) => Promise<UserProfileModel | null>;
   clearError: () => void;
+  hasActiveSubscription: () => boolean;
+
 }
 
 const UserProfileContext = createContext<UserProfileContextType | undefined>(
@@ -100,7 +104,13 @@ export function UserProfileProvider({
 
     setLoading(true);
     try {
-      const updatedProfile = await updateUserProfileAction(user.id, data);
+      const { subscriptionStatus, subscriptionEndDate, ...updateData } = data;
+      if (Object.keys(updateData).length === 0) {
+        logger.warn("updateProfile called with no updatable fields.");
+        setLoading(false);
+        return; // Nothing to update
+      }
+      const updatedProfile = await updateUserProfileAction(user.id, updateData);
       if (updatedProfile) {
         setProfile(updatedProfile);
       } else {
@@ -111,10 +121,22 @@ export function UserProfileProvider({
       setError(
         error instanceof Error ? error.message : 'Failed to update profile'
       );
-      throw error;
     } finally {
       setLoading(false);
     }
+  };
+
+
+  // Helper function to check subscription status
+  const hasActiveSubscription = (): boolean => {
+    if (!profile) return false;
+    const isActive = profile.subscriptionStatus === SubscriptionStatus.ACTIVE;
+    const isTrial = profile.subscriptionStatus === SubscriptionStatus.TRIAL;
+    const now = new Date();
+    const endDate = profile.subscriptionEndDate ? new Date(profile.subscriptionEndDate) : null;
+    const hasValidEndDate = endDate ? endDate > now : true; // Assume valid if no end date (e.g., ongoing trial/active)
+
+    return (isActive || isTrial) && hasValidEndDate;
   };
 
   const clearError = () => setError(null);
@@ -127,6 +149,7 @@ export function UserProfileProvider({
         error,
         updateProfile,
         saveInitialProfile,
+        hasActiveSubscription,
         clearError,
       }}
     >

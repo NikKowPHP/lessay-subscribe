@@ -140,6 +140,8 @@ export interface UserProfileModel {
     overallScore?: number | null;
     learningTrajectory: LearningTrajectory;
   }
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionEndDate?: Date | null;
 
 }
 

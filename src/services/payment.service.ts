@@ -1,155 +1,121 @@
-// src/services/payment.service.ts
+// File: src/services/payment.service.ts
 import Stripe from 'stripe';
 import logger from '@/utils/logger';
-import { PaymentStatus, User } from '@prisma/client';
-import { PaymentModel } from '@/models/AppAllModels.model'; // Import PaymentModel
-import { IPaymentRepository } from '@/lib/interfaces/all-interfaces'; // Import Repository Interface
-import prisma from '@/lib/prisma'; // Keep for User lookup for now
+import { PaymentStatus, SubscriptionStatus, User } from '@prisma/client'; // Import necessary enums/types
+import { PaymentModel } from '@/models/AppAllModels.model'; // Keep if you still log payments for record-keeping
+import { IPaymentRepository } from '@/lib/interfaces/all-interfaces';
+import prisma from '@/lib/prisma'; // Needed for updating User subscription status
 
 // Initialize Stripe (ensure keys are loaded from environment variables)
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 if (!stripeSecretKey) {
-  // Log error during startup if key is missing
   logger.error('FATAL: Stripe secret key is not defined in environment variables.');
-  // Optionally throw an error to prevent the service from being used incorrectly
-  // throw new Error('Stripe secret key is not defined in environment variables.');
+  // Throw error to prevent service instantiation without a key
+  throw new Error('Stripe secret key is not defined.');
 }
-// Initialize Stripe only if the key exists
-const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {
-  apiVersion: '2024-04-10', // Use the latest API version
+const stripe = new Stripe(stripeSecretKey, {
+  apiVersion: '2024-04-10', // Use your desired API version
   typescript: true,
-}) : null; // Handle the case where stripe might be null if key is missing
+});
 
-// Define product details structure (adapt as needed)
-interface ProductDetails {
-  id: string;
-  type: string; // e.g., "subscription", "course"
-  name: string;
-  amount: number; // Amount in MAJOR currency unit (e.g., dollars)
-  currency: string; // e.g., "usd"
+// Define product details structure focused on subscriptions
+interface SubscriptionProductDetails {
+  id: string; // Your internal product ID (e.g., 'premium_monthly')
+  stripePriceId: string; // The ID of the Price object in Stripe (e.g., price_123...)
+  type: 'subscription'; // Explicitly subscription
+  name: string; // e.g., "Premium Monthly Plan"
 }
 
 export class PaymentService {
   private paymentRepository: IPaymentRepository;
 
-  // Add constructor to accept the repository
   constructor(paymentRepository: IPaymentRepository) {
     this.paymentRepository = paymentRepository;
-    // Check if Stripe was initialized correctly
-    if (!stripe) {
-      logger.error('Stripe SDK could not be initialized. Payment functionality will be disabled.');
-      // You might want to throw here or handle this state appropriately elsewhere
-    }
+    // Stripe initialization check is handled above
   }
 
   /**
-   * Creates a Stripe Payment Intent and saves a corresponding Payment record in the DB.
-   * @param userId - The ID of the user making the payment.
-   * @param product - Details of the product/service being purchased.
-   * @returns The client secret for the Stripe Payment Intent.
+   * Creates a Stripe Checkout Session for initiating a subscription.
+   * @param userId - The ID of the user subscribing.
+   * @param product - Details including the Stripe Price ID.
+   * @returns The session ID for redirecting the user to Stripe Checkout.
    */
-  async createPaymentIntent(userId: string, product: ProductDetails): Promise<string> {
-    // Ensure Stripe is available
-    if (!stripe) {
-      throw new Error('Payment system is currently unavailable. Stripe key missing.');
+  async createCheckoutSession(userId: string, product: SubscriptionProductDetails): Promise<string> {
+    logger.info(`Creating checkout session for user ${userId}, price ${product.stripePriceId}`);
+
+    // 1. Validate Input
+    if (!userId || !product || !product.stripePriceId) {
+      throw new Error('Missing required parameters (userId, product, stripePriceId).');
+    }
+    if (product.type !== 'subscription') {
+      throw new Error('Invalid product type for checkout session.');
     }
 
-    logger.info(`Creating payment intent for user ${userId}, product ${product.id}`);
-
-    // 1. Validate input (basic)
-    if (!userId || !product || !product.id || !product.amount || !product.currency) {
-      throw new Error('Missing required parameters for payment intent creation.');
-    }
-    if (product.amount <= 0) {
-      throw new Error('Payment amount must be positive.');
-    }
-
-    // 2. Get User email (optional but recommended for Stripe customer matching)
-    // Keep direct prisma call here for now, or inject UserService/UserRepository
+    // 2. Get User (for email prefill and potential customer lookup/creation)
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new Error(`User not found: ${userId}`);
     }
 
-    // 3. Convert amount to smallest currency unit (e.g., cents)
-    const amountInCents = Math.round(product.amount * 100);
-    const currencyCode = product.currency.toLowerCase();
+    // 3. Define Success/Cancel URLs
+    const successUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/app/settings?subscription=success&session_id={CHECKOUT_SESSION_ID}`; // Redirect back to settings or a dedicated success page
+    const cancelUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/app/settings?subscription=canceled`; // Redirect back if canceled
 
-    // 4. Create internal Payment record (status PENDING) using the repository
-    const internalPayment = await this.paymentRepository.createPayment({
-      userId: userId,
-      status: PaymentStatus.PENDING,
-      amount: amountInCents,
-      currency: currencyCode,
-      productId: product.id,
-      productType: product.type,
-    });
-    logger.info(`Internal payment record created: ${internalPayment.id}`);
-
-    // 5. Create Stripe Payment Intent
+    // 4. Create Stripe Checkout Session
     try {
-      const params: Stripe.PaymentIntentCreateParams = {
-        amount: amountInCents,
-        currency: currencyCode,
-        automatic_payment_methods: { enabled: true }, // Let Stripe manage payment methods UI
-        metadata: {
-          internalPaymentId: internalPayment.id, // Link Stripe intent to our DB record
+      const sessionParams: Stripe.Checkout.SessionCreateParams = {
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        line_items: [
+          {
+            price: product.stripePriceId,
+            quantity: 1,
+          },
+        ],
+        customer_email: user.email, // Pre-fill email
+        client_reference_id: userId, // Link session to your internal user ID
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        // --- Trial Period Handling ---
+        // Uncomment and configure if your Stripe Price has a trial period defined
+        // subscription_data: {
+        //   trial_from_plan: true, // Use trial defined on the Price object
+        // },
+        // OR define trial explicitly here (overrides Price trial)
+        // subscription_data: {
+        //    trial_period_days: 7
+        // },
+        // --- End Trial Period Handling ---
+        metadata: { // Store useful info for webhooks
           userId: userId,
           productId: product.id,
-          productType: product.type,
-        },
-        receipt_email: user.email, // Send Stripe receipt
-        description: `Payment for ${product.name}`, // Description shown in Stripe dashboard
+          stripePriceId: product.stripePriceId,
+        }
       };
 
-      const paymentIntent = await stripe.paymentIntents.create(params);
-      logger.info(`Stripe Payment Intent created: ${paymentIntent.id}`);
+      const session = await stripe.checkout.sessions.create(sessionParams);
+      logger.info(`Stripe Checkout Session created: ${session.id} for user ${userId}`);
 
-      // 6. Update internal Payment record with Stripe Intent ID using the repository
-      await this.paymentRepository.updatePayment(internalPayment.id, {
-        stripePaymentIntentId: paymentIntent.id,
-      });
-
-      // 7. Return client secret to the frontend
-      if (!paymentIntent.client_secret) {
-        // This case should ideally not happen if Stripe creation succeeded
-        logger.error(`Stripe Payment Intent ${paymentIntent.id} missing client_secret after creation.`);
-        await this.paymentRepository.updatePayment(internalPayment.id, {
-          status: PaymentStatus.FAILED,
-          errorMessage: 'Stripe client_secret missing post-creation',
-        });
-        throw new Error('Stripe Payment Intent client secret is missing.');
+      if (!session.id) {
+        // This should ideally not happen if the API call succeeds
+        throw new Error('Failed to create Stripe Checkout Session: No session ID returned.');
       }
-      return paymentIntent.client_secret;
+      return session.id; // Return the session ID to the frontend for redirection
 
     } catch (error: any) {
-      logger.error('Error creating Stripe Payment Intent:', {
-        error: error.message,
-        internalPaymentId: internalPayment.id,
-      });
-      // Update internal record to FAILED using the repository
-      await this.paymentRepository.updatePayment(internalPayment.id, {
-        status: PaymentStatus.FAILED,
-        errorMessage: `Stripe intent creation failed: ${error.message}`,
-      });
-      // Rethrow a more specific error or the original Stripe error
-      throw new Error(`Failed to create Stripe Payment Intent: ${error.message}`);
+      logger.error('Error creating Stripe Checkout Session:', { error: error.message, userId, product });
+      // Rethrow a user-friendly or specific error
+      throw new Error(`Failed to create Stripe Checkout Session: ${error.message}`);
     }
   }
 
   /**
-   * Handles incoming Stripe webhooks.
+   * Handles incoming Stripe webhooks related to subscriptions.
    * @param payload - The raw request body from Stripe.
    * @param signature - The value of the 'stripe-signature' header.
    * @returns True if handled successfully, throws error otherwise.
    */
   async handleWebhook(payload: Buffer | string, signature: string | string[] | undefined): Promise<boolean> {
-    // Ensure Stripe is available
-    if (!stripe) {
-      logger.error('Cannot handle webhook: Payment system is unavailable (Stripe key missing).');
-      throw new Error('Payment system unavailable.');
-    }
-
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
       logger.error('Stripe webhook secret is not configured.');
@@ -171,139 +137,274 @@ export class PaymentService {
       throw new Error(`Webhook signature verification failed: ${err.message}`);
     }
 
-    // 2. Handle the event type
-    // Ensure the event data object is a PaymentIntent before casting
-    if (!event.data.object || !('object' in event.data.object) || event.data.object.object !== 'payment_intent') {
-      logger.warn(`Webhook received for non-PaymentIntent object or missing object type. Event type: ${event.type}`);
-      return true; // Acknowledge receipt but don't process if it's not what we expect
-    }
-    const paymentIntent = event.data.object as Stripe.PaymentIntent;
-    const internalPaymentId = paymentIntent.metadata?.internalPaymentId;
+    // 2. Handle relevant subscription event types
 
-    if (!internalPaymentId) {
-      logger.warn('Webhook received for payment intent without internalPaymentId metadata', { stripeIntentId: paymentIntent.id, eventId: event.id });
-      return true; // Acknowledge receipt but don't process further
-    }
+    // --- Checkout Session Completed (Subscription Initiated) ---
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.client_reference_id; // Get userId from client_reference_id
+      const subscriptionId = session.subscription; // ID of the created Stripe Subscription
 
-    // Retrieve internal payment record using the repository
-    const internalPayment = await this.paymentRepository.findPaymentById(internalPaymentId);
+      if (session.mode !== 'subscription') {
+        logger.info(`Ignoring checkout.session.completed for non-subscription mode: ${session.mode}`);
+        return true; // Acknowledge but don't process
+      }
+      if (!userId) {
+        logger.error('Webhook checkout.session.completed missing client_reference_id (userId)', { sessionId: session.id });
+        return true; // Acknowledge to prevent retries for this specific issue
+      }
+      if (!subscriptionId || typeof subscriptionId !== 'string') {
+        logger.error('Webhook checkout.session.completed missing subscription ID', { sessionId: session.id, userId });
+        return true; // Acknowledge
+      }
 
-    if (!internalPayment) {
-      logger.error(`Internal payment record not found for ID from webhook metadata: ${internalPaymentId}`, { stripeIntentId: paymentIntent.id, eventId: event.id });
-      // Acknowledge to prevent Stripe retries for this specific issue.
-      // Consider adding to a dead-letter queue for investigation if this happens frequently.
-      return true;
-    }
+      logger.info(`Checkout session completed for user ${userId}, subscription ${subscriptionId}, payment status ${session.payment_status}`);
 
-    // Idempotency check: Don't process final states multiple times
-    const isAlreadySucceeded = event.type === 'payment_intent.succeeded' && internalPayment.status === PaymentStatus.SUCCEEDED;
-    const isAlreadyFailed = event.type === 'payment_intent.payment_failed' && internalPayment.status === PaymentStatus.FAILED;
-    const isAlreadyCanceled = event.type === 'payment_intent.canceled' && internalPayment.status === PaymentStatus.CANCELED;
+      try {
+        // Retrieve the full subscription object to get details like current_period_end and status
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-    if (isAlreadySucceeded || isAlreadyFailed || isAlreadyCanceled) {
-      logger.info(`Webhook event ${event.type} (ID: ${event.id}) already processed for internal payment ${internalPaymentId}`);
-      return true;
-    }
+        // Update user's subscription status in your database
+        await this.updateUserSubscriptionStatus(
+          userId,
+          subscriptionId,
+          subscription.status, // Stripe subscription status (e.g., 'active', 'trialing')
+          new Date(subscription.current_period_end * 1000) // Convert Unix timestamp to Date
+        );
 
-    let newStatus: PaymentStatus | undefined = undefined;
-    let errorMessage: string | null = null;
-
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-        logger.info(`PaymentIntent succeeded: ${paymentIntent.id}, Internal ID: ${internalPaymentId}, Event ID: ${event.id}`);
-        // Validate amount (optional but recommended)
-        if (paymentIntent.amount_received !== internalPayment.amount || paymentIntent.currency !== internalPayment.currency) {
-          errorMessage = 'Webhook amount/currency mismatch';
-          newStatus = PaymentStatus.FAILED;
-          logger.error(errorMessage, {
-            stripeIntentId: paymentIntent.id, internalPaymentId, eventId: event.id,
-            expectedAmount: internalPayment.amount, receivedAmount: paymentIntent.amount_received,
-            expectedCurrency: internalPayment.currency, receivedCurrency: paymentIntent.currency,
+        // Optionally: Create a Payment record for the initial setup fee/payment if needed for history
+        if (session.payment_status === 'paid' && session.payment_intent && typeof session.payment_intent === 'string') {
+          const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent);
+          await this.paymentRepository.createPayment({
+            userId: userId,
+            stripePaymentIntentId: paymentIntent.id,
+            status: PaymentStatus.SUCCEEDED,
+            amount: paymentIntent.amount_received,
+            currency: paymentIntent.currency,
+            productId: session.metadata?.productId || null,
+            productType: 'subscription', // Mark as subscription setup/initial payment
           });
-        } else {
-          newStatus = PaymentStatus.SUCCEEDED;
-          // --- TRIGGER FULFILLMENT LOGIC HERE ---
-          await this.fulfillOrder(internalPaymentId, internalPayment.productId, internalPayment.productType, internalPayment.userId);
-          // -----------------------------------------
+          logger.info(`Created initial payment record for subscription ${subscriptionId}`);
         }
-        break;
-
-      case 'payment_intent.payment_failed':
-        errorMessage = paymentIntent.last_payment_error?.message || 'Unknown payment failure reason';
-        newStatus = PaymentStatus.FAILED;
-        logger.warn(`PaymentIntent failed: ${paymentIntent.id}, Internal ID: ${internalPaymentId}, Reason: ${errorMessage}, Event ID: ${event.id}`);
-        // Optionally notify user or support team
-        break;
-
-      case 'payment_intent.processing':
-        newStatus = PaymentStatus.PROCESSING;
-        logger.info(`PaymentIntent processing: ${paymentIntent.id}, Internal ID: ${internalPaymentId}, Event ID: ${event.id}`);
-        break;
-
-      case 'payment_intent.requires_action':
-        newStatus = PaymentStatus.REQUIRES_ACTION;
-        logger.info(`PaymentIntent requires action: ${paymentIntent.id}, Internal ID: ${internalPaymentId}, Event ID: ${event.id}`);
-        break;
-
-      case 'payment_intent.canceled':
-        newStatus = PaymentStatus.CANCELED;
-        logger.info(`PaymentIntent canceled: ${paymentIntent.id}, Internal ID: ${internalPaymentId}, Event ID: ${event.id}`);
-        break;
-
-      default:
-        logger.warn(`Unhandled Stripe event type: ${event.type} (ID: ${event.id})`);
-        return true; // Acknowledge unhandled events
+      } catch (error) {
+        logger.error(`Error processing checkout.session.completed for sub ${subscriptionId}:`, error);
+        // Decide if you should return true (ack) or false/throw (retry)
+        return true; // Acknowledge to avoid infinite retries for potentially persistent issues
+      }
+      return true;
     }
 
-    // Update internal payment status using the repository if status changed
-    if (newStatus !== undefined && newStatus !== internalPayment.status) {
-      await this.paymentRepository.updatePayment(internalPaymentId, {
-        status: newStatus,
-        errorMessage: errorMessage, // Will be null for success/processing etc.
-      });
-      logger.info(`Updated internal payment ${internalPaymentId} status to ${newStatus} based on event ${event.id}`);
+    // --- Invoice Paid (Subscription Renewal) ---
+    if (event.type === 'invoice.payment_succeeded') {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = invoice.subscription;
+      const userId = await this.getUserIdFromInvoice(invoice); // Helper to find userId
+
+      if (!subscriptionId || typeof subscriptionId !== 'string') {
+        logger.warn('Webhook invoice.payment_succeeded missing subscription ID', { invoiceId: invoice.id });
+        return true;
+      }
+      if (!userId) {
+        logger.warn('Webhook invoice.payment_succeeded could not determine userId', { invoiceId: invoice.id, customerId: invoice.customer });
+        return true;
+      }
+
+      logger.info(`Invoice payment succeeded for subscription ${subscriptionId}, user ${userId}`);
+
+      try {
+        // Retrieve the subscription to update period end
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+        // Update user's subscription status (especially the end date)
+        await this.updateUserSubscriptionStatus(
+          userId,
+          subscriptionId,
+          subscription.status, // Should be 'active' after successful payment
+          new Date(subscription.current_period_end * 1000)
+        );
+
+        // Optionally: Create a Payment record for this recurring payment for history
+        if (invoice.payment_intent && typeof invoice.payment_intent === 'string') {
+          const paymentIntent = await stripe.paymentIntents.retrieve(invoice.payment_intent);
+          await this.paymentRepository.createPayment({
+            userId: userId,
+            stripePaymentIntentId: paymentIntent.id,
+            status: PaymentStatus.SUCCEEDED,
+            amount: invoice.amount_paid,
+            currency: invoice.currency,
+            productId: subscription.metadata?.productId || null, // Get product from subscription metadata if set
+            productType: 'subscription_renewal', // Mark as renewal
+          });
+          logger.info(`Created renewal payment record for subscription ${subscriptionId}`);
+        }
+      } catch (error) {
+        logger.error(`Error processing invoice.payment_succeeded for sub ${subscriptionId}:`, error);
+        return true; // Acknowledge
+      }
+      return true;
     }
 
-    return true;
+    // --- Invoice Payment Failed (Renewal Failed) ---
+    if (event.type === 'invoice.payment_failed') {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = invoice.subscription;
+      const userId = await this.getUserIdFromInvoice(invoice); // Helper to find userId
+
+      if (!subscriptionId || typeof subscriptionId !== 'string' || !userId) {
+        logger.warn('Webhook invoice.payment_failed missing subscription ID or userId', { invoiceId: invoice.id });
+        return true;
+      }
+
+      logger.warn(`Invoice payment failed for subscription ${subscriptionId}, user ${userId}`);
+      try {
+        // Update user status to PAST_DUE (or potentially CANCELED depending on Stripe settings)
+        // Fetch the subscription to get the latest status from Stripe
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        await this.updateUserSubscriptionStatus(userId, subscriptionId, subscription.status); // Use Stripe's status
+        // Optionally create a FAILED payment record
+      } catch (error) {
+        logger.error(`Error processing invoice.payment_failed for sub ${subscriptionId}:`, error);
+        return true; // Acknowledge
+      }
+      return true;
+    }
+
+    // --- Subscription Status Changes (e.g., canceled, trial ended) ---
+    // Handle updates and deletions together
+    if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+      const subscription = event.data.object as Stripe.Subscription;
+      const userId = await this.getUserIdFromSubscription(subscription); // Helper to find userId
+
+      if (!userId) {
+        logger.warn(`Webhook ${event.type} could not determine userId`, { subscriptionId: subscription.id });
+        return true;
+      }
+
+      logger.info(`Subscription ${event.type} for user ${userId}, subscription ${subscription.id}`);
+      try {
+        const newStatus = event.type === 'customer.subscription.deleted' ? 'deleted' : subscription.status;
+        // Use canceled_at for end date if subscription is canceled and has a specific cancelation time
+        const endDate = subscription.canceled_at
+          ? new Date(subscription.canceled_at * 1000)
+          : (subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : undefined);
+
+        await this.updateUserSubscriptionStatus(userId, subscription.id, newStatus, endDate);
+      } catch (error) {
+        logger.error(`Error processing ${event.type} for sub ${subscription.id}:`, error);
+        return true; // Acknowledge
+      }
+      return true;
+    }
+
+    // --- Default: Log unhandled events ---
+    logger.warn(`Unhandled Stripe event type received: ${event.type} (ID: ${event.id})`);
+    return true; // Acknowledge receipt of unhandled events
   }
 
   /**
-   * Placeholder for order fulfillment logic.
-   * This should be implemented based on your application's needs.
-   * @param internalPaymentId - The ID of the successful internal payment record.
-   * @param productId - The ID of the product purchased.
-   * @param productType - The type of product purchased.
-   * @param userId - The ID of the user.
+   * Helper to get userId from Invoice, checking metadata and customer object.
    */
-  private async fulfillOrder(internalPaymentId: string, productId: string | null, productType: string | null, userId: string): Promise<void> {
-    logger.info(`Fulfilling order for payment ${internalPaymentId}, product ${productId} (${productType}), user ${userId}`);
+  private async getUserIdFromInvoice(invoice: Stripe.Invoice): Promise<string | null> {
+    if (invoice.metadata?.userId) return invoice.metadata.userId;
+    if (invoice.subscription && typeof invoice.subscription === 'string') {
+      const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+      return await this.getUserIdFromSubscription(subscription);
+    }
+    if (invoice.customer && typeof invoice.customer === 'string') {
+      try {
+        const customer = await stripe.customers.retrieve(invoice.customer);
+        // Check if customer object itself isn't deleted
+        if (!customer.deleted && customer.metadata?.userId) {
+          return customer.metadata.userId;
+        }
+      } catch (error) {
+        logger.warn(`Could not retrieve customer ${invoice.customer} during userId lookup for invoice ${invoice.id}`, error);
+      }
+    }
+    return null;
+  }
 
-    // Example fulfillment logic:
-    // Ensure this operation is idempotent - check if fulfillment already happened for this paymentId
-    // e.g., const fulfillmentRecord = await findFulfillment(internalPaymentId); if (fulfillmentRecord) return;
+  /**
+   * Helper to get userId from Subscription, checking metadata and customer object.
+   */
+  private async getUserIdFromSubscription(subscription: Stripe.Subscription): Promise<string | null> {
+    if (subscription.metadata?.userId) return subscription.metadata.userId;
+    if (subscription.customer && typeof subscription.customer === 'string') {
+      try {
+        const customer = await stripe.customers.retrieve(subscription.customer);
+        // Check if customer object itself isn't deleted
+        if (!customer.deleted && customer.metadata?.userId) {
+          return customer.metadata.userId;
+        }
+      } catch (error) {
+        logger.warn(`Could not retrieve customer ${subscription.customer} during userId lookup for subscription ${subscription.id}`, error);
+      }
+    }
+    return null;
+  }
+
+
+  /**
+   * Updates the user's subscription details in the database based on Stripe status.
+   * @param userId - Your internal user ID.
+   * @param stripeSubscriptionId - The Stripe Subscription ID.
+   * @param stripeStatus - Stripe's subscription status (e.g., 'active', 'trialing', 'canceled', 'past_due', 'deleted').
+   * @param periodEndDate - Optional: The date the current subscription period ends. Nullified if status indicates termination.
+   */
+  private async updateUserSubscriptionStatus(
+    userId: string,
+    stripeSubscriptionId: string,
+    stripeStatus: Stripe.Subscription.Status | 'deleted', // Allow 'deleted' status from webhook
+    periodEndDate?: Date | null // Make optional and nullable
+  ): Promise<void> {
+    logger.info(`Updating subscription status for user ${userId}, sub ${stripeSubscriptionId} to Stripe status ${stripeStatus}`);
+
+    let appStatus: SubscriptionStatus;
+    let finalEndDate: Date | null = periodEndDate || null; // Default to provided end date or null
+
+    // Map Stripe status to your internal SubscriptionStatus enum
+    switch (stripeStatus) {
+      case 'active':
+        appStatus = SubscriptionStatus.ACTIVE;
+        break;
+      case 'trialing':
+        appStatus = SubscriptionStatus.TRIAL;
+        break;
+      case 'past_due':
+        appStatus = SubscriptionStatus.PAST_DUE;
+        break;
+      case 'canceled':
+      case 'unpaid': // Treat unpaid similar to canceled or past_due depending on logic
+      case 'incomplete':
+      case 'incomplete_expired':
+      case 'deleted': // Handle deletion explicitly
+        appStatus = SubscriptionStatus.CANCELED; // Mark as canceled in your system
+        finalEndDate = null; // Clear end date on definitive cancellation/deletion
+        stripeSubscriptionId = ''; // Optionally clear the stripe subscription ID if deleted
+        break;
+      default:
+        logger.warn(`Unknown Stripe subscription status encountered: ${stripeStatus}. Setting status to NONE.`);
+        appStatus = SubscriptionStatus.NONE; // Fallback for unknown states
+        finalEndDate = null;
+        stripeSubscriptionId = ''; // Optionally clear the stripe subscription ID
+    }
 
     try {
-      if (productType === 'subscription') {
-        // Activate the user's subscription in your system
-        // e.g., await activateSubscription(userId, productId);
-        logger.info(`Subscription ${productId} activated for user ${userId}`);
-      } else if (productType === 'course') {
-        // Grant access to the course
-        // e.g., await grantCourseAccess(userId, productId);
-        logger.info(`Access granted to course ${productId} for user ${userId}`);
-      } else if (productType === 'credits') {
-        // Add credits to user's account
-        // e.g., await addCreditsToUser(userId, amount);
-        logger.info(`Credits added for user ${userId}`);
-      } else {
-        logger.warn(`Unhandled product type for fulfillment: ${productType}`);
-      }
-      // Mark fulfillment as complete in DB if necessary
-      // e.g., await markFulfillmentComplete(internalPaymentId);
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionStatus: appStatus,
+          // Only update subscriptionId if it's not being cleared due to deletion/cancellation
+          ...(stripeSubscriptionId && { subscriptionId: stripeSubscriptionId }),
+          // Clear subscriptionId if status implies termination
+          ...((appStatus === SubscriptionStatus.CANCELED || appStatus === SubscriptionStatus.NONE) && !stripeSubscriptionId && { subscriptionId: null }),
+          subscriptionEndDate: finalEndDate,
+        },
+      });
+      logger.info(`Successfully updated user ${userId} subscription status in DB to ${appStatus}`);
     } catch (error) {
-      logger.error(`Fulfillment failed for payment ${internalPaymentId}:`, error);
-      // Handle fulfillment errors - e.g., notify admin, schedule retry?
-      // Consider updating payment status to indicate fulfillment failure?
+      logger.error(`Failed to update user subscription status in DB for user ${userId}`, { error });
+      // Consider retry logic or administrative alerting
     }
   }
 }

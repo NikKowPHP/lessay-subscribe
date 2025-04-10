@@ -18,10 +18,6 @@ export class UserRepository implements IUserRepository {
 
   constructor(authService: IAuthService) {
     this.authService = authService
-
-
-    // Initialize admin auth if needed and configured (e.g., via env vars)
-    // This assumes getAuthServiceBasedOnEnvironment can return an admin client
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
       this.adminAuthService = getAuthServiceBasedOnEnvironment(); // Pass flag for admin
     }
@@ -65,6 +61,8 @@ export class UserRepository implements IUserRepository {
         onboardingCompleted: user.onboarding?.completed || false,
         createdAt: user.createdAt,
         initialAssessmentCompleted: user.onboarding?.initialAssessmentCompleted || false,
+        subscriptionStatus: user.subscriptionStatus,
+        subscriptionEndDate: user.subscriptionEndDate || null,
         updatedAt: user.updatedAt
       }
     } catch (error) {
@@ -111,6 +109,9 @@ export class UserRepository implements IUserRepository {
           id: userId,
           email,
           // Create an empty onboarding record
+          subscriptionStatus: SubscriptionStatus.NONE, // Default status
+          subscriptionEndDate: null,
+
           onboarding: {
             create: {
               steps: {},
@@ -134,10 +135,14 @@ export class UserRepository implements IUserRepository {
         // targetLanguage: null,
         // proficiencyLevel: null,
         // learningPurpose: null,
+
         onboardingCompleted: false,
         initialAssessmentCompleted: false,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt || new Date()
+        updatedAt: user.updatedAt || new Date(),
+        subscriptionStatus: user.subscriptionStatus, // Include default status
+        subscriptionEndDate: user.subscriptionEndDate, // Include default end date
+
       }
     } catch (error) {
       logger.error('Error creating user profile:', error)
@@ -195,6 +200,8 @@ export class UserRepository implements IUserRepository {
         // learningPurpose: user.onboarding?.learningPurpose || null,
         onboardingCompleted: user.onboarding?.completed || false,
         initialAssessmentCompleted: user.onboarding?.initialAssessmentCompleted || false,
+        subscriptionStatus: user.subscriptionStatus,
+        subscriptionEndDate: user.subscriptionEndDate || null,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
@@ -223,7 +230,6 @@ export class UserRepository implements IUserRepository {
       logger.warn(`Initiating deletion process for user profile and associated data for userId: ${userId}`);
 
       // Step 1: Delete the user record from the database.
-      // Prisma's `onDelete: Cascade` will handle related records (Onboarding, Lessons, etc.)
       logger.info(`Attempting to delete user data from DB for userId: ${userId}`);
       await prisma.user.delete({
         where: { id: userId },
@@ -231,19 +237,11 @@ export class UserRepository implements IUserRepository {
       logger.info(`Successfully deleted user data from DB for userId: ${userId}`);
 
       // Step 2: Delete the user from the authentication provider (Supabase Auth)
-      // Use the potentially admin-configured auth service instance obtained from the factory.
       logger.info(`Attempting to delete user from Auth Provider for userId: ${userId}`);
       const { error: authError } = await adminAuthService.deleteUserById(userId);
 
       if (authError) {
-        // Log the error but don't necessarily throw if DB deletion succeeded.
-        // The user account might be orphaned in Auth, which might require manual cleanup,
-        // but the primary user data is gone. Decide on desired behavior.
-        // For now, log as an error but allow the operation to appear successful overall
-        // if the DB part worked.
         logger.error(`Failed to delete user from Auth Provider (Supabase Auth): ${authError.message || authError}`, { userId });
-        // Optionally re-throw if Auth deletion failure should halt the process:
-        // throw new Error(`Failed to delete user from authentication provider: ${authError.message}`);
       } else {
         logger.info(`Successfully deleted user from Auth Provider for userId: ${userId}`);
       }
