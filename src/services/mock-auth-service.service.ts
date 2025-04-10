@@ -148,6 +148,35 @@ export class MockAuthService implements IAuthService {
     }
   }
 
+
+  // Mock implementation for deleteUserById
+  async deleteUserById(userId: string): Promise<{ error: any | null }> {
+    logger.log(`deleteUserById (mocked) for user: ${userId}`, { apiUrl: this.API_URL });
+
+    // Simulate API call
+    const response = await fetch(this.API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteUser', userId }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('Mock deleteUserById failed:', { status: response.status, error: errorText });
+      return { error: { message: `Mock delete failed: ${errorText}` } };
+    }
+
+    // If the deleted user was the currently logged-in user, clear the session
+    if (mockSessionStore?.user?.id === userId) {
+      logger.log(`Deleted user ${userId} was the logged-in user. Clearing mock session.`);
+      mockSessionStore = null;
+      notifyAuthStateChange('SIGNED_OUT', null);
+    }
+
+    logger.info(`Mock deleteUserById successful for user: ${userId}`);
+    return { error: null };
+  }
+
   onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => Promise<void> | void) {
     logger.log('onAuthStateChange (mocked) - setting up listener');
     globalAuthStateCallback = callback; // Store the callback globally for this module

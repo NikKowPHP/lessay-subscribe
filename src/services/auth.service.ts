@@ -7,4 +7,5 @@ export interface IAuthService {
   logout(): Promise<void>
   getSession(): Promise<Session | null>
   onAuthStateChange(callback: (event: any, session: Session | null) => Promise<void> | void): any
+  deleteUserById(userId: string): Promise<{ error: any | null }>
 } 

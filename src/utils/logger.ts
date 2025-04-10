@@ -41,9 +41,18 @@ class Logger {
     }
   }
 
+  debug(message: string, ...args: unknown[]): void {
+    if (!this.isProduction) {
+      console.debug(message, ...args);
+    } else {
+      // Optionally, warnings can also be logged to Supabase in a similar fashion if needed.
+      console.log(`DEBUG : ${message}`, ...args);
+    }
+  }
+
   info(message: string, ...args: unknown[]): void {
     // if (!this.isProduction) {
-      console.log(message, ...args);
+    console.log(message, ...args);
     // }
   }
 
@@ -58,9 +67,9 @@ class Logger {
 
   log(message: string, ...args: unknown[]): void {
     // if (!this.isProduction) {
-      console.log(message, ...args);
+    console.log(message, ...args);
     // } else {
-      // In production, standard logs can be suppressed, or adjust as needed.
+    // In production, standard logs can be suppressed, or adjust as needed.
     // }
   }
 }

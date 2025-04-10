@@ -3,6 +3,7 @@ import { ILessonRepository } from '@/lib/interfaces/all-interfaces'
 import logger from '@/utils/logger'
 import { LessonModel, LessonStep, UserProfileModel } from '@/models/AppAllModels.model'
 import prisma from '@/lib/prisma'
+import { getAuthServiceBasedOnEnvironment } from '@/services/supabase-auth.service'
 
 export interface IUserRepository {
   getUserProfile(userId: string): Promise<UserProfileModel | null>
@@ -13,9 +14,17 @@ export interface IUserRepository {
 
 export class UserRepository implements IUserRepository {
   private authService: IAuthService
+  private adminAuthService: IAuthService | null = null;
 
   constructor(authService: IAuthService) {
     this.authService = authService
+
+
+    // Initialize admin auth if needed and configured (e.g., via env vars)
+    // This assumes getAuthServiceBasedOnEnvironment can return an admin client
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      this.adminAuthService = getAuthServiceBasedOnEnvironment(); // Pass flag for admin
+    }
   }
 
   async getSession() {
@@ -198,58 +207,73 @@ export class UserRepository implements IUserRepository {
 
 
   async deleteUserProfile(userId: string): Promise<void> {
+    // Get an instance of the Auth service (potentially configured with admin rights)
+    // This ensures we use the same logic (mock or real) as the rest of the app
+    // and allows the factory function to provide an admin client if needed server-side.
+    const adminAuthService = getAuthServiceBasedOnEnvironment();
+
     try {
-      // CRITICAL: Ensure the requesting user is the user being deleted
-      const session = await this.getSession()
+      // CRITICAL: Verify authorization again within the repository method
+      const session = await this.getSession();
       if (session.user.id !== userId) {
-        logger.error(`Unauthorized attempt to delete user profile. Session user: ${session.user.id}, Target user: ${userId}`);
-        throw new Error('Unauthorized: You can only delete your own profile.')
+        logger.error(`Unauthorized attempt to delete user profile in repository. Session user: ${session.user.id}, Target user: ${userId}`);
+        throw new Error('Unauthorized: You can only delete your own profile.');
       }
 
-      logger.warn(`Attempting to delete user profile and all associated data for userId: ${userId}`);
+      logger.warn(`Initiating deletion process for user profile and associated data for userId: ${userId}`);
 
-      // Use Prisma transaction to ensure atomicity if manual deletion is needed.
-      // If using cascade deletes in schema.prisma, this simple delete is sufficient.
-      // **ASSUMPTION**: Cascading deletes are configured in schema.prisma for related models
-      // (Onboarding, Lesson, AssessmentLesson, LearningProgress, etc.) linked to User.
-      // Example schema.prisma relation:
-      // model Lesson {
-      //   id     String @id @default(cuid())
-      //   userId String
-      //   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade) // <-- IMPORTANT
-      //   // ... other fields
-      // }
-
+      // Step 1: Delete the user record from the database.
+      // Prisma's `onDelete: Cascade` will handle related records (Onboarding, Lessons, etc.)
+      logger.info(`Attempting to delete user data from DB for userId: ${userId}`);
       await prisma.user.delete({
         where: { id: userId },
       });
+      logger.info(`Successfully deleted user data from DB for userId: ${userId}`);
 
-      logger.info(`Successfully deleted user profile and associated data for userId: ${userId}`);
+      // Step 2: Delete the user from the authentication provider (Supabase Auth)
+      // Use the potentially admin-configured auth service instance obtained from the factory.
+      logger.info(`Attempting to delete user from Auth Provider for userId: ${userId}`);
+      const { error: authError } = await adminAuthService.deleteUserById(userId);
 
-      // TODO: Optionally, trigger deletion of user from Supabase Auth as well.
-      // This requires admin privileges for the Supabase client.
-      // try {
-      //   const { error: authError } = await this.authService.deleteUser(userId); // Assuming authService has this method
-      //   if (authError) {
-      //      logger.error(`Failed to delete user from Supabase Auth: ${authError.message}`, { userId });
-      //      // Decide how to handle this - maybe log and continue, or throw an error?
-      //   } else {
-      //      logger.info(`Successfully deleted user from Supabase Auth`, { userId });
-      //   }
-      // } catch (authServiceError) {
-      //    logger.error(`Error calling authService.deleteUser: ${authServiceError}`, { userId });
-      // }
-
-
-    } catch (error) {
-      logger.error(`Error deleting user profile for userId: ${userId}`, { error })
-      // Handle specific Prisma errors if needed (e.g., P2025 Record not found)
-      if ((error as any).code === 'P2025') {
-        logger.warn(`User profile not found for deletion: ${userId}`);
-        // Optionally return successfully if the user is already gone
-        return;
+      if (authError) {
+        // Log the error but don't necessarily throw if DB deletion succeeded.
+        // The user account might be orphaned in Auth, which might require manual cleanup,
+        // but the primary user data is gone. Decide on desired behavior.
+        // For now, log as an error but allow the operation to appear successful overall
+        // if the DB part worked.
+        logger.error(`Failed to delete user from Auth Provider (Supabase Auth): ${authError.message || authError}`, { userId });
+        // Optionally re-throw if Auth deletion failure should halt the process:
+        // throw new Error(`Failed to delete user from authentication provider: ${authError.message}`);
+      } else {
+        logger.info(`Successfully deleted user from Auth Provider for userId: ${userId}`);
       }
-      throw error // Re-throw other errors
+
+      logger.warn(`Completed deletion process for userId: ${userId}`);
+
+    } catch (error: any) {
+      logger.error(`Error during user profile deletion for userId: ${userId}`, { code: error.code, message: error.message, stack: error.stack });
+
+      // Handle specific Prisma errors
+      if (error.code === 'P2025') { // Record to delete not found
+        logger.warn(`User profile not found in DB for deletion (userId: ${userId}). Might have been already deleted.`);
+        // Consider this a success case as the user is gone from DB.
+        // Still attempt Auth deletion just in case.
+        try {
+          logger.info(`Attempting Auth Provider deletion for potentially orphaned user: ${userId}`);
+          const { error: authError } = await adminAuthService.deleteUserById(userId);
+          if (authError) {
+            logger.error(`Failed to delete potentially orphaned user ${userId} from Auth Provider: ${authError.message || authError}`);
+          } else {
+            logger.info(`Successfully deleted potentially orphaned user ${userId} from Auth Provider.`);
+          }
+        } catch (authCatchError: any) {
+          logger.error(`Exception during Auth Provider deletion for potentially orphaned user ${userId}:`, authCatchError);
+        }
+        return; // Exit successfully
+      }
+
+      // Re-throw other database or unexpected errors
+      throw new Error(`Failed to delete user profile: ${error.message}`);
     }
   }
 }
