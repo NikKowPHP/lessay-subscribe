@@ -26,6 +26,8 @@ import { ComprehensionLevel, HesitationFrequency, LanguageInfluenceLevel, Learni
 import LearningProgressService from './learning-progress.service';
 import { LearningProgressRepository } from '@/repositories/learning-progress.repository';
 
+import { randomUUID } from 'crypto';
+
 export default class LessonService {
   private lessonRepository: ILessonRepository;
   private lessonGeneratorService: ILessonGeneratorService;
@@ -1151,7 +1153,7 @@ export default class LessonService {
       ? aiResponse.overallPerformance : 0;
 
     // Generate a unique ID for the metrics
-    const id = crypto.randomUUID();
+    const id = randomUUID();
 
     // Extract CEFR level and learning trajectory
     const proficiencyLevel = typeof aiResponse.proficiencyLevel === 'string'
