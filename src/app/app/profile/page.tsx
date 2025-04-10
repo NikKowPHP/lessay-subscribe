@@ -74,7 +74,15 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <h1 className="text-2xl font-bold mb-6">User Profile</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">User Profile</h1>
+        <Button
+          variant="outline"
+          onClick={() => router.push('/app/lessons')}
+        >
+          Back to Lessons
+        </Button>
+      </div>
 
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">Account Information</h2>

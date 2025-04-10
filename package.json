@@ -23,12 +23,14 @@
     "@aws-sdk/client-polly": "^3.750.0",
     "@aws-sdk/node-http-handler": "^3.374.0",
     "@prisma/client": "^6.5.0",
+    "@radix-ui/react-slot": "^1.2.0",
     "@supabase/supabase-js": "^2.48.1",
     "@types/formidable": "^3.4.5",
     "@vercel/analytics": "^1.5.0",
     "@vercel/blob": "^0.27.3",
     "@vercel/speed-insights": "^1.1.0",
     "axios": "^1.7.9",
+    "class-variance-authority": "^0.7.1",
     "formidable": "^3.5.2",
     "google-auth-library": "^9.15.1",
     "https-proxy-agent": "^7.0.6",
@@ -36,10 +38,12 @@
     "next": "15.1.6",
     "posthog-js": "^1.223.4",
     "proxy-agent": "^6.5.0",
+    "radix-ui": "^1.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.1",
-    "supabase": "^2.9.6"
+    "supabase": "^2.9.6",
+    "tailwind-merge": "^3.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.24.5",
