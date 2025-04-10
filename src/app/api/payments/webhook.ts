@@ -1,12 +1,10 @@
-
 // src/app/api/payments/webhook.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { PaymentService } from '@/services/payment.service';
 import { PaymentRepository } from '@/repositories/payment.repository'; // Import concrete repository
 import logger from '@/utils/logger';
-import { buffer } from 'micro'; // Helper to read raw body
+import { buffer } from 'micro';
 
-// Important: Disable Next.js body parsing for this route
 export const config = {
   api: {
     bodyParser: false,
@@ -15,8 +13,8 @@ export const config = {
 
 // Helper function to instantiate the service with its dependencies
 function createPaymentService(): PaymentService {
-  const paymentRepository = new PaymentRepository();
-  return new PaymentService(paymentRepository);
+  const paymentRepository = new PaymentRepository(); // Create instance of repository
+  return new PaymentService(paymentRepository); // Inject repository into service
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -29,27 +27,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let rawBody: Buffer;
 
   try {
-    rawBody = await buffer(req); // Read the raw body
+    rawBody = await buffer(req);
   } catch (error: any) {
     logger.error('Error reading webhook request body:', error);
     return res.status(400).json({ error: 'Could not read request body.' });
   }
 
+  if (!sig) {
+    logger.error('Webhook error: Missing stripe-signature header');
+    return res.status(400).send('Webhook Error: Missing signature');
+  }
+
+
   try {
-    // Instantiate the service using the helper
-    const paymentService = createPaymentService();
+    const paymentService = createPaymentService(); // Use helper
     await paymentService.handleWebhook(rawBody, sig);
     logger.info('Stripe webhook processed successfully.');
     return res.status(200).json({ received: true });
 
   } catch (error: any) {
     logger.error('Error processing Stripe webhook:', { error: error.message });
-    // Return specific status codes if needed (e.g., 400 for signature error)
-    let statusCode = 400; // Default bad request
-    if (error.message.includes('Webhook secret not configured') || error.message.includes('Payment system unavailable')) {
-      statusCode = 500; // Internal server error if config is missing
+    let statusCode = 400;
+    if (error.message.includes('Webhook secret not configured')) {
+      statusCode = 500;
+    } else if (error.message.includes('signature verification failed')) {
+      statusCode = 400; // Bad request due to signature
     }
-    // Add more specific status codes based on error types if necessary
-    return res.status(statusCode).json({ error: `Webhook Error: ${error.message}` });
+    // Log the specific error message from Stripe if available
+    const errorMessage = error.message || 'Unknown webhook error';
+    return res.status(statusCode).json({ error: `Webhook Error: ${errorMessage}` });
   }
 }

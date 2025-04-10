@@ -5,15 +5,16 @@
 import { PaymentService } from '@/services/payment.service';
 import logger from '@/utils/logger';
 import { getAuthServiceBasedOnEnvironment } from '@/services/supabase-auth.service'; // Assuming this handles auth context server-side
+import { PaymentRepository } from '@/repositories/payment.repository';
 
-// Define product details structure (reuse or define here)
-interface ProductDetails {
-  id: string;
-  type: string; // e.g., "subscription", "course"
-  name: string;
-  amount: number; // Amount in MAJOR currency unit (e.g., dollars)
-  currency: string; // e.g., "usd"
+
+export interface SubscriptionProductDetails {
+  id: string; // Your internal product ID (e.g., 'premium_monthly', 'premium_yearly')
+  stripePriceId: string; // The ID of the Price object in Stripe (e.g., price_123...)
+  type: 'subscription';
+  name: string; // e.g., "Premium Monthly Plan"
 }
+
 
 // Helper to get current user ID securely within the action
 async function getCurrentUserId(): Promise<string> {
@@ -25,59 +26,60 @@ async function getCurrentUserId(): Promise<string> {
   return session.user.id;
 }
 
+
+function createPaymentService(): PaymentService {
+  const paymentRepository = new PaymentRepository(); // Instantiate repository
+  return new PaymentService(paymentRepository); // Pass repository to service
+}
+
+
+
+
+
 /**
- * Server Action to create a Stripe Payment Intent.
- * Called from the client-side checkout form.
- * @param product - Details of the product/service being purchased.
- * @returns An object containing the clientSecret or an error message.
+ * Server Action to create a Stripe Checkout Session for subscriptions.
+ * @param product - Details of the subscription product including Stripe Price ID.
+ * @returns An object containing the sessionId or an error message.
  */
-export async function createPaymentIntentAction(
-  product: ProductDetails
-): Promise<{ clientSecret: string | null; error: string | null }> {
+export async function createCheckoutSessionAction(
+  product: SubscriptionProductDetails
+): Promise<{ sessionId: string | null; error: string | null }> {
   try {
     // 1. Authenticate the user
     const userId = await getCurrentUserId();
-    logger.info(`createPaymentIntentAction: Initiated by user ${userId} for product ${product.id}`);
+    logger.info(`createCheckoutSessionAction: Initiated by user ${userId} for price ${product.stripePriceId}`);
 
-    // 2. Validate input (basic)
-    if (!product || !product.id || !product.name || !product.amount || !product.currency) {
-      throw new Error('Missing required product details.');
+    // 2. Validate input
+    if (!product || !product.id || !product.stripePriceId || product.type !== 'subscription') {
+      throw new Error('Invalid or missing subscription product details.');
     }
-    if (product.amount <= 0) {
-      throw new Error('Payment amount must be positive.');
-    }
-    // Add more specific validation as needed
 
     // 3. Instantiate the Payment Service
-    const paymentService = new PaymentService();
+    const paymentService = createPaymentService();
 
-    // 4. Call the service method to create the intent
-    const clientSecret = await paymentService.createPaymentIntent(userId, product);
+    // 4. Call the service method to create the checkout session
+    const sessionId = await paymentService.createCheckoutSession(userId, product);
 
-    logger.info(`createPaymentIntentAction: Successfully created intent for user ${userId}, product ${product.id}`);
-    return { clientSecret: clientSecret, error: null };
+    logger.info(`createCheckoutSessionAction: Successfully created session ${sessionId} for user ${userId}`);
+    return { sessionId: sessionId, error: null };
 
   } catch (error: any) {
-    logger.error('Error in createPaymentIntentAction:', {
+    logger.error('Error in createCheckoutSessionAction:', {
       errorMessage: error.message,
-      product: product, // Log product details for context
-      // Avoid logging sensitive user data unless necessary and secured
+      product: product,
+      userId: 'hidden', // Avoid logging userId directly in error if possible
     });
 
-    // Return a user-friendly error message
-    let userErrorMessage = 'Failed to initialize payment. Please try again.';
+    let userErrorMessage = 'Failed to start subscription process. Please try again.';
     if (error.message.includes('Authentication required')) {
       userErrorMessage = 'Authentication required. Please log in.';
     } else if (error.message.includes('User not found')) {
-      userErrorMessage = 'User account not found.'; // Or a more generic error
+      userErrorMessage = 'User account not found.';
+    } else if (error.message.includes('Invalid product type')) {
+      userErrorMessage = 'Invalid product selected for subscription.';
     }
-    // Add more specific error mapping if needed
 
-    return { clientSecret: null, error: userErrorMessage };
+    return { sessionId: null, error: userErrorMessage };
   }
 }
 
-// NOTE: The webhook handler CANNOT be a server action.
-// It must remain an API Route or App Router Route Handler
-// because it needs to receive POST requests from Stripe's servers.
-// Keep the '/api/payments/webhook.ts' file as created previously.
