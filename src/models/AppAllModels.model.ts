@@ -1,4 +1,4 @@
-import { ProficiencyLevel, AssessmentStepType, LessonStepType, LearningTrajectory, LanguageInfluenceLevel, SpeechRateEvaluation, HesitationFrequency, PriorityLevel, SeverityLevel, VocabularyRange, ComprehensionLevel, MasteryLevel } from '@prisma/client'
+import { ProficiencyLevel, LearningTrajectory, LanguageInfluenceLevel, SpeechRateEvaluation, HesitationFrequency, PriorityLevel, SeverityLevel, VocabularyRange, ComprehensionLevel, MasteryLevel } from '@prisma/client'
 import type { JsonValue } from '@prisma/client/runtime/library'
 
 export interface OnboardingModel {
@@ -33,7 +33,7 @@ export interface AssessmentLesson {
   };
   audioMetrics?: AudioMetrics | null;
   sessionRecordingUrl?: string | null;
-  proposedTopics: string[]; 
+  proposedTopics: string[];
   summary?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -44,7 +44,7 @@ export interface AssessmentStep {
   id: string;
   assessmentId: string;
   stepNumber: number;
-  type:  'question' |  'feedback' | 'instruction' | 'summary';
+  type: 'question' | 'feedback' | 'instruction' | 'summary';
   content: string;
   contentAudioUrl?: string | null;
   translation?: string | null;
@@ -103,7 +103,7 @@ export interface LessonStep {
   id: string;
   lessonId: string;
   stepNumber: number;
-  type: 'prompt' | 'feedback'  | 'new_word' | 'practice' | 'instruction' | 'summary';
+  type: 'prompt' | 'feedback' | 'new_word' | 'practice' | 'instruction' | 'summary';
   content: string;
   contentAudioUrl?: string | null;
   translation?: string | null;
@@ -139,7 +139,7 @@ export interface UserProfileModel {
     overallScore?: number | null;
     learningTrajectory: LearningTrajectory;
   }
-  
+
 }
 
 // Add a type guard for assessment metrics
@@ -254,35 +254,35 @@ export interface AudioMetrics {
   // Relationships
   lessonId?: string | null;
   assessmentLessonId?: string | null;
-  
+
   // Top-level metrics
   pronunciationScore: number; // 0-100
   fluencyScore: number; // 0-100
   grammarScore: number; // 0-100
   vocabularyScore: number; // 0-100
   overallPerformance: number; // 0-100
-  
+
   // CEFR level and trajectory
   proficiencyLevel: string; // CEFR level: A1-C2
   learningTrajectory: LearningTrajectory;
-  
+
   // Detailed analysis sections
   pronunciationAssessment: PronunciationAssessment;
   fluencyAssessment: FluencyAssessment;
   grammarAssessment: GrammarAssessment;
   vocabularyAssessment: VocabularyAssessment;
   exerciseCompletion: ExerciseCompletion;
-  
+
   // Learning recommendations
   suggestedTopics: string[];
   grammarFocusAreas: string[];
   vocabularyDomains: string[];
   nextSkillTargets: string[];
-  
+
   // Learning style observations
   preferredPatterns: string[];
   effectiveApproaches: string[];
-  
+
   // Metadata
   audioRecordingUrl?: string | null;
   recordingDuration?: number | null; // seconds

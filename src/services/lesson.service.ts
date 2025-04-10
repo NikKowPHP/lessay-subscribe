@@ -1115,8 +1115,7 @@ export default class LessonService {
     logger.log('Sending recording to AI for analysis');
     // send recording to AI
     let aiResponse: Record<string, unknown>;
-    // if (process.env.MOCK_RECORDING_AI_ANALYSIS === 'true') {
-    if (false) {
+    if (process.env.MOCK_RECORDING_AI_ANALYSIS === 'true') {
       aiResponse = mockAudioMetrics;
     } else {
       logger.info('Sending recording to AI for analysis');
@@ -1276,26 +1275,5 @@ export default class LessonService {
       updatedAt: new Date()
     };
   }
-
-  // Helper method to update user's overall learning progress
-  // TODO: implement with ai 
-  private async updateUserLearningProgress(
-    lesson: LessonModel,
-    metrics: any
-  ): Promise<void> {
-    try {
-      // Here you could implement logic to update overall user progress
-      // For example, tracking improvement over time, updating proficiency levels, etc.
-      logger.info('Updating user learning progress based on completed lesson', {
-        lessonId: lesson.id,
-        overallScore: metrics.overallScore
-      });
-
-      // This could connect to a user progress service or repository
-      // For now, this is just a placeholder
-    } catch (error) {
-      logger.error('Error updating user learning progress', { error });
-      // Non-critical error, so we don't rethrow
-    }
-  }
 }
+

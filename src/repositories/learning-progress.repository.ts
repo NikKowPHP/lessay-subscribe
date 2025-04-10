@@ -1,8 +1,7 @@
-import { IAuthService } from '@/services/auth.service';
 import logger from '@/utils/logger';
 import { LearningProgressModel, TopicProgressModel, WordProgressModel } from '@/models/AppAllModels.model';
 import prisma from '@/lib/prisma';
-import { LearningProgress, MasteryLevel, Prisma, ProficiencyLevel, TopicProgress, WordProgress } from '@prisma/client';
+import { MasteryLevel, Prisma } from '@prisma/client';
 
 // Define the interface matching Prisma models but using TS models
 export interface ILearningProgressRepository {
@@ -91,7 +90,7 @@ export class LearningProgressRepository implements ILearningProgressRepository {
     }
   }
 
-   async upsertWordProgress(learningProgressId: string, wordData: Prisma.WordProgressUncheckedCreateInput | Prisma.WordProgressUpdateInput): Promise<WordProgressModel> {
+  async upsertWordProgress(learningProgressId: string, wordData: Prisma.WordProgressUncheckedCreateInput | Prisma.WordProgressUpdateInput): Promise<WordProgressModel> {
     const word = (wordData as any).word;
     if (!word) {
       throw new Error('word is required for upserting WordProgress');
@@ -114,43 +113,43 @@ export class LearningProgressRepository implements ILearningProgressRepository {
   }
 
   async getTopicProgress(learningProgressId: string, topicName: string): Promise<TopicProgressModel | null> {
-     try {
-       const topicProgress = await prisma.topicProgress.findUnique({
-         where: { learningProgressId_topicName: { learningProgressId, topicName } },
-       });
-       return topicProgress as TopicProgressModel | null;
-     } catch (error) {
-       logger.error('Error fetching topic progress:', { learningProgressId, topicName, error });
-       throw error;
-     }
-   }
-
-   async getWordProgress(learningProgressId: string, word: string): Promise<WordProgressModel | null> {
-     try {
-       const wordProgress = await prisma.wordProgress.findUnique({
-         where: { learningProgressId_word: { learningProgressId, word } },
-       });
-       return wordProgress as WordProgressModel | null;
-     } catch (error) {
-       logger.error('Error fetching word progress:', { learningProgressId, word, error });
-       throw error;
-     }
-   }
-
-   async getWordsByMastery(learningProgressId: string, masteryLevels: MasteryLevel[]): Promise<WordProgressModel[]> {
-      try {
-        const words = await prisma.wordProgress.findMany({
-          where: {
-            learningProgressId,
-            masteryLevel: { in: masteryLevels },
-          },
-          orderBy: { lastReviewedAt: 'asc' }, // Prioritize words not reviewed recently
-          take: 100, // Limit results
-        });
-        return words as WordProgressModel[];
-      } catch (error) {
-        logger.error('Error fetching words by mastery:', { learningProgressId, masteryLevels, error });
-        throw error;
-      }
+    try {
+      const topicProgress = await prisma.topicProgress.findUnique({
+        where: { learningProgressId_topicName: { learningProgressId, topicName } },
+      });
+      return topicProgress as TopicProgressModel | null;
+    } catch (error) {
+      logger.error('Error fetching topic progress:', { learningProgressId, topicName, error });
+      throw error;
     }
+  }
+
+  async getWordProgress(learningProgressId: string, word: string): Promise<WordProgressModel | null> {
+    try {
+      const wordProgress = await prisma.wordProgress.findUnique({
+        where: { learningProgressId_word: { learningProgressId, word } },
+      });
+      return wordProgress as WordProgressModel | null;
+    } catch (error) {
+      logger.error('Error fetching word progress:', { learningProgressId, word, error });
+      throw error;
+    }
+  }
+
+  async getWordsByMastery(learningProgressId: string, masteryLevels: MasteryLevel[]): Promise<WordProgressModel[]> {
+    try {
+      const words = await prisma.wordProgress.findMany({
+        where: {
+          learningProgressId,
+          masteryLevel: { in: masteryLevels },
+        },
+        orderBy: { lastReviewedAt: 'asc' }, // Prioritize words not reviewed recently
+        take: 100, // Limit results
+      });
+      return words as WordProgressModel[];
+    } catch (error) {
+      logger.error('Error fetching words by mastery:', { learningProgressId, masteryLevels, error });
+      throw error;
+    }
+  }
 }
