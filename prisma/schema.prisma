@@ -42,6 +42,10 @@ model User {
   lessons Lesson[]
   payments          Payment[]
   learningProgress  LearningProgress? 
+  subscriptionStatus SubscriptionStatus @default(NONE) // Added
+  subscriptionId    String?            @unique // Added: Store Stripe Subscription ID if using Stripe Subscriptions
+  subscriptionEndDate DateTime?
+
 
 }
 
@@ -363,6 +367,17 @@ enum PaymentStatus {
   REQUIRES_ACTION // Needs further user action (e.g., 3D Secure)
   CANCELED   // Payment was canceled
 }
+
+
+enum SubscriptionStatus {
+ NONE     // No active subscription or trial
+ TRIAL    // User is on a free trial
+ ACTIVE   // User has an active paid subscription
+ CANCELED // Subscription was canceled but might still be active until end date
+ PAST_DUE // Payment failed, subscription inactive
+ }
+
+
 
 
 
