@@ -713,6 +713,10 @@ export default class LessonService {
       // Store most recent audio metrics for detailed insights
       result.mostRecentAudioMetrics = lessonsWithAudioMetrics[0].audioMetrics;
 
+      // TODO: initial lessons are not being generated / gemini 503 issue
+      // TODO: user profile can delete the data
+      // TODO: basic learning progress integration
+      //
       // Calculate average scores from audio metrics
       const audioMetricsScores = {
         pronunciation: [] as number[],
