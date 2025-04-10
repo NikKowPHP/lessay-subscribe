@@ -1,5 +1,6 @@
 import { ProficiencyLevel, LearningTrajectory, LanguageInfluenceLevel, SpeechRateEvaluation, HesitationFrequency, PriorityLevel, SeverityLevel, VocabularyRange, ComprehensionLevel, MasteryLevel } from '@prisma/client'
 import type { JsonValue } from '@prisma/client/runtime/library'
+import { PaymentStatus } from '@prisma/client'; // Make sure PaymentStatus is imported
 
 export interface OnboardingModel {
   id: string;
@@ -445,6 +446,23 @@ export interface WordProgressModel {
   lastReviewedAt?: Date | null;
   relatedLessonStepIds: string[];
   relatedAssessmentStepIds: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+
+
+export interface PaymentModel {
+  id: string;
+  userId: string;
+  stripePaymentIntentId: string;
+  status: PaymentStatus;
+  amount: number; // Amount in smallest currency unit
+  currency: string;
+  productId?: string | null;
+  productType?: string | null;
+  errorMessage?: string | null;
+  metadata?: JsonValue | null;
   createdAt: Date;
   updatedAt: Date;
 }

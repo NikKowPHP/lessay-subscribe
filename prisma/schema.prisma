@@ -40,6 +40,7 @@ model User {
   onboarding Onboarding?
   assessmentLessons AssessmentLesson[]
   lessons Lesson[]
+  payments          Payment[]
   learningProgress  LearningProgress? 
 
 }
@@ -330,5 +331,39 @@ model WordProgress {
 }
 
 
+model Payment {
+  id                    String    @id @default(cuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-// TODO: DEFINE LEARNING PROGRESS MODEL
+  stripePaymentIntentId String    @unique // Stripe Payment Intent ID
+  status                PaymentStatus @default(PENDING)
+  amount                Int       // Amount in smallest currency unit (e.g., cents for USD)
+  currency              String    // e.g., "usd"
+
+  // Link to what was purchased (adapt as needed)
+  productId             String?   // e.g., a specific course ID, subscription plan ID
+  productType           String?   // e.g., "course", "subscription", "credits"
+
+  errorMessage          String?   // Store error message if payment failed
+  metadata              Json?     // Store any additional metadata if needed
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING    // Initial status when intent is created
+  PROCESSING // Payment is being processed (optional intermediate state)
+  SUCCEEDED  // Payment successful
+  FAILED     // Payment failed
+  REQUIRES_ACTION // Needs further user action (e.g., 3D Secure)
+  CANCELED   // Payment was canceled
+}
+
+
+
+
