@@ -25,12 +25,15 @@ import {
   VocabularyRange,
 } from '@prisma/client';
 import { JsonValue } from '@prisma/client/runtime/library';
+import { LearningProgressRepository } from '@/repositories/learning-progress.repository';
+import LearningProgressService from './learning-progress.service';
 
 export default class OnboardingService {
   private onboardingRepository: IOnboardingRepository;
   private lessonService: LessonService;
   private assessmentGeneratorService: IAssessmentGeneratorService;
   private recordingService: RecordingService;
+  private learningProgressService: LearningProgressService;
   constructor(
     onboardingRepository: IOnboardingRepository,
     lessonService: LessonService,
@@ -40,6 +43,8 @@ export default class OnboardingService {
     this.lessonService = lessonService;
     this.assessmentGeneratorService = assessmentGeneratorService;
     this.recordingService = new RecordingService();
+    const progressRepository = new LearningProgressRepository();
+    this.learningProgressService = new LearningProgressService(progressRepository); // Instantiate it here
   }
 
   getOnboarding = async (): Promise<OnboardingModel | null> => {
@@ -175,7 +180,17 @@ export default class OnboardingService {
           proposedTopics: results.proposedTopics,
         }
       );
-    const completedOnboarding =
+
+    this.learningProgressService.updateProgressAfterAssessment(completedLesson.userId, completedLesson)
+    .catch(err => {
+        logger.error('Failed to update learning progress after assessment completion', {
+            userId: completedLesson.userId,
+            assessmentId: completedLesson.id,
+            error: err
+        });
+    });
+    
+   const completedOnboarding =
       await this.onboardingRepository.completeOnboarding();
     logger.info('completed onboarding', completedOnboarding);
     logger.info('completed lesson', completedLesson);

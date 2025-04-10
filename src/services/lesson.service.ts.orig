@@ -22,7 +22,7 @@ import RecordingService from './recording.service';
 
 import { JsonValue } from '@prisma/client/runtime/library';
 import { mockAudioMetrics } from '@/__mocks__/generated-audio-metrics.mock';
-import { ComprehensionLevel, HesitationFrequency, LanguageInfluenceLevel, LearningTrajectory, SpeechRateEvaluation, VocabularyRange, MasteryLevel } from '@prisma/client';
+import { ComprehensionLevel, HesitationFrequency, LanguageInfluenceLevel, LearningTrajectory, SpeechRateEvaluation, VocabularyRange,MasteryLevel } from '@prisma/client';
 import LearningProgressService from './learning-progress.service';
 import { LearningProgressRepository } from '@/repositories/learning-progress.repository';
 
@@ -46,7 +46,7 @@ export default class LessonService {
     this.recordingService = new RecordingService();
     const progressRepository = new LearningProgressRepository();
     this.learningProgressService = new LearningProgressService(progressRepository); // Instantiate it here
-
+  
 
   }
 
@@ -185,14 +185,14 @@ export default class LessonService {
       );
 
       this.learningProgressService.updateProgressAfterLesson(completedLesson.userId, completedLesson)
-        .catch(err => {
+      .catch(err => {
           logger.error('Failed to update learning progress after lesson completion', {
-            userId: completedLesson.userId,
-            lessonId: completedLesson.id,
-            error: err
+              userId: completedLesson.userId,
+              lessonId: completedLesson.id,
+              error: err
           });
           // Decide if this failure needs further handling
-        });
+      });
 
       return completedLesson;
     } catch (error) {
@@ -633,11 +633,11 @@ export default class LessonService {
     try {
       learningProgress = await this.learningProgressService.getLearningProgressWithDetails(userId);
       if (!learningProgress) {
-        logger.warn('Learning progress not found for user, proceeding with lesson metrics only.', { userId });
-        // Handle case where progress doesn't exist yet - maybe create a default one?
+         logger.warn('Learning progress not found for user, proceeding with lesson metrics only.', { userId });
+         // Handle case where progress doesn't exist yet - maybe create a default one?
       }
-    } catch (error) {
-      logger.error('Failed to fetch learning progress, proceeding without it.', { userId, error });
+    } catch(error) {
+        logger.error('Failed to fetch learning progress, proceeding without it.', { userId, error });
     }
 
 
@@ -645,25 +645,40 @@ export default class LessonService {
     // Extract base preferences
     const targetLanguage = onboardingData.targetLanguage;
     const proficiencyLevel =
-      learningProgress?.estimatedProficiencyLevel?.toLowerCase() ||
-      onboardingData.proficiencyLevel?.toLowerCase() ||
-      'beginner';
+    learningProgress?.estimatedProficiencyLevel?.toLowerCase() ||
+    onboardingData.proficiencyLevel?.toLowerCase() ||
+    'beginner';
 
     const sourceLanguage = onboardingData.nativeLanguage;
-
-    if (!targetLanguage || !sourceLanguage) {
+    
+    if(!targetLanguage || !sourceLanguage) {
       throw new Error('Target language or source language not found');
     }
 
     // Aggregate metrics from completed lessons (both performance metrics and audio metrics)
-    const aggregatedMetrics = this.aggregateMetrics(completedLessons, learningProgress);
+<<<<<<< HEAD
+    const aggregatedMetrics = this.aggregateMetrics(completedLessons);
 
+=======
+    const aggregatedMetrics = this.aggregateMetrics(completedLessons, learningProgress); 
+    
+>>>>>>> learningprogresswithoutai
     // Determine focus areas based on aggregated metrics
-    const focusAreas = this.determineFocusAreas(aggregatedMetrics, proficiencyLevel, learningProgress);
+    const focusAreas = this.determineFocusAreas(aggregatedMetrics, proficiencyLevel, learningProgress); 
 
     // Generate new lessons for each focus area
     const lessonPromises = focusAreas.map(async (topic) => {
       // Create a request with user's learning data for more personalized lessons
+<<<<<<< HEAD
+      const adaptiveRequest = aggregatedMetrics.audioAnalysisAvailable ?
+        this.createAdaptiveLessonRequest(
+          completedLessons,
+          aggregatedMetrics,
+          onboardingData,
+          topic
+        ) : undefined;
+
+=======
       const adaptiveRequest = this.createAdaptiveLessonRequest(
         completedLessons,
         aggregatedMetrics,
@@ -671,7 +686,8 @@ export default class LessonService {
         learningProgress, // Pass learningProgress
         topic
       );
-
+      
+>>>>>>> learningprogresswithoutai
       // Generate lesson with adaptive data when available
       const generatedResult = await this.lessonGeneratorService.generateLesson(
         topic,
@@ -765,12 +781,18 @@ export default class LessonService {
       result.audioAnalysisAvailable = true;
 
       // Store most recent audio metrics for detailed insights
-      result.mostRecentAudioMetrics = lessonsWithAudioMetrics[0].audioMetrics ?? undefined;
+<<<<<<< HEAD
+      result.mostRecentAudioMetrics = lessonsWithAudioMetrics[0].audioMetrics;
 
-      // Calculate average scores from audio metrics
       // TODO: initial lessons are not being generated / gemini 503 issue
       // TODO: user profile can delete the data
       // TODO: basic learning progress integration
+      //
+=======
+      result.mostRecentAudioMetrics = lessonsWithAudioMetrics[0].audioMetrics ?? undefined;
+      
+>>>>>>> learningprogresswithoutai
+      // Calculate average scores from audio metrics
       const audioMetricsScores = {
         pronunciation: [] as number[],
         grammar: [] as number[],
@@ -779,6 +801,13 @@ export default class LessonService {
       };
 
       // Collect strengths, weaknesses, and topics from all audio metrics
+<<<<<<< HEAD
+      const allWeaknesses = new Set<string>();
+      const allStrengths = new Set<string>();
+      const allTopics = new Set<string>();
+
+=======
+>>>>>>> learningprogresswithoutai
       lessonsWithAudioMetrics.forEach(lesson => {
         if (lesson.audioMetrics) {
           // Add scores for averaging
@@ -821,22 +850,25 @@ export default class LessonService {
       result.strengths = Array.from(allStrengths);
       result.recommendedTopics = Array.from(allTopics);
     }
-
+<<<<<<< HEAD
+=======
+    
     // Add lesson performance metrics
     completedLessons.forEach(lesson => {
-      // First check if performanceMetrics exists
-      if (lesson.performanceMetrics) {
-        // Then use type guard on the JsonValue
-        if (isPerformanceMetrics(lesson.performanceMetrics)) {
-          if (Array.isArray(lesson.performanceMetrics.weaknesses)) {
-            lesson.performanceMetrics.weaknesses.forEach((w: string) => allWeaknesses.add(w));
-          }
-          if (Array.isArray(lesson.performanceMetrics.strengths)) {
-            lesson.performanceMetrics.strengths.forEach((s: string) => allStrengths.add(s));
-          }
+        // First check if performanceMetrics exists
+        if (lesson.performanceMetrics) {
+            // Then use type guard on the JsonValue
+            if (isPerformanceMetrics(lesson.performanceMetrics)) {
+                if (Array.isArray(lesson.performanceMetrics.weaknesses)) {
+                    lesson.performanceMetrics.weaknesses.forEach((w: string) => allWeaknesses.add(w));
+                }
+                if (Array.isArray(lesson.performanceMetrics.strengths)) {
+                    lesson.performanceMetrics.strengths.forEach((s: string) => allStrengths.add(s));
+                }
+            }
         }
-      }
     });
+>>>>>>> learningprogresswithoutai
 
     return result;
   }
@@ -849,23 +881,26 @@ export default class LessonService {
   ): string[] {
     const focusAreas = new Set<string>();
 
+<<<<<<< HEAD
+=======
     // Prioritize learning progress weaknesses
     if (learningProgress?.weaknesses) {
-      learningProgress.weaknesses.slice(0, 2).forEach(weakness =>
-        focusAreas.add(this.normalizeTopic(weakness)));
+        learningProgress.weaknesses.slice(0, 2).forEach(weakness => 
+            focusAreas.add(this.normalizeTopic(weakness)));
     }
 
     // Add low mastery topics from learning progress
     if (learningProgress?.topics) {
-      learningProgress.topics
-        .filter(t => t.masteryLevel === MasteryLevel.NotStarted ||
-          t.masteryLevel === MasteryLevel.Seen ||
-          t.masteryLevel === MasteryLevel.Learning)
-        .sort((a, b) => (a.lastStudiedAt?.getTime() ?? 0) - (b.lastStudiedAt?.getTime() ?? 0))
-        .slice(0, 2)
-        .forEach(t => focusAreas.add(this.normalizeTopic(t.topicName)));
+        learningProgress.topics
+            .filter(t => t.masteryLevel === MasteryLevel.NotStarted || 
+                         t.masteryLevel === MasteryLevel.Seen || 
+                         t.masteryLevel === MasteryLevel.Learning)
+            .sort((a, b) => (a.lastStudiedAt?.getTime() ?? 0) - (b.lastStudiedAt?.getTime() ?? 0))
+            .slice(0, 2)
+            .forEach(t => focusAreas.add(this.normalizeTopic(t.topicName)));
     }
 
+>>>>>>> learningprogresswithoutai
     // If we have audio analysis, use it to determine priorities
     if (metrics.audioAnalysisAvailable && metrics.mostRecentAudioMetrics) {
       // First prioritize topics directly recommended from audio analysis
@@ -911,6 +946,16 @@ export default class LessonService {
       }
     } else {
       // Fall back to error pattern-based focus areas if no audio metrics
+<<<<<<< HEAD
+      metrics.errorPatterns.forEach(pattern => {
+        if (pattern.includes('pronunciation')) focusAreas.add('Pronunciation Practice');
+        else if (pattern.includes('grammar')) focusAreas.add('Grammar Rules');
+        else if (pattern.includes('vocabulary')) focusAreas.add('Vocabulary Building');
+        else focusAreas.add('General Practice');
+      });
+
+=======
+>>>>>>> learningprogresswithoutai
       // Adjust based on accuracy
       if (metrics.avgAccuracy < 50) {
         focusAreas.add('Vocabulary Building');
@@ -972,16 +1017,24 @@ export default class LessonService {
         proficiencyLevel: learningProgress?.estimatedProficiencyLevel || 'beginner',
         learningPurpose: onboardingData.learningPurpose || 'general'
       },
+<<<<<<< HEAD
+
+      // Current focus topic
+      focusTopic,
+
+      // Performance metrics from audio analysis
+=======
       focusTopic,
       overallProgress: learningProgress ? {
         estimatedProficiencyLevel: learningProgress.estimatedProficiencyLevel,
         overallScore: learningProgress.overallScore,
         learningTrajectory: learningProgress.learningTrajectory,
         persistentWeaknesses: learningProgress.weaknesses,
-        lowMasteryTopics: learningProgress.topics?.filter(t =>
+        lowMasteryTopics: learningProgress.topics?.filter(t => 
           t.masteryLevel !== MasteryLevel.Mastered
         ).map(t => t.topicName) ?? []
       } : undefined,
+>>>>>>> learningprogresswithoutai
       performanceMetrics: {
         avgAccuracy: metrics.avgAccuracy,
         avgPronunciationScore: metrics.avgPronunciationScore,
@@ -991,6 +1044,11 @@ export default class LessonService {
         strengths: metrics.strengths,
         weaknesses: metrics.weaknesses
       },
+<<<<<<< HEAD
+
+      // Areas needing improvement
+=======
+>>>>>>> learningprogresswithoutai
       improvementAreas: {
         pronunciation: audioMetrics.pronunciationAssessment.problematic_sounds,
         grammar: {
@@ -999,15 +1057,30 @@ export default class LessonService {
         },
         vocabulary: vocabularyAreas
       },
+<<<<<<< HEAD
+
+      // Learning recommendations
+=======
+>>>>>>> learningprogresswithoutai
       learningRecommendations: {
         suggestedTopics: audioMetrics.suggestedTopics,
         focusAreas: audioMetrics.grammarFocusAreas,
         nextSkillTargets: audioMetrics.nextSkillTargets
       },
+<<<<<<< HEAD
+
+      // Learning style insights
+=======
+>>>>>>> learningprogresswithoutai
       learningStyle: {
         effectiveApproaches: audioMetrics.effectiveApproaches,
         preferredPatterns: audioMetrics.preferredPatterns
       },
+<<<<<<< HEAD
+
+      // Previous lesson data
+=======
+>>>>>>> learningprogresswithoutai
       previousLesson: mostRecentLesson ? {
         id: mostRecentLesson.id,
         focusArea: mostRecentLesson.focusArea,

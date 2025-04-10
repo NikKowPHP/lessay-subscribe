@@ -40,7 +40,8 @@ model User {
   onboarding Onboarding?
   assessmentLessons AssessmentLesson[]
   lessons Lesson[]
-  // TODO: modify user profile to match the repo.
+  learningProgress  LearningProgress? 
+
 }
 
 enum ProficiencyLevel {
@@ -69,6 +70,16 @@ enum LessonStepType {
   instruction 
   summary    
 }
+
+enum MasteryLevel {
+  NotStarted
+  Seen         // Introduced but not practiced much
+  Learning     // Actively being practiced
+  Practiced    // Practiced multiple times, showing some retention
+  Known        // Generally recalled correctly
+  Mastered     // Consistently recalled correctly over time
+}
+
 
 
 model AssessmentLesson {
@@ -251,3 +262,73 @@ model AudioMetrics {
 
   @@map("audio_metrics")
 }
+
+
+model LearningProgress {
+  id                        String           @id @default(cuid())
+  userId                    String           @unique
+  user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  estimatedProficiencyLevel ProficiencyLevel @default(beginner) // Overall estimated level
+  overallScore              Float?           // Calculated score (e.g., 0-100) based on recent performance
+  learningTrajectory        LearningTrajectory @default(steady) // How is the user progressing?
+  strengths                 String[]         // Areas where the user excels (e.g., "Verb Conjugation", "Travel Vocabulary")
+  weaknesses                String[]         // Areas needing improvement (e.g., "Pronunciation of 'ü'", "Dative Case")
+  lastLessonCompletedAt     DateTime?
+  lastAssessmentCompletedAt DateTime?
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+
+  topics                    TopicProgress[]  // Relation to topics studied
+  words                     WordProgress[]   // Relation to words encountered
+
+  @@map("learning_progress")
+}
+
+model TopicProgress {
+  id                 String         @id @default(cuid())
+  learningProgressId String
+  learningProgress   LearningProgress @relation(fields: [learningProgressId], references: [id], onDelete: Cascade)
+  topicName          String         // e.g., "Greetings", "Ordering Food", "Past Tense"
+  masteryLevel       MasteryLevel   @default(NotStarted)
+  lastStudiedAt      DateTime?
+  relatedLessonIds   String[]       // IDs of lessons covering this topic
+  relatedAssessmentIds String[]     // IDs of assessments covering this topic
+  score              Float?         // Optional score specific to this topic based on related lessons/steps
+
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@unique([learningProgressId, topicName]) // Ensure unique topic per user progress
+  @@map("topic_progress")
+}
+
+model WordProgress {
+  id                  String         @id @default(cuid())
+  learningProgressId  String
+  learningProgress    LearningProgress @relation(fields: [learningProgressId], references: [id], onDelete: Cascade)
+  word                String         // The word or phrase in the target language
+  translation         String?        // Translation in the user's native language
+  masteryLevel        MasteryLevel   @default(Seen)
+  timesCorrect        Int            @default(0)
+  timesIncorrect      Int            @default(0)
+  firstSeenAt         DateTime       @default(now())
+  lastReviewedAt      DateTime?
+  relatedLessonStepIds String[]       // IDs of lesson steps where this word appeared
+  relatedAssessmentStepIds String[] // IDs of assessment steps where this word appeared
+
+  // Optional fields for Spaced Repetition System (SRS) - future enhancement
+  // nextReviewDate    DateTime?
+  // interval          Int?           // Interval in days
+  // easeFactor        Float?         // Factor influencing next interval
+
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@unique([learningProgressId, word]) // Ensure unique word per user progress
+  @@index([learningProgressId, masteryLevel]) // Index for querying words by mastery
+  @@map("word_progress")
+}
+
+
+
+// TODO: DEFINE LEARNING PROGRESS MODEL

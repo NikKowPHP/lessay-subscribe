@@ -394,6 +394,23 @@ export interface AdaptiveLessonGenerationRequest {
     effectiveApproaches: string[];
     preferredPatterns: string[];
   };
+  improvementAreas: {
+    pronunciation: string[],
+    grammar: {
+      rulesToFocus:Array<{ rule: string; priority: string }>; 
+      commonErrors: Array<{ category: string; description: string }>; 
+    },
+    vocabulary: Array<{ topic: string; suggestedVocabulary: string[] }>;
+  },
+    learningRecommendations: {
+      suggestedTopics: string[];
+      focusAreas: string[];
+      nextSkillTargets: string[];
+    },
+    learningStyle: {
+      effectiveApproaches: string[];
+      preferredPatterns: string[];
+    },
 
   previousLesson?: {
     id: string;
