@@ -26,7 +26,7 @@ export default function LanguageSelectionStep({
 
   const languages = [
     'English', 'Spanish', 'French', 'German', 'Italian', 
-    'Portuguese', 'Russian', 'Chinese', 'Japanese', 'Korean'
+    'Portuguese', 'Russian', 'Chinese', 'Japanese', 'Korean', 'Polish'
   ]
 
   return (
