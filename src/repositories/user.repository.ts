@@ -4,6 +4,7 @@ import logger from '@/utils/logger'
 import { LessonModel, LessonStep, UserProfileModel } from '@/models/AppAllModels.model'
 import prisma from '@/lib/prisma'
 import { getAuthServiceBasedOnEnvironment } from '@/services/supabase-auth.service'
+import { SubscriptionStatus } from '@prisma/client'
 
 export interface IUserRepository {
   getUserProfile(userId: string): Promise<UserProfileModel | null>
@@ -108,7 +109,6 @@ export class UserRepository implements IUserRepository {
         data: {
           id: userId,
           email,
-          // Create an empty onboarding record
           subscriptionStatus: SubscriptionStatus.NONE, // Default status
           subscriptionEndDate: null,
 

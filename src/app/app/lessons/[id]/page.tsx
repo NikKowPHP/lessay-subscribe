@@ -16,6 +16,7 @@ import { AudioMetrics } from '@/models/AppAllModels.model';
 import { toast } from 'react-hot-toast';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useAuth } from '@/context/auth-context';
+import HeaderWithProfile from '@/components/HeaderWithProfile';
 
 export default function LessonDetailPage() {
   const router = useRouter();
@@ -129,6 +130,7 @@ export default function LessonDetailPage() {
   if (results) {
     return (
       <div className="container mx-auto py-8 px-4">
+        <HeaderWithProfile />
         <div className="bg-white shadow-md rounded-lg overflow-hidden">
           <div className="p-6 bg-black text-white">
             <h2 className="text-2xl font-bold">
@@ -601,6 +603,7 @@ export default function LessonDetailPage() {
   return (
     lesson && (
       <div className="container mx-auto h-screen flex flex-col py-4 px-4 overflow-hidden">
+        <HeaderWithProfile />
         <div className="flex-1 min-h-0">
           <LessonChat
             lesson={lesson as LessonModel}
