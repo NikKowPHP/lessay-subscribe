@@ -1,8 +1,6 @@
-
-
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/auth-context'
 import { useUserProfile } from '@/context/user-profile-context'
@@ -20,6 +18,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { getLearningProgressAction } from '@/lib/server-actions/learning_progress-actions'
+import { ProficiencyLevel } from '@prisma/client'
+import { LearningProgressModel } from '@/models/AppAllModels.model'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -27,6 +28,8 @@ export default function ProfilePage() {
   const { profile, loading: profileLoading, error: profileError } = useUserProfile()
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [learningProgress, setLearningProgress] = useState<LearningProgressModel | null>(null)
+  const [progressLoading, setProgressLoading] = useState(true)
 
   const handleDeleteAccount = async () => {
     if (!user) {
@@ -56,6 +59,32 @@ export default function ProfilePage() {
       setDeleteError('An unexpected error occurred. Please try again.');
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  useEffect(() => {
+    const fetchProgress = async () => {
+      if (user?.id) {
+        try {
+          const progress = await getLearningProgressAction(user.id)
+          setLearningProgress(progress)
+        } catch (error) {
+          logger.error('Error loading learning progress:', error)
+        } finally {
+          setProgressLoading(false)
+        }
+      }
+    }
+    fetchProgress()
+  }, [user?.id])
+
+  // Helper to calculate proficiency progress
+  const getProficiencyProgress = (level: ProficiencyLevel) => {
+    switch(level) {
+      case ProficiencyLevel.beginner: return 33
+      case ProficiencyLevel.intermediate: return 66
+      case ProficiencyLevel.advanced: return 100
+      default: return 0
     }
   }
 
@@ -93,6 +122,81 @@ export default function ProfilePage() {
           <p><strong>User ID:</strong> {profile.userId}</p>
           <p><strong>Joined:</strong> {new Date(profile.createdAt).toLocaleDateString()}</p>
         </div>
+      </div>
+
+      <div className="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Learning Progress</h2>
+        {progressLoading ? (
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded"></div>
+          </div>
+        ) : learningProgress ? (
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Proficiency Level</span>
+                <span className="text-sm text-gray-500">
+                  {learningProgress.estimatedProficiencyLevel}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-600 rounded-full h-2.5" 
+                  style={{ width: `${getProficiencyProgress(learningProgress.estimatedProficiencyLevel)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {learningProgress.overallScore !== null && (
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium">Overall Score</span>
+                  <span className="text-sm text-gray-500">
+                    {learningProgress.overallScore}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    className="bg-green-600 rounded-full h-2.5" 
+                    style={{ width: `${learningProgress.overallScore}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <h3 className="font-semibold mb-2 text-blue-800">Strengths</h3>
+                {learningProgress.strengths?.length > 0 ? (
+                  <ul className="list-disc pl-4 space-y-1">
+                    {learningProgress.strengths.map((strength: string, index: number) => (
+                      <li key={index} className="text-sm text-blue-700">{strength}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500">No strengths recorded yet</p>
+                )}
+              </div>
+
+              <div className="p-4 bg-orange-50 rounded-lg">
+                <h3 className="font-semibold mb-2 text-orange-800">Areas to Improve</h3>
+                {learningProgress.weaknesses?.length > 0 ? (
+                  <ul className="list-disc pl-4 space-y-1">
+                    {learningProgress.weaknesses.map((weakness: string, index: number) => (
+                      <li key={index} className="text-sm text-orange-700">{weakness}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500">No weaknesses recorded yet</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-500">No learning progress data available</p>
+        )}
       </div>
 
       <div className="bg-red-50 border border-red-200 shadow rounded-lg p-6">
