@@ -42,11 +42,15 @@ model User {
   lessons Lesson[]
   payments          Payment[]
   learningProgress  LearningProgress? 
-  subscriptionStatus SubscriptionStatus @default(NONE) // Added
-  subscriptionId    String?            @unique // Added: Store Stripe Subscription ID if using Stripe Subscriptions
+  subscriptionStatus SubscriptionStatus @default(NONE)
+  subscriptionId    String?            @unique
   subscriptionEndDate DateTime?
-
-
+  subscriptionPlan  String?
+  trialStartDate    DateTime?
+  trialEndDate      DateTime?
+  subscriptionStartDate DateTime?
+  billingCycle      String?
+  paymentMethodId   String?
 }
 
 enum ProficiencyLevel {
@@ -352,6 +356,10 @@ model Payment {
   errorMessage          String?   // Store error message if payment failed
   metadata              Json?     // Store any additional metadata if needed
 
+  subscriptionPlan      String?
+  isRecurring           Boolean? @default(false)
+  relatedSubscriptionId String?
+
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -370,12 +378,13 @@ enum PaymentStatus {
 
 
 enum SubscriptionStatus {
- NONE     // No active subscription or trial
- TRIAL    // User is on a free trial
- ACTIVE   // User has an active paid subscription
- CANCELED // Subscription was canceled but might still be active until end date
- PAST_DUE // Payment failed, subscription inactive
- }
+  NONE
+  TRIAL
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  EXPIRED
+}
 
 
 
