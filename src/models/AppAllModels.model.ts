@@ -1,4 +1,4 @@
-import { ProficiencyLevel, LearningTrajectory, LanguageInfluenceLevel, SpeechRateEvaluation, HesitationFrequency, PriorityLevel, SeverityLevel, VocabularyRange, ComprehensionLevel, MasteryLevel } from '@prisma/client'
+import { ProficiencyLevel, LearningTrajectory, LanguageInfluenceLevel, SpeechRateEvaluation, HesitationFrequency, PriorityLevel, SeverityLevel, VocabularyRange, ComprehensionLevel, MasteryLevel, SubscriptionStatus } from '@prisma/client'
 import type { JsonValue } from '@prisma/client/runtime/library'
 import { PaymentStatus } from '@prisma/client'; // Make sure PaymentStatus is imported
 
@@ -141,8 +141,14 @@ export interface UserProfileModel {
     learningTrajectory: LearningTrajectory;
   }
   subscriptionStatus: SubscriptionStatus;
+  subscriptionId?: string | null;
+  subscriptionPlan?: string | null;
+  trialStartDate?: Date | null;
+  trialEndDate?: Date | null;
+  subscriptionStartDate?: Date | null;
   subscriptionEndDate?: Date | null;
-
+  billingCycle?: string | null;
+  paymentMethodId?: string | null;
 }
 
 // Add a type guard for assessment metrics
@@ -465,6 +471,9 @@ export interface PaymentModel {
   productType?: string | null;
   errorMessage?: string | null;
   metadata?: JsonValue | null;
+  subscriptionPlan?: string | null;
+  isRecurring?: boolean | null;
+  relatedSubscriptionId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
