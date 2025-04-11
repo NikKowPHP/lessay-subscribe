@@ -572,7 +572,7 @@ export default function LessonChat({
           // Add acknowledgment and next prompt to chat history
           setChatHistory((prev) => [
             ...prev,
-            { type: 'response', content: 'OK, got it!' },
+            // { type: 'response', content: 'OK, got it!' },
             { type: 'prompt', content: nextStep.content },
           ]);
 
