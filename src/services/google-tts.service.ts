@@ -4,6 +4,7 @@ import axios from 'axios';
 import { GoogleAuth, GoogleAuthOptions } from 'google-auth-library';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import mockAudioJsonReply from '@/__mocks__/google-audio-json-reply.mock.json'
+import { mapLanguageToGoogleHDVoice } from '../utils/google-hd-voices.util';
 
 export class GoogleTTS implements ITTS {
   private auth: GoogleAuth;
@@ -321,86 +322,13 @@ export class GoogleTTS implements ITTS {
   public getVoice(language: string): string {
     logger.info(`Getting voice for language: ${language}`);
 
-    // Normalize language name
-    const normalizedLanguage = language.toLowerCase().trim();
-
     // Map of languages to their best available Google TTS voices
-    // Prioritizing Neural2 > Studio > WaveNet > Standard voices
-    const languageVoiceMap: Record<string, string> = {
-      // English variants
-      english: 'en-US-Chirp3-HD-Aoede', // Female Neural2 voice
-      'english (us)': 'en-US-Neural2-F',
-      'english (uk)': 'en-GB-Neural2-B', // British English
-      'english (australia)': 'en-AU-Neural2-B',
-      'english (india)': 'en-IN-Neural2-A',
+    const voice = mapLanguageToGoogleHDVoice(language);
+    // const voice = mapLanguageToGoogleBasicVoice(language);
 
-      // European languages
-      german: 'de-DE-Chirp3-HD-Aoede',
-      french: 'fr-FR-Neural2-A',
-      spanish: 'es-ES-Neural2-F',
-      italian: 'it-IT-Neural2-A',
-      portuguese: 'pt-PT-Neural2-A',
-      'portuguese (brazil)': 'pt-BR-Neural2-A',
-      dutch: 'nl-NL-Wavenet-B',
-      polish: 'pl-PL-Wavenet-A',
-      swedish: 'sv-SE-Wavenet-A',
-      danish: 'da-DK-Wavenet-A',
-      norwegian: 'nb-NO-Wavenet-E',
-      finnish: 'fi-FI-Wavenet-A',
-      czech: 'cs-CZ-Wavenet-A',
-      slovak: 'sk-SK-Wavenet-A',
-      hungarian: 'hu-HU-Wavenet-A',
-      romanian: 'ro-RO-Wavenet-A',
-      greek: 'el-GR-Wavenet-A',
+    logger.info(`Voice for language ${language}: ${voice}`);
 
-      // Asian languages
-      japanese: 'ja-JP-Neural2-B',
-      korean: 'ko-KR-Neural2-A',
-      chinese: 'cmn-CN-Wavenet-A', // Mandarin
-      'chinese (mandarin)': 'cmn-CN-Wavenet-A',
-      'chinese (cantonese)': 'yue-HK-Standard-A',
-      vietnamese: 'vi-VN-Neural2-A',
-      thai: 'th-TH-Neural2-C',
-      indonesian: 'id-ID-Wavenet-A',
-      malay: 'ms-MY-Wavenet-A',
-      hindi: 'hi-IN-Neural2-A',
-      tamil: 'ta-IN-Wavenet-A',
-      bengali: 'bn-IN-Wavenet-A',
-
-      // Middle Eastern languages
-      arabic: 'ar-XA-Wavenet-B',
-      turkish: 'tr-TR-Wavenet-A',
-      hebrew: 'he-IL-Wavenet-A',
-      persian: 'fa-IR-Wavenet-A',
-
-      // Other languages
-      russian: 'ru-RU-Wavenet-D',
-      ukrainian: 'uk-UA-Wavenet-A',
-      filipino: 'fil-PH-Wavenet-A',
-      swahili: 'sw-KE-Standard-A',
-    };
-
-    // Try to find a direct match
-    if (normalizedLanguage in languageVoiceMap) {
-      return languageVoiceMap[normalizedLanguage];
-    }
-
-    // Try to find a partial match by checking if the normalized language
-    // contains any of our supported language keys
-    for (const [key, voice] of Object.entries(languageVoiceMap)) {
-      if (
-        normalizedLanguage.includes(key) ||
-        key.includes(normalizedLanguage)
-      ) {
-        return voice;
-      }
-    }
-
-    // Default fallback voice if no match found
-    logger.warn(
-      `No voice found for language: ${language}, using default English voice`
-    );
-    return 'en-US-Neural2-F';
+    return voice;
   }
 
   private validateEnvironment(): void {
