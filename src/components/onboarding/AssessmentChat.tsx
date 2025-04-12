@@ -337,7 +337,7 @@ export default function AssessmentChat({
           Assessment Complete!
         </h2>
         <p className="text-neutral-8 mb-6">
-          Thank you for completing the assessment. We'll prepare your
+          Thank you for completing the assessment. We&apos;ll prepare your
           personalized lessons.
         </p>
         <button

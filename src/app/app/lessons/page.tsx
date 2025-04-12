@@ -38,7 +38,7 @@ export default function LessonsPage() {
           Loading your personalized lessons...
         </p>
         <p className="text-sm text-neutral-8 mt-2">
-          We're preparing content based on your assessment
+          We&apos;re preparing content based on your assessment
         </p>
       </div>
     );
@@ -62,8 +62,8 @@ export default function LessonsPage() {
           <div className="animate-pulse bg-neutral-4 h-4 w-3/4 mx-auto mb-3 rounded-[4px]"></div>
           <div className="animate-pulse bg-neutral-4 h-4 w-1/2 mx-auto mb-8 rounded-[4px]"></div>
           <p className="text-neutral-10">
-            We're creating lessons tailored to your goals. Please check back in
-            a few moments.
+            We&apos;re creating lessons tailored to your goals. Please check back
+            in a few moments.
           </p>
         </div>
       ) : (

@@ -37,6 +37,7 @@
     "google-auth-library": "^9.15.1",
     "https-proxy-agent": "^7.0.6",
     "lucide-react": "^0.475.0",
+    "micro": "^10.0.1",
     "next": "15.1.6",
     "posthog-js": "^1.223.4",
     "proxy-agent": "^6.5.0",

@@ -20,6 +20,10 @@ export class PollyService implements ITTS {
     this.initializePolly();
   }
 
+  getVoice(voice: string): VoiceId {
+    return VoiceId[voice as keyof typeof VoiceId];
+  }
+
   private initializePolly(): void {
     this.validateEnvironment();
     
@@ -40,7 +44,7 @@ export class PollyService implements ITTS {
     this.pollyClient = new PollyClient(config);
   }
 
-  public async synthesizeSpeech(text: string, language: string, voice: string): Promise<Buffer> {
+  public async synthesizeSpeech(text: string, language: string, voice: string): Promise<string> {
     try {
       const params = this.createSynthesisParams(text, language, voice);
       const command = new SynthesizeSpeechCommand(params);
@@ -51,7 +55,8 @@ export class PollyService implements ITTS {
       }
       console.log('audio generated successfully', response.AudioStream);
 
-      return await this.streamToBuffer(response.AudioStream as Readable);
+      const buffer = await this.streamToBuffer(response.AudioStream as Readable);
+      return buffer.toString('base64');
     } catch (error) {
       logger.error('Polly synthesis error:', error);
       throw new Error('Failed to synthesize speech');

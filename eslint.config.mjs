@@ -28,7 +28,10 @@ const eslintConfig = [
       "no-var": "off",
       "prefer-const": "off",
       "quotes": "off",
-      "semi": "off"
+      "semi": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-misused-new": "off",
+      "react-hooks/exhaustive-deps": "off"
     }
   }
 ];

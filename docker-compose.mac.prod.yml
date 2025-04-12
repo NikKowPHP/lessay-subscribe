@@ -1,0 +1,55 @@
+version: '3.3'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.mac
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres.tdzryocudlllmufiiaki:KentHD720pgans2vlad@aws-0-us-west-1.pooler.supabase.com:5432/postgres
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - FAST_REFRESH=false
+      - NODE_ENV=production
+      - CHOKIDAR_INTERVAL=300
+    # depends_on:
+    #   - db
+    volumes:
+      - ./src:/app/src # Mount src directory for hot reload
+      - ./public:/app/public # Mount public directory for hot reload
+      - ./package.json:/app/package.json # Mount package.json
+      - ./package-lock.json:/app/package-lock.json # Mount package-lock.json
+      - ./tailwind.config.ts:/app/tailwind.config.ts # Mount tailwind.config.ts
+      - ./src/app/globals.css:/app/src/app/globals.css # Mount globals.css
+      - ./tsconfig.json:/app/tsconfig.json # Mount tsconfig.json
+      - ./prisma:/app/prisma # Mount prisma
+      - ./node_modules:/app/node_modules
+      - ./.env:/app/.env
+    restart: unless-stopped
+    networks:
+      - web-network
+    command: sh -c "npm rebuild && npm run dev"
+
+  # db:
+  #   image: postgres:17
+  #   environment:
+  #     POSTGRES_USER: myuser
+  #     POSTGRES_PASSWORD: mypassword
+  #     POSTGRES_DB: mydb
+  #   ports:
+  #     - '5433:5432'
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   networks:
+  #     - web-network
+
+networks:
+  web-network:
+    driver: bridge
+
+# volumes:
+#   postgres-data:

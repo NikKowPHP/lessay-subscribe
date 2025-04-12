@@ -12,7 +12,7 @@ export default function WelcomeStep({ onNext, loading }: WelcomeStepProps) {
         Welcome to Language Learning
       </h2>
       <p className="mt-2 text-neutral-8">
-        Let's get started with your personalized language learning journey
+        Let&apos;s get started with your personalized language learning journey
       </p>
       <div className="mt-8">
         <button
