@@ -1,0 +1,7 @@
+# Ignore specific files
+src/ignore-me.js
+dist/*.js
+
+# Ignore entire directories
+node_modules/
+build/
