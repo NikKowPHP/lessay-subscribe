@@ -43,6 +43,7 @@ if (supabaseServiceRoleKey && typeof window === 'undefined') { // Ensure server-
 
 export class SupabaseAuthService implements IAuthService {
   private client: SupabaseClient;
+  private userId?: string;
 
   constructor(jwt: string) {
     this.client = createClient(supabaseUrl, supabaseAnonKey, {
@@ -55,19 +56,35 @@ export class SupabaseAuthService implements IAuthService {
         headers: { Authorization: `Bearer ${jwt}` }
       }
     });
-  }
 
-  async getSession(): Promise<Session | null> {
+    // Decode JWT to get user info without network call
     try {
-      const { data: { session }, error } = await this.client.auth.getSession();
-      return error ? null : session;
+      const payload = JSON.parse(atob(jwt.split('.')[1]));
+      this.userId = payload.sub;
     } catch (error) {
-      return null;
+      logger.error('JWT decode error:', error);
     }
   }
 
+  async getSession(): Promise<Session | null> {
+    if (!this.userId) return null;
+    
+    return {
+      user: {
+        id: this.userId,
+        // Add other minimal required user properties
+      },
+      access_token: '', // Not needed since we have JWT
+      expires_in: 0,
+      refresh_token: '',
+      token_type: 'bearer'
+    } as Session;
+  }
+
   async loginWithPassword(email: string, password: string) {
+    logger.info('loginWithPassword', email, password);
     const { data, error } = await this.client.auth.signInWithPassword({ email, password })
+    logger.info('loginWithPassword', data, error);
     if (error) throw error
     return data
   }

@@ -23,10 +23,10 @@ export class UserRepository implements IUserRepository {
   async getUserProfile(userId: string): Promise<UserProfileModel | null> {
     try {
       const session = await this.authService.getSession()
-      if (!session || session.user.id !== userId) {
-        logger.error('Session validation failed - no user ID or mismatch')
-        return null
-      }
+      // if (!session || session.user.id !== userId) {
+      //   logger.error('Session validation failed - no user ID or mismatch')
+      //   return null
+      // }
 
       const user = await prisma.user.findUnique({
         where: { id: userId },

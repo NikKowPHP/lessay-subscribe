@@ -17,34 +17,21 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { IAuthService } from '@/services/supabase-auth.service';
 
 export class OnboardingRepository implements IOnboardingRepository {
-  private authService: IAuthService;
+  constructor(private authService: IAuthService) {}
 
-  constructor(authService: IAuthService) {
-    this.authService = authService;
-  }
-
-  /**
-   * Centralized session handling with error tracking
-   */
-  private async getSession() {
-    try {
-      const session = await this.authService.getSession();
-      if (!session?.user?.id) {
-        logger.error('Session validation failed - No user ID found');
-        throw new Error('Unauthorized - No active session');
-      }
-      return session;
-    } catch (error) {
-      logger.error('Session retrieval failed', error);
+  private async validateUser() {
+    const session = await this.authService.getSession();
+    if (!session?.user?.id) {
       throw new Error('Authentication required');
     }
+    return session.user.id;
   }
 
   async getOnboarding(): Promise<OnboardingModel | null> {
-    const session = await this.getSession();
+    const userId = await this.validateUser();
     try {
       return await prisma.onboarding.findUnique({
-        where: { userId: session.user.id },
+        where: { userId },
       });
     } catch (error) {
       logger.error('Error fetching onboarding:', error);
@@ -53,7 +40,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async createOnboarding(): Promise<OnboardingModel> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       // Check if onboarding already exists
       const existingOnboarding = await prisma.onboarding.findUnique({
@@ -78,7 +66,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async updateOnboarding(step: string, formData: any): Promise<OnboardingModel> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       const onboarding = await prisma.onboarding.findUnique({
         where: { userId: session.user.id },
@@ -111,7 +100,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async completeOnboarding(): Promise<OnboardingModel> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       return await prisma.onboarding.update({
         where: { userId: session.user.id },
@@ -129,7 +119,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async deleteOnboarding(): Promise<void> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       await prisma.onboarding.delete({
         where: { userId: session.user.id },
@@ -146,7 +137,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async getUserAssessment(): Promise<AssessmentLesson | null> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       return await prisma.assessmentLesson.findFirst({
         where: {
@@ -168,7 +160,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async getAssessmentLesson(userId: string): Promise<AssessmentLesson | null> {
-    const session = await this.getSession();
+      const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     if (!session.user.id) {
       throw new Error('Unauthorized');
     }
@@ -193,7 +186,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   async getAssessmentLessonById(
     lessonId: string
   ): Promise<AssessmentLesson | null> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     if (!session.user.id) {
       throw new Error('Unauthorized');
     }
@@ -223,7 +217,7 @@ export class OnboardingRepository implements IOnboardingRepository {
       proposedTopics: string[];
     }
   ): Promise<AssessmentLesson> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
     if (!assessment) {
       throw new Error('Assessment lesson not found or unauthorized');
     }
@@ -252,8 +246,8 @@ export class OnboardingRepository implements IOnboardingRepository {
     sourceLanguage: string,
     targetLanguage: string
   ): Promise<AssessmentLesson> {
-    const session = await this.getSession();
-
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     // Check if assessment already exists
     const existingAssessment = await prisma.assessmentLesson.findUnique({
       where: { userId: session.user.id },
@@ -298,7 +292,8 @@ export class OnboardingRepository implements IOnboardingRepository {
     userId: string,
     assessment: Omit<AssessmentLesson, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<AssessmentLesson> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       // First create the assessment lesson
       const createdAssessment = await prisma.assessmentLesson.create({
@@ -348,7 +343,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async getAssessmentById(id: string): Promise<AssessmentLesson | null> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       return await prisma.assessmentLesson.findUnique({
         where: { id },
@@ -367,7 +363,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async completeAssessment(): Promise<AssessmentLesson> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       const result = await prisma.assessmentLesson.update({
         where: { userId: session.user.id },
@@ -403,7 +400,8 @@ export class OnboardingRepository implements IOnboardingRepository {
     userResponse: string,
     correct: boolean
   ): Promise<AssessmentStep> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       const step = await prisma.assessmentStep.findUnique({
         where: { id: stepId },
@@ -437,7 +435,8 @@ export class OnboardingRepository implements IOnboardingRepository {
     strengths?: string[];
     weaknesses?: string[];
   }): Promise<AssessmentLesson> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       return await prisma.assessmentLesson.update({
         where: { userId: session.user.id },
@@ -459,7 +458,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async updateProposedTopics(topics: string[]): Promise<AssessmentLesson> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       return await prisma.assessmentLesson.update({
         where: { userId: session.user.id },
@@ -481,7 +481,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async updateAssessmentSummary(summary: string): Promise<AssessmentLesson> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       return await prisma.assessmentLesson.update({
         where: { userId: session.user.id },
@@ -513,7 +514,8 @@ export class OnboardingRepository implements IOnboardingRepository {
     maxAttempts?: number;
     feedback?: string;
   }): Promise<AssessmentStep> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     const assessment = await prisma.assessmentLesson.findUnique({
       where: { userId: session.user.id },
     });
@@ -544,7 +546,8 @@ export class OnboardingRepository implements IOnboardingRepository {
     stepId: string,
     feedback: string
   ): Promise<AssessmentStep> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       return await prisma.assessmentStep.update({
         where: { id: stepId },
@@ -559,7 +562,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async getNextIncompleteStep(): Promise<AssessmentStep | null> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     try {
       const assessment = await prisma.assessmentLesson.findUnique({
         where: { userId: session.user.id },
@@ -594,7 +598,8 @@ export class OnboardingRepository implements IOnboardingRepository {
       correct: boolean;
     }
   ): Promise<AssessmentStep> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
 
     // First verify this assessment belongs to the current user
     const assessment = await prisma.assessmentLesson.findFirst({
@@ -643,8 +648,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async updateOnboardingAssessmentLesson(lessonId: string, lessonData: Partial<AssessmentLesson>): Promise<AssessmentLesson> {
-    const session = await this.getSession();
-
+    const session = await this.authService.getSession();
+    if(!session) throw new Error('Authentication required');
     // First verify this assessment belongs to the current user
     const assessment = await prisma.assessmentLesson.findUnique({
       where: { id: lessonId },
@@ -710,7 +715,7 @@ export class OnboardingRepository implements IOnboardingRepository {
     existingMetrics: any | null,
     newMetrics: AudioMetrics
   ): Promise<void> {
-    const session = await this.getSession();
+    const session = await this.authService.getSession();
     try {
       // Create data object for Prisma with proper JSON handling
       const metricsData = {
