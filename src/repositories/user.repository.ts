@@ -1,4 +1,4 @@
-import { IAuthService } from '@/services/auth.service'
+import { IAuthService } from '@/services/supabase-auth.service'
 import { ILessonRepository } from '@/lib/interfaces/all-interfaces'
 import logger from '@/utils/logger'
 import { LessonModel, LessonStep, UserProfileModel } from '@/models/AppAllModels.model'
@@ -17,8 +17,8 @@ export class UserRepository implements IUserRepository {
   private authService: IAuthService
   private adminAuthService: IAuthService | null = null;
 
-  constructor(authService: IAuthService) {
-    this.authService = authService
+  constructor(accessToken?: string) {
+    this.authService = getAuthServiceBasedOnEnvironment(accessToken)
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
       this.adminAuthService = getAuthServiceBasedOnEnvironment(); // Pass flag for admin
     }
@@ -26,6 +26,7 @@ export class UserRepository implements IUserRepository {
 
   async getSession() {
     const session = await this.authService.getSession()
+    logger.log('session in user repository', session)
     if (!session?.user?.id) {
       throw new Error('Unauthorized')
     }
@@ -210,8 +211,6 @@ export class UserRepository implements IUserRepository {
       throw error
     }
   }
-
-
 
   async deleteUserProfile(userId: string): Promise<void> {
     // Get an instance of the Auth service (potentially configured with admin rights)

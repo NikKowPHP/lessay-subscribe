@@ -1,9 +1,18 @@
-import { IAuthService } from '@/services/auth.service'
-import { AuthChangeEvent, Session } from '@supabase/supabase-js'
+import { AuthChangeEvent, Session, User } from '@supabase/supabase-js'
 import { MockAuthService } from './mock-auth-service.service'
 import logger from '@/utils/logger'
 import { createClient } from '@supabase/supabase-js'
 
+
+export interface IAuthService {
+  login(email: string, password: string): Promise<{ user: User | null; session: Session | null }>
+  register(email: string, password: string): Promise<{ user: User | null; session: Session | null }>
+  loginWithGoogle(): Promise<void>
+  logout(): Promise<void>
+  getSession(): Promise<Session | null>
+  onAuthStateChange(callback: (event: any, session: Session | null) => Promise<void> | void): any
+  deleteUserById(userId: string): Promise<{ error: any | null }>
+} 
 
 // Use environment variables directly for client creation
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -34,8 +43,25 @@ if (supabaseServiceRoleKey && typeof window === 'undefined') { // Ensure server-
 
 
 export class SupabaseAuthService implements IAuthService {
+  private client: ReturnType<typeof createClient>;
+  
+  constructor(accessToken?: string) {
+    this.client = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        detectSessionInUrl: false,
+        persistSession: true,
+        autoRefreshToken: true
+      },
+      global: {
+        headers: {
+          Authorization: accessToken ? `Bearer ${accessToken}` : '',
+        }
+      }
+    });
+  }
+
   async login(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await this.client.auth.signInWithPassword({
       email,
       password,
     })
@@ -45,7 +71,7 @@ export class SupabaseAuthService implements IAuthService {
   }
 
   async register(email: string, password: string) {
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await this.client.auth.signUp({
       email,
       password,
     })
@@ -55,7 +81,7 @@ export class SupabaseAuthService implements IAuthService {
   }
 
   async loginWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await this.client.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/app/lessons`
@@ -67,18 +93,18 @@ export class SupabaseAuthService implements IAuthService {
   }
 
   async logout() {
-    const { error } = await supabase.auth.signOut()
+    const { error } = await this.client.auth.signOut()
     if (error) throw new Error(error.message)
   }
 
   async getSession() {
-    const { data: { session }, error } = await supabase.auth.getSession()
+    const { data: { session }, error } = await this.client.auth.getSession()
     if (error) throw new Error(error.message)
     return session
   }
 
   onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => Promise<void> | void) {
-    return supabase.auth.onAuthStateChange(callback)
+    return this.client.auth.onAuthStateChange(callback)
   }
 
 
@@ -118,8 +144,8 @@ export class SupabaseAuthService implements IAuthService {
 
 }
 
-export function getAuthServiceBasedOnEnvironment() {
-  logger.info('using the enviroment to get the auth service based on enviroment', process.env.NEXT_PUBLIC_MOCK_AUTH);
+export function getAuthServiceBasedOnEnvironment(accessToken?: string) {
+  logger.info('using the environment to get the auth service based on environment', process.env.NEXT_PUBLIC_MOCK_AUTH);
 
   if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
     const mockAuthService = new MockAuthService()
@@ -130,5 +156,5 @@ export function getAuthServiceBasedOnEnvironment() {
     return mockAuthService
   }
 
-  return new SupabaseAuthService()
+  return new SupabaseAuthService(accessToken)
 }

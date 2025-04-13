@@ -21,6 +21,8 @@ import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useUpload } from '@/hooks/use-upload';
 import { useAuth } from './auth-context';
 import { useUserProfile } from './user-profile-context';
+import Cookies from 'js-cookie';
+import { getAccessToken } from '@/utils/get-access-token-cookie.util';
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;
@@ -92,9 +94,12 @@ export function OnboardingProvider({
     }
   };
 
+
+
+  // Modified server action calls with access token
   const checkOnboardingStatus = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const status = await getStatusAction();
+      const status = await getStatusAction(getAccessToken());
       setIsOnboardingComplete(status);
       return status;
     });
@@ -102,14 +107,14 @@ export function OnboardingProvider({
 
   const startOnboarding = async () => {
     return withLoadingAndErrorHandling(async () => {
-      await createOnboardingAction();
+      await createOnboardingAction(getAccessToken());
       setIsOnboardingComplete(false);
     });
   };
 
   const markStepComplete = async (step: string, formData: any) => {
     return withLoadingAndErrorHandling(async () => {
-      await updateOnboardingAction(step, formData);
+      await updateOnboardingAction(step, formData, getAccessToken());
       await checkOnboardingStatus();
     });
   };
@@ -118,7 +123,7 @@ export function OnboardingProvider({
 
   const getAssessmentLesson = async () => {
     return withLoadingAndErrorHandling(async () => {
-      return await getAssessmentLessonAction();
+      return await getAssessmentLessonAction(getAccessToken());
     });
   };
 
@@ -127,13 +132,13 @@ export function OnboardingProvider({
     userResponse: string
   ) => {
     return withLoadingAndErrorHandling(async () => {
-      return await completeAssessmentLessonAction(lessonId, userResponse);
+      return await completeAssessmentLessonAction(lessonId, userResponse, getAccessToken());
     });
   };
 
   const markOnboardingAsCompleteAndGenerateLessons = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const completedOnboarding = await markOnboardingCompleteAndGenerateInitialLessonsAction();
+      const completedOnboarding = await markOnboardingCompleteAndGenerateInitialLessonsAction(getAccessToken());
       setOnboarding(completedOnboarding);
       toast.success(
         'Onboarding completed! Lessons generated!'
@@ -143,7 +148,7 @@ export function OnboardingProvider({
 
   const getOnboarding = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const result = await getOnboardingAction();
+      const result = await getOnboardingAction(getAccessToken());
       setOnboarding(result);
       return result;
     });
@@ -155,7 +160,12 @@ export function OnboardingProvider({
     userResponse: string
   ) => {
     return withLoadingAndErrorHandling(async () => {
-      return await recordAssessmentStepAttemptAction(lessonId, stepId, userResponse);
+      return await recordAssessmentStepAttemptAction(
+        lessonId,
+        stepId,
+        userResponse,
+        getAccessToken()
+      );
     });
   };
 
@@ -180,14 +190,18 @@ export function OnboardingProvider({
     if (!lesson.sessionRecordingUrl) {
       const uploadedAudioUrl = await uploadFilesToStorage(sessionRecording);
       lesson.sessionRecordingUrl = uploadedAudioUrl;
-  
-      updateOnboardingLessonAction(lesson.id, { sessionRecordingUrl: uploadedAudioUrl });
+      updateOnboardingLessonAction(
+        lesson.id,
+        { sessionRecordingUrl: uploadedAudioUrl },
+        getAccessToken()
+      );
     }
     const lessonWithAudioMetrics = await processAssessmentLessonRecordingAction(
       sessionRecording,
       lesson,
       recordingSize,
-      recordingTime
+      recordingTime,
+      getAccessToken()
     );
     logger.info('lessonWithAudioMetrics', { lessonWithAudioMetrics });
     return lessonWithAudioMetrics;

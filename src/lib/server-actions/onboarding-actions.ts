@@ -15,12 +15,12 @@ import LessonGeneratorService from '@/services/lesson-generator.service';
 import { AssessmentLesson } from '@/models/AppAllModels.model';
 
 
-function createOnboardingService() {
+function createOnboardingService(accessToken?: string) {
   const repository = new OnboardingRepository(
-    getAuthServiceBasedOnEnvironment()
+    getAuthServiceBasedOnEnvironment(accessToken)
   );
   const lessonRepository = new LessonRepository(
-    getAuthServiceBasedOnEnvironment()
+    getAuthServiceBasedOnEnvironment(accessToken)
   );
   return new OnboardingService(
     repository,
@@ -29,60 +29,60 @@ function createOnboardingService() {
   );
 }
 
-export async function createOnboardingAction() {
-  const onboardingService = createOnboardingService();
+export async function createOnboardingAction(accessToken?: string) {
+  const onboardingService = createOnboardingService(accessToken);
   return await onboardingService.createOnboarding();
 }
 
-export async function getOnboardingAction() {
-  const onboardingService = createOnboardingService();
+export async function getOnboardingAction(accessToken?: string) {
+  const onboardingService = createOnboardingService(accessToken);
   const onboarding = await onboardingService.getOnboarding();
   logger.log('current onboarding:', onboarding);
   return onboarding;
 }
 
-export async function updateOnboardingAction(step: string, formData: any) {
+export async function updateOnboardingAction(step: string, formData: any, accessToken?: string) {
   if (!step) {
     throw new Error('Step is required');
   }
-  const onboardingService = createOnboardingService();
+  const onboardingService = createOnboardingService(accessToken);
   const updatedOnboarding = await onboardingService.updateOnboarding(step, formData);
   logger.log('updated onboarding:', updatedOnboarding);
   return updatedOnboarding;
 }
 
 
-export async function markOnboardingCompleteAndGenerateInitialLessonsAction() {
+export async function markOnboardingCompleteAndGenerateInitialLessonsAction(accessToken?: string) {
   logger.info('marking onboarding complete and generating initial lessons');
-  const onboardingService = createOnboardingService();
+  const onboardingService = createOnboardingService(accessToken);
   const completedOnboarding =
     await onboardingService.markOnboardingAsCompleteAndGenerateLessons();
   logger.info('completed onboarding:', completedOnboarding);
   return completedOnboarding;
 }
 
-export async function deleteOnboardingAction() {
-  const onboardingService = createOnboardingService();
+export async function deleteOnboardingAction(accessToken?: string) {
+  const onboardingService = createOnboardingService(accessToken);
   const deletedOnboarding = await onboardingService.deleteOnboarding();
   logger.log('deleted onboarding:', deletedOnboarding);
   return deletedOnboarding;
 }
 
-export async function getStatusAction() {
-  const onboardingService = createOnboardingService();
+export async function getStatusAction(accessToken?: string) {
+  const onboardingService = createOnboardingService(accessToken);
   const status = await onboardingService.getStatus();
   logger.log('status:', status);
   return status;
 }
 
-export async function getAssessmentLessonAction() {
+export async function getAssessmentLessonAction(accessToken?: string) {
   const authService = getAuthServiceBasedOnEnvironment();
   const session = await authService.getSession();
   if (!session) {
     throw new Error('User not authenticated');
   }
 
-  const onboardingService = createOnboardingService();
+  const onboardingService = createOnboardingService(accessToken);
 
   const lesson = await onboardingService.getAssessmentLesson(session.user.id);
   logger.log('lessons:', lesson);
@@ -91,9 +91,10 @@ export async function getAssessmentLessonAction() {
 
 export async function completeAssessmentLessonAction(
   lessonId: string,
-  userResponse: string
+  userResponse: string,
+  accessToken?: string
 ) {
-  const onboardingService = createOnboardingService();
+  const onboardingService = createOnboardingService(accessToken);
   const completedLesson = await onboardingService.completeAssessmentLesson(
     lessonId,
     userResponse
@@ -105,12 +106,13 @@ export async function completeAssessmentLessonAction(
 export async function recordAssessmentStepAttemptAction(
   lessonId: string,
   stepId: string,
-  userResponse: string
+  userResponse: string,
+  accessToken?: string
 ) {
   if (!lessonId || !stepId) {
     throw new Error('Lesson ID and Step ID are required');
   }
-  const onboardingService = createOnboardingService();
+  const onboardingService = createOnboardingService(accessToken);
 
   return await onboardingService.recordStepAttempt(
     lessonId,
@@ -119,11 +121,11 @@ export async function recordAssessmentStepAttemptAction(
   );
 }
 
-export async function updateOnboardingLessonAction(lessonId: string, lessonData: Partial<AssessmentLesson>) {
+export async function updateOnboardingLessonAction(lessonId: string, lessonData: Partial<AssessmentLesson>, accessToken?: string) {
   if (!lessonId) {
     throw new Error('Lesson ID is required')
   }
-  const onboardingService = createOnboardingService()
+  const onboardingService = createOnboardingService(accessToken);
   return await onboardingService.updateOnboardingAssessmentLesson(lessonId, lessonData)
 }
 
@@ -132,11 +134,12 @@ export async function processAssessmentLessonRecordingAction(
   sessionRecording: Blob,
   lesson: AssessmentLesson,
   recordingTime: number,
-  recordingSize: number
+  recordingSize: number,
+  accessToken?: string
 ) {
   try {
     validateAssessmentRecording(sessionRecording, recordingTime, recordingSize, lesson);
-    const onboardingService = createOnboardingService();
+    const onboardingService = createOnboardingService(accessToken);
     return await onboardingService.processAssessmentLessonRecording(
       sessionRecording,
       lesson,

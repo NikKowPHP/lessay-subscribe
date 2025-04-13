@@ -11,10 +11,10 @@ import {
 } from '@/models/AppAllModels.model';
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
-import { IAuthService } from '@/services/auth.service';
 import prisma from '@/lib/prisma';
 import { JsonValue } from 'type-fest';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { IAuthService } from '@/services/supabase-auth.service';
 
 export class OnboardingRepository implements IOnboardingRepository {
   private authService: IAuthService;
@@ -23,17 +23,26 @@ export class OnboardingRepository implements IOnboardingRepository {
     this.authService = authService;
   }
 
-  async getSession() {
-    const session = await this.authService.getSession();
-    if (!session?.user?.id) {
-      throw new Error('Unauthorized');
+  /**
+   * Centralized session handling with error tracking
+   */
+  private async getSession() {
+    try {
+      const session = await this.authService.getSession();
+      if (!session?.user?.id) {
+        logger.error('Session validation failed - No user ID found');
+        throw new Error('Unauthorized - No active session');
+      }
+      return session;
+    } catch (error) {
+      logger.error('Session retrieval failed', error);
+      throw new Error('Authentication required');
     }
-    return session;
   }
 
   async getOnboarding(): Promise<OnboardingModel | null> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       return await prisma.onboarding.findUnique({
         where: { userId: session.user.id },
       });
@@ -44,9 +53,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async createOnboarding(): Promise<OnboardingModel> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
-
       // Check if onboarding already exists
       const existingOnboarding = await prisma.onboarding.findUnique({
         where: { userId: session.user.id },
@@ -70,8 +78,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async updateOnboarding(step: string, formData: any): Promise<OnboardingModel> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       const onboarding = await prisma.onboarding.findUnique({
         where: { userId: session.user.id },
       });
@@ -103,8 +111,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async completeOnboarding(): Promise<OnboardingModel> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       return await prisma.onboarding.update({
         where: { userId: session.user.id },
         data: {
@@ -121,8 +129,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async deleteOnboarding(): Promise<void> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       await prisma.onboarding.delete({
         where: { userId: session.user.id },
       });
@@ -138,8 +146,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async getUserAssessment(): Promise<AssessmentLesson | null> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       return await prisma.assessmentLesson.findFirst({
         where: {
           userId: session.user.id,
@@ -160,13 +168,12 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async getAssessmentLesson(userId: string): Promise<AssessmentLesson | null> {
-    try {
-      // Validate the user has permission to access this data
-      const session = await this.getSession();
-      if (!session.user.id) {
-        throw new Error('Unauthorized');
-      }
+    const session = await this.getSession();
+    if (!session.user.id) {
+      throw new Error('Unauthorized');
+    }
 
+    try {
       return await prisma.assessmentLesson.findUnique({
         where: { userId },
         include: {
@@ -182,16 +189,16 @@ export class OnboardingRepository implements IOnboardingRepository {
       return null;
     }
   }
+
   async getAssessmentLessonById(
     lessonId: string
   ): Promise<AssessmentLesson | null> {
-    try {
-      // Validate the user has permission to access this data
-      const session = await this.getSession();
-      if (!session.user.id) {
-        throw new Error('Unauthorized');
-      }
+    const session = await this.getSession();
+    if (!session.user.id) {
+      throw new Error('Unauthorized');
+    }
 
+    try {
       return await prisma.assessmentLesson.findUnique({
         where: { id: lessonId },
         include: {
@@ -216,90 +223,82 @@ export class OnboardingRepository implements IOnboardingRepository {
       proposedTopics: string[];
     }
   ): Promise<AssessmentLesson> {
-    try {
-      if (!assessment) {
-        throw new Error('Assessment lesson not found or unauthorized');
-      }
+    const session = await this.getSession();
+    if (!assessment) {
+      throw new Error('Assessment lesson not found or unauthorized');
+    }
 
-      // Mark the assessment as completed
-      return await prisma.assessmentLesson.update({
-        where: { id: assessment.id },
-        data: {
-          completed: true,
-          summary: data.summary,
-          metrics: data.metrics,
-          proposedTopics: data.proposedTopics,
-          updatedAt: new Date(),
-        },
-        include: {
-          steps: {
-            orderBy: {
-              stepNumber: 'asc',
-            },
+    // Mark the assessment as completed
+    return await prisma.assessmentLesson.update({
+      where: { id: assessment.id },
+      data: {
+        completed: true,
+        summary: data.summary,
+        metrics: data.metrics,
+        proposedTopics: data.proposedTopics,
+        updatedAt: new Date(),
+      },
+      include: {
+        steps: {
+          orderBy: {
+            stepNumber: 'asc',
           },
         },
-      });
-    } catch (error) {
-      logger.error('Error completing assessment lesson:', error);
-      throw error;
-    }
+      },
+    });
   }
 
   async createUserAssessment(
     sourceLanguage: string,
     targetLanguage: string
   ): Promise<AssessmentLesson> {
-    try {
-      const session = await this.getSession();
+    const session = await this.getSession();
 
-      // Check if assessment already exists
-      const existingAssessment = await prisma.assessmentLesson.findUnique({
-        where: { userId: session.user.id },
-        include: {
-          steps: true,
-        },
-      });
+    // Check if assessment already exists
+    const existingAssessment = await prisma.assessmentLesson.findUnique({
+      where: { userId: session.user.id },
+      include: {
+        steps: true,
+      },
+    });
 
-      if (existingAssessment) {
-        return existingAssessment;
-      }
-
-      // Create new assessment
-      return await prisma.assessmentLesson.create({
-        data: {
-          userId: session.user.id,
-          description: `${targetLanguage} language assessment`,
-          completed: false,
-          sourceLanguage,
-          targetLanguage,
-          metrics: {
-            accuracy: 0,
-            pronunciationScore: 0,
-            grammarScore: 0,
-            vocabularyScore: 0,
-            overallScore: 0,
-            strengths: [],
-            weaknesses: [],
-          },
-          proposedTopics: [],
-          steps: {
-            create: [], // Steps will be added separately
-          },
-        },
-        include: {
-          steps: true,
-        },
-      });
-    } catch (error) {
-      logger.error('Error creating user assessment:', error);
-      throw error;
+    if (existingAssessment) {
+      return existingAssessment;
     }
+
+    // Create new assessment
+    return await prisma.assessmentLesson.create({
+      data: {
+        userId: session.user.id,
+        description: `${targetLanguage} language assessment`,
+        completed: false,
+        sourceLanguage,
+        targetLanguage,
+        metrics: {
+          accuracy: 0,
+          pronunciationScore: 0,
+          grammarScore: 0,
+          vocabularyScore: 0,
+          overallScore: 0,
+          strengths: [],
+          weaknesses: [],
+        },
+        proposedTopics: [],
+        steps: {
+          create: [], // Steps will be added separately
+        },
+      },
+      include: {
+        steps: true,
+      },
+    });
   }
 
   async createAssessmentLesson(
     userId: string,
     assessment: Omit<AssessmentLesson, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<AssessmentLesson> {
+    const session = await this.getSession();
     try {
       // First create the assessment lesson
       const createdAssessment = await prisma.assessmentLesson.create({
@@ -349,6 +348,7 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async getAssessmentById(id: string): Promise<AssessmentLesson | null> {
+    const session = await this.getSession();
     try {
       return await prisma.assessmentLesson.findUnique({
         where: { id },
@@ -367,8 +367,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async completeAssessment(): Promise<AssessmentLesson> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       const result = await prisma.assessmentLesson.update({
         where: { userId: session.user.id },
         data: {
@@ -403,6 +403,7 @@ export class OnboardingRepository implements IOnboardingRepository {
     userResponse: string,
     correct: boolean
   ): Promise<AssessmentStep> {
+    const session = await this.getSession();
     try {
       const step = await prisma.assessmentStep.findUnique({
         where: { id: stepId },
@@ -436,8 +437,8 @@ export class OnboardingRepository implements IOnboardingRepository {
     strengths?: string[];
     weaknesses?: string[];
   }): Promise<AssessmentLesson> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       return await prisma.assessmentLesson.update({
         where: { userId: session.user.id },
         data: {
@@ -458,8 +459,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async updateProposedTopics(topics: string[]): Promise<AssessmentLesson> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       return await prisma.assessmentLesson.update({
         where: { userId: session.user.id },
         data: {
@@ -480,8 +481,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async updateAssessmentSummary(summary: string): Promise<AssessmentLesson> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       return await prisma.assessmentLesson.update({
         where: { userId: session.user.id },
         data: {
@@ -512,42 +513,38 @@ export class OnboardingRepository implements IOnboardingRepository {
     maxAttempts?: number;
     feedback?: string;
   }): Promise<AssessmentStep> {
-    try {
-      const session = await this.getSession();
-      const assessment = await prisma.assessmentLesson.findUnique({
-        where: { userId: session.user.id },
-      });
+    const session = await this.getSession();
+    const assessment = await prisma.assessmentLesson.findUnique({
+      where: { userId: session.user.id },
+    });
 
-      if (!assessment) {
-        throw new Error('Assessment not found');
-      }
-
-      return await prisma.assessmentStep.create({
-        data: {
-          assessmentId: assessment.id,
-          stepNumber: step.stepNumber,
-          type: step.type,
-          content: step.content,
-          contentAudioUrl: step.contentAudioUrl,
-          translation: step.translation,
-          expectedAnswer: step.expectedAnswer,
-          expectedAnswerAudioUrl: step.expectedAnswerAudioUrl,
-          maxAttempts: step.maxAttempts || 3,
-          feedback: step.feedback,
-          attempts: 0,
-          correct: false,
-        },
-      });
-    } catch (error) {
-      logger.error('Error adding assessment step:', error);
-      throw error;
+    if (!assessment) {
+      throw new Error('Assessment not found');
     }
+
+    return await prisma.assessmentStep.create({
+      data: {
+        assessmentId: assessment.id,
+        stepNumber: step.stepNumber,
+        type: step.type,
+        content: step.content,
+        contentAudioUrl: step.contentAudioUrl,
+        translation: step.translation,
+        expectedAnswer: step.expectedAnswer,
+        expectedAnswerAudioUrl: step.expectedAnswerAudioUrl,
+        maxAttempts: step.maxAttempts || 3,
+        feedback: step.feedback,
+        attempts: 0,
+        correct: false,
+      },
+    });
   }
 
   async updateStepFeedback(
     stepId: string,
     feedback: string
   ): Promise<AssessmentStep> {
+    const session = await this.getSession();
     try {
       return await prisma.assessmentStep.update({
         where: { id: stepId },
@@ -562,8 +559,8 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async getNextIncompleteStep(): Promise<AssessmentStep | null> {
+    const session = await this.getSession();
     try {
-      const session = await this.getSession();
       const assessment = await prisma.assessmentLesson.findUnique({
         where: { userId: session.user.id },
         include: {
@@ -597,122 +594,112 @@ export class OnboardingRepository implements IOnboardingRepository {
       correct: boolean;
     }
   ): Promise<AssessmentStep> {
-    try {
-      const session = await this.getSession();
+    const session = await this.getSession();
 
-      // First verify this assessment belongs to the current user
-      const assessment = await prisma.assessmentLesson.findFirst({
-        where: {
-          id: lessonId,
-          userId: session.user.id,
-        },
-        include: {
-          steps: true,
-        },
-      });
+    // First verify this assessment belongs to the current user
+    const assessment = await prisma.assessmentLesson.findFirst({
+      where: {
+        id: lessonId,
+        userId: session.user.id,
+      },
+      include: {
+        steps: true,
+      },
+    });
 
-      if (!assessment) {
-        throw new Error('Assessment lesson not found or unauthorized');
-      }
-
-      // Find the step
-      const step = assessment.steps.find((s) => s.id === stepId);
-      if (!step) {
-        throw new Error('Step not found in the assessment');
-      }
-      logger.info('existingStep in repo', { step })
-      // 2. Get existing response history
-      let responseHistory: string[] = [];
-      try {
-        responseHistory = step.userResponseHistory
-          ? JSON.parse(step.userResponseHistory as string)
-          : [];
-      } catch (e) {
-        logger.error('Error parsing response history', { error: e });
-        responseHistory = [];
-      }
-      responseHistory.push(data.userResponse);
-
-      // Update the step with the attempt data
-      return await prisma.assessmentStep.update({
-        where: { id: stepId },
-        data: {
-          userResponse: data.userResponse,
-          userResponseHistory: JSON.stringify(responseHistory),
-          attempts: { increment: 1 },
-          correct: data.correct,
-          lastAttemptAt: new Date(),
-        },
-      });
-    } catch (error) {
-      logger.error('Error recording assessment step attempt:', error);
-      throw error;
+    if (!assessment) {
+      throw new Error('Assessment lesson not found or unauthorized');
     }
+
+    // Find the step
+    const step = assessment.steps.find((s) => s.id === stepId);
+    if (!step) {
+      throw new Error('Step not found in the assessment');
+    }
+    logger.info('existingStep in repo', { step })
+    // 2. Get existing response history
+    let responseHistory: string[] = [];
+    try {
+      responseHistory = step.userResponseHistory
+        ? JSON.parse(step.userResponseHistory as string)
+        : [];
+    } catch (e) {
+      logger.error('Error parsing response history', { error: e });
+      responseHistory = [];
+    }
+    responseHistory.push(data.userResponse);
+
+    // Update the step with the attempt data
+    return await prisma.assessmentStep.update({
+      where: { id: stepId },
+      data: {
+        userResponse: data.userResponse,
+        userResponseHistory: JSON.stringify(responseHistory),
+        attempts: { increment: 1 },
+        correct: data.correct,
+        lastAttemptAt: new Date(),
+      },
+    });
   }
 
   async updateOnboardingAssessmentLesson(lessonId: string, lessonData: Partial<AssessmentLesson>): Promise<AssessmentLesson> {
-    try {
-      const session = await this.getSession();
+    const session = await this.getSession();
 
-      // First verify this assessment belongs to the current user
-      const assessment = await prisma.assessmentLesson.findUnique({
-        where: { id: lessonId },
-        include: {
-          steps: {
-            orderBy: {
-              stepNumber: 'asc',
-            },
+    // First verify this assessment belongs to the current user
+    const assessment = await prisma.assessmentLesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        steps: {
+          orderBy: {
+            stepNumber: 'asc',
           },
-          audioMetrics: true
         },
-      });
+        audioMetrics: true
+      },
+    });
 
-      if (!assessment) {
-        throw new Error('Assessment lesson not found');
-      }
-
-      if (assessment.userId !== session.user.id) {
-        throw new Error('Unauthorized: You cannot update this assessment');
-      }
-
-      // Extract the data to update
-      const dataToUpdate: any = {};
-      
-      // Only include fields that are allowed to be updated
-      if (lessonData.completed !== undefined) dataToUpdate.completed = lessonData.completed;
-      if (lessonData.description !== undefined) dataToUpdate.description = lessonData.description;
-      if (lessonData.sourceLanguage !== undefined) dataToUpdate.sourceLanguage = lessonData.sourceLanguage;
-      if (lessonData.targetLanguage !== undefined) dataToUpdate.targetLanguage = lessonData.targetLanguage;
-      if (lessonData.metrics !== undefined) dataToUpdate.metrics = lessonData.metrics;
-      if (lessonData.proposedTopics !== undefined) dataToUpdate.proposedTopics = lessonData.proposedTopics;
-      if (lessonData.summary !== undefined) dataToUpdate.summary = lessonData.summary;
-      if (lessonData.sessionRecordingUrl !== undefined) dataToUpdate.sessionRecordingUrl = lessonData.sessionRecordingUrl;
-
-      // Handle audio metrics separately if included in the update
-      if (lessonData.audioMetrics) {
-        await this.updateAssessmentAudioMetrics(lessonId, assessment.audioMetrics, lessonData.audioMetrics);
-      }
-
-      // Update the assessment lesson
-      const updatedAssessment = await prisma.assessmentLesson.update({
-        where: { id: lessonId },
-        data: dataToUpdate,
-        include: {
-          steps: {
-            orderBy: {
-              stepNumber: 'asc',
-            },
-          },
-          audioMetrics: true
-        },
-      });
-      
-      // Transform to application model
-      return this.mapPrismaAssessmentToAppModel(updatedAssessment);
-    } catch (error) {
-      logger.error('Error updating assessment lesson:', error);
-      throw error;
+    if (!assessment) {
+      throw new Error('Assessment lesson not found');
     }
+
+    if (assessment.userId !== session.user.id) {
+      throw new Error('Unauthorized: You cannot update this assessment');
+    }
+
+    // Extract the data to update
+    const dataToUpdate: any = {};
+    
+    // Only include fields that are allowed to be updated
+    if (lessonData.completed !== undefined) dataToUpdate.completed = lessonData.completed;
+    if (lessonData.description !== undefined) dataToUpdate.description = lessonData.description;
+    if (lessonData.sourceLanguage !== undefined) dataToUpdate.sourceLanguage = lessonData.sourceLanguage;
+    if (lessonData.targetLanguage !== undefined) dataToUpdate.targetLanguage = lessonData.targetLanguage;
+    if (lessonData.metrics !== undefined) dataToUpdate.metrics = lessonData.metrics;
+    if (lessonData.proposedTopics !== undefined) dataToUpdate.proposedTopics = lessonData.proposedTopics;
+    if (lessonData.summary !== undefined) dataToUpdate.summary = lessonData.summary;
+    if (lessonData.sessionRecordingUrl !== undefined) dataToUpdate.sessionRecordingUrl = lessonData.sessionRecordingUrl;
+
+    // Handle audio metrics separately if included in the update
+    if (lessonData.audioMetrics) {
+      await this.updateAssessmentAudioMetrics(lessonId, assessment.audioMetrics, lessonData.audioMetrics);
+    }
+
+    // Update the assessment lesson
+    const updatedAssessment = await prisma.assessmentLesson.update({
+      where: { id: lessonId },
+      data: dataToUpdate,
+      include: {
+        steps: {
+          orderBy: {
+            stepNumber: 'asc',
+          },
+        },
+        audioMetrics: true
+      },
+    });
+    
+    // Transform to application model
+    return this.mapPrismaAssessmentToAppModel(updatedAssessment);
   }
 
   /**
@@ -723,6 +710,7 @@ export class OnboardingRepository implements IOnboardingRepository {
     existingMetrics: any | null,
     newMetrics: AudioMetrics
   ): Promise<void> {
+    const session = await this.getSession();
     try {
       // Create data object for Prisma with proper JSON handling
       const metricsData = {

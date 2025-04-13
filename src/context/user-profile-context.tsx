@@ -9,8 +9,10 @@ import {
   createUserProfileAction,
   updateUserProfileAction,
 } from '@/lib/server-actions/user-actions';
+import Cookies from 'js-cookie';
 
 import { SubscriptionStatus } from '@prisma/client'; // Import if needed for default values
+import { getAccessToken } from '@/utils/get-access-token-cookie.util';
 
 interface UserProfileContextType {
   profile: UserProfileModel | null;
@@ -49,9 +51,7 @@ export function UserProfileProvider({
   const fetchUserProfile = async (userId: string) => {
     setLoading(true);
     try {
-      // here we should check if it exists if not create a new one
-      logger.info('get user profile in context', userId);
-      let userProfile = await getUserProfileAction(userId);
+      let userProfile = await getUserProfileAction(userId, getAccessToken());
       logger.info('get user profile in context', userProfile);
       if (!userProfile && user?.email) {
         userProfile = await saveInitialProfile(user?.email);
@@ -83,7 +83,7 @@ export function UserProfileProvider({
         onboardingCompleted: false,
       };
 
-      const userProfile = await createUserProfileAction(initialProfile);
+      const userProfile = await createUserProfileAction(initialProfile, getAccessToken());
       return userProfile;
     } catch (error) {
       logger.error('Error creating user profile:', error);
@@ -110,7 +110,7 @@ export function UserProfileProvider({
         setLoading(false);
         return; // Nothing to update
       }
-      const updatedProfile = await updateUserProfileAction(user.id, updateData);
+      const updatedProfile = await updateUserProfileAction(user.id, updateData, getAccessToken());
       if (updatedProfile) {
         setProfile(updatedProfile);
       } else {

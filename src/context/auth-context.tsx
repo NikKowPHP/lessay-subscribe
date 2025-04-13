@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import { MockAuthService } from '@/services/mock-auth-service.service'
 import logger from '@/utils/logger'
 import { UserProfileProvider } from '@/context/user-profile-context'
+import Cookies from 'js-cookie'
+import { clearAccessToken, setAccessToken } from '@/utils/get-access-token-cookie.util'
 
 interface AuthContextType {
   user: User | null
@@ -38,12 +40,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
+
+
+
   useEffect(() => {
 
     authService.getSession().then((session) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      logger.log('session in auth context', session)
+      
+      // Store access token in cookies when session changes
+      if (session?.access_token) {
+        setAccessToken(session.access_token)
+      }
     })
       .catch((error) => {
         setError(error instanceof Error ? error.message : 'Session error occurred')
@@ -55,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
-
+        logger.log('session in auth context', session)
         const currentPath = window.location.pathname
 
         if (event === 'SIGNED_OUT' && currentPath.startsWith('/app')) {
@@ -95,17 +106,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user, session } = await authService.register(email, password)
       setUser(user)
       setSession(session)
-
-      // if (!user?.email) return;
-
-
-      // set initial profile on register
-      // saveInitialProfile(user?.email);
-      // user context handles automatically the user
-
+      setAccessToken(session?.access_token ?? '')
 
       if (user) {
-        router.push('/app/onboarding') // Redirect to onboarding instead of lessons
+        router.push('/app/onboarding')
       }
     } catch (error) {
       const message = error instanceof AuthError
@@ -123,7 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     try {
       await authService.loginWithGoogle()
-      // No need to set user/session here as it will be handled by the auth state change
     } catch (error) {
       const message = error instanceof AuthError
         ? error.message
@@ -141,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authService.logout()
       setUser(null)
       setSession(null)
+      clearAccessToken()
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Logout failed')
     }

@@ -7,21 +7,15 @@ import { UserProfileModel } from '@/models/AppAllModels.model';
 import logger from '@/utils/logger';
 import { revalidatePath } from 'next/cache';
 
-function createUserService() {
-  const authService = getAuthServiceBasedOnEnvironment();
-  const repository = new UserRepository(authService);
+function createUserService(accessToken?: string) {
+  const repository = new UserRepository(accessToken);
   return new UserService(repository);
 }
 
-export async function getUserProfileAction(userId: string): Promise<UserProfileModel | null> {
+export async function getUserProfileAction(userId: string, accessToken?: string): Promise<UserProfileModel | null> {
   try {
-    // Security check: Ensure the requested profile belongs to the logged-in user
-    const currentUserId = await getCurrentUserId();
-    if (userId !== currentUserId) {
-      logger.warn(`Unauthorized attempt to get profile. Logged in user: ${currentUserId}, Requested user: ${userId}`);
-      throw new Error('Unauthorized');
-    }
-    const userService = createUserService();
+    const userService = createUserService(accessToken);
+    logger.log('userService in getUserProfileAction', userService)
     return await userService.getUserProfile(userId);
   } catch (error) {
     logger.error('Error in getUserProfileAction:', { error: (error as Error).message });
@@ -33,9 +27,9 @@ export async function getUserProfileAction(userId: string): Promise<UserProfileM
   }
 }
 
-export async function createUserProfileAction(profile: Partial<UserProfileModel>): Promise<UserProfileModel | null> {
+export async function createUserProfileAction(profile: Partial<UserProfileModel>, accessToken?: string): Promise<UserProfileModel | null> {
   try {
-    const userService = createUserService();
+    const userService = createUserService(accessToken);
     return await userService.createUserProfile(profile);
   } catch (error) {
     logger.error('Error in createUserProfileAction:', error);
@@ -43,15 +37,11 @@ export async function createUserProfileAction(profile: Partial<UserProfileModel>
   }
 }
 
-export async function updateUserProfileAction(userId: string, profile: Partial<UserProfileModel>): Promise<UserProfileModel | null> {
+export async function updateUserProfileAction(userId: string, profile: Partial<UserProfileModel>, accessToken?: string): Promise<UserProfileModel | null> {
   try {
     // Security check: Ensure the user is updating their own profile
-    const currentUserId = await getCurrentUserId();
-    if (userId !== currentUserId) {
-      logger.warn(`Unauthorized attempt to update profile. Logged in user: ${currentUserId}, Target user: ${userId}`);
-      throw new Error('Unauthorized');
-    }
-    const userService = createUserService();
+  
+    const userService = createUserService(accessToken);
     return await userService.updateUserProfile(userId, profile);
   } catch (error) {
     logger.error('Error in updateUserProfileAction:', { error: (error as Error).message });
@@ -59,13 +49,17 @@ export async function updateUserProfileAction(userId: string, profile: Partial<U
     throw error;
   }
 }
-export async function deleteUserProfileAction(): Promise<{ success: boolean; error?: string }> {
-  let userId: string | null = null;
+export async function deleteUserProfileAction(userId: string, accessToken?: string): Promise<{ success: boolean; error?: string }> {
   try {
-    userId = await getCurrentUserId(); // Get the ID of the logged-in user making the request
-    logger.warn(`deleteUserProfileAction: Initiating profile deletion for user: ${userId}`);
 
-    const userService = createUserService();
+    const userService = createUserService(accessToken);
+    const authService = getAuthServiceBasedOnEnvironment(accessToken);
+    const session = await authService.getSession();
+    logger.log('session in deleteUserProfileAction', session)
+    if (!session?.user?.id) {
+      throw new Error('Authentication required.');
+    }
+    userId = session.user.id;
     // Call the service layer method to delete the user (handles DB + Auth)
     await userService.deleteUserProfile(userId);
 
@@ -93,11 +87,3 @@ export async function deleteUserProfileAction(): Promise<{ success: boolean; err
   }
 }
 
-async function getCurrentUserId(): Promise<string> {
-  const authService = getAuthServiceBasedOnEnvironment();
-  const session = await authService.getSession();
-  if (!session?.user?.id) {
-    throw new Error('Authentication required.');
-  }
-  return session.user.id;
-}

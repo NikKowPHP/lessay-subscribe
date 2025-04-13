@@ -110,11 +110,7 @@ export default class LessonService {
 
   async completeLesson(
     lessonId: string,
-    performanceMetrics?: {
-      accuracy?: number;
-      pronunciationScore?: number;
-      errorPatterns?: string[];
-    }
+   
   ): Promise<LessonModel> {
 
 
@@ -125,11 +121,6 @@ export default class LessonService {
       throw new Error(
         `Cannot complete lesson: Lesson with ID ${lessonId} not found`
       );
-    }
-
-    // If metrics were provided externally, use those
-    if (performanceMetrics) {
-      return this.lessonRepository.completeLesson(lessonId, performanceMetrics);
     }
 
     try {

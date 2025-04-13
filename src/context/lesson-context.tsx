@@ -23,6 +23,8 @@ import {
 import toast from 'react-hot-toast';
 import { useUpload } from '@/hooks/use-upload';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
+import Cookies from 'js-cookie';
+import { getAccessToken } from '@/utils/get-access-token-cookie.util';
 
 interface LessonContextType {
   currentLesson: LessonModel | null;
@@ -95,7 +97,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
 
   const getLessons = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const fetchedLessons = await getLessonsAction();
+      const fetchedLessons = await getLessonsAction(getAccessToken());
       setLessons(fetchedLessons);
       return fetchedLessons;
     });
@@ -103,7 +105,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
 
   const getLessonById = async (lessonId: string) => {
     return withLoadingAndErrorHandling(async () => {
-      const lesson = await getLessonByIdAction(lessonId);
+      const lesson = await getLessonByIdAction(lessonId, getAccessToken());
       if (lesson) {
         setCurrentLesson(lesson);
       }
@@ -117,7 +119,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     steps: LessonStep[];
   }) => {
     return withLoadingAndErrorHandling(async () => {
-      const newLesson = await createLessonAction(lessonData);
+      const newLesson = await createLessonAction(lessonData, getAccessToken());
       setLessons((prevLessons) => [newLesson, ...prevLessons]);
       setCurrentLesson(newLesson);
       return newLesson;
@@ -129,7 +131,11 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     lessonData: Partial<LessonModel>
   ) => {
     return withLoadingAndErrorHandling(async () => {
-      const updatedLesson = await updateLessonAction(lessonId, lessonData);
+      const updatedLesson = await updateLessonAction(
+        lessonId, 
+        lessonData, 
+        getAccessToken()
+      );
       setLessons((prevLessons) =>
         prevLessons.map((lesson) =>
           lesson.id === lessonId ? updatedLesson : lesson
@@ -147,9 +153,10 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     sessionRecording: Blob | null
   ) => {
     return withLoadingAndErrorHandling(async () => {
-      const completedLesson = await completeLessonAction(lessonId);
-
-      // const completedLesson = await completeLessonAction(lessonId, sessionRecording)
+      const completedLesson = await completeLessonAction(
+        lessonId, 
+        getAccessToken()
+      );
       setLessons((prevLessons) =>
         prevLessons.map((lesson) =>
           lesson.id === lessonId ? completedLesson : lesson
@@ -158,18 +165,13 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       if (currentLesson?.id === lessonId) {
         setCurrentLesson(completedLesson);
       }
-
-      // check and generate new lessons was here. 
-
-
-
       return completedLesson;
     });
   };
 
   const deleteLesson = async (lessonId: string) => {
     return withLoadingAndErrorHandling(async () => {
-      await deleteLessonAction(lessonId);
+      await deleteLessonAction(lessonId, getAccessToken());
       setLessons((prevLessons) =>
         prevLessons.filter((lesson) => lesson.id !== lessonId)
       );
@@ -183,21 +185,14 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     lessonId: string,
     stepId: string,
     userResponse: string
-    // correct: boolean,
-    // errorPatterns?: string[]
   ) => {
     return withLoadingAndErrorHandling(async () => {
-      logger.info('recordStepAttempt in context', {
-        lessonId,
-        stepId,
-        userResponse,
-      });
       const updatedStep = await recordStepAttemptAction(
         lessonId,
         stepId,
-        userResponse
+        userResponse,
+        getAccessToken()
       );
-      logger.info('recordStepAttempt after updation', { updatedStep });
       // Optionally update the current lesson's step response locally:
       setCurrentLesson((prev) => {
         if (!prev) return prev;
@@ -212,7 +207,11 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
 
   const getStepHistory = async (lessonId: string, stepId: string) => {
     return withLoadingAndErrorHandling(async () => {
-      const history = await getStepHistoryAction(lessonId, stepId);
+      const history = await getStepHistoryAction(
+        lessonId, 
+        stepId, 
+        getAccessToken()
+      );
       return history;
     });
   };
@@ -221,14 +220,9 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
 
   // Add new method to check if all lessons are complete and generate new ones
   const checkAndGenerateNewLessons = async () => {
-
     try {
-
-      const newLessons = await checkAndGenerateNewLessonsAction();
-      // Update local state with new lessons
+      const newLessons = await checkAndGenerateNewLessonsAction(getAccessToken());
       setLessons((prevLessons) => [...newLessons, ...prevLessons]);
-
-      // Notify user
       toast.success('New lessons generated based on your progress!');
     } catch (error) {
       const message =
@@ -253,11 +247,13 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       return lesson;
     }
     if (!lesson.sessionRecordingUrl) {
-
       const uploadedAudioUrl = await uploadFilesToStorage(sessionRecording);
       lesson.sessionRecordingUrl = uploadedAudioUrl;
-  
-      updateLessonAction(lesson.id, { sessionRecordingUrl: uploadedAudioUrl });
+      updateLessonAction(
+        lesson.id, 
+        { sessionRecordingUrl: uploadedAudioUrl }, 
+        getAccessToken()
+      );
     }
     logger.info('processLessonRecording in context', {
       sessionRecording,
@@ -267,9 +263,10 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     });
     const lessonWithAudioMetrics = await processLessonRecordingAction(
       sessionRecording,
-      recordingTime,
       recordingSize,
-      lesson
+      recordingTime,
+      lesson,
+      getAccessToken()
     );
     logger.info('lessonWithAudioMetrics', { lessonWithAudioMetrics });
     return lessonWithAudioMetrics;
