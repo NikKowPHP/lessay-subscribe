@@ -14,7 +14,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=false
-      - NODE_ENV=production
+      - NODE_ENV=development
       - CHOKIDAR_INTERVAL=300
     # depends_on:
     #   - db
@@ -27,11 +27,11 @@ services:
       - ./src/app/globals.css:/app/src/app/globals.css # Mount globals.css
       - ./tsconfig.json:/app/tsconfig.json # Mount tsconfig.json
       - ./prisma:/app/prisma # Mount prisma
-      - ./node_modules:/app/node_modules
+      # - ./node_modules:/app/node_modules
       - ./.env:/app/.env
     restart: unless-stopped
-    networks:
-      - web-network
+    # networks:
+    #   - web-network
     command: sh -c "npm rebuild && npm run dev"
 
   # db:
@@ -47,9 +47,9 @@ services:
   #   networks:
   #     - web-network
 
-networks:
-  web-network:
-    driver: bridge
+# networks:
+#   web-network:
+#     driver: bridge
 
 # volumes:
 #   postgres-data:
