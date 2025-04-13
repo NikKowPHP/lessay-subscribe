@@ -2,6 +2,7 @@ import { AuthChangeEvent, Session, User } from '@supabase/supabase-js'
 import { MockAuthService } from './mock-auth-service.service'
 import logger from '@/utils/logger'
 import { createClient } from '@supabase/supabase-js'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 
 export interface IAuthService {
@@ -41,12 +42,20 @@ if (supabaseServiceRoleKey && typeof window === 'undefined') { // Ensure server-
 
 
 export class SupabaseAuthService implements IAuthService {
-  private client = createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
-  })
+  private client: SupabaseClient;
+
+  constructor(jwt?: string) {
+    this.client = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      },
+      global: jwt ? {
+        headers: { Authorization: `Bearer ${jwt}` }
+      } : {}
+    });
+  }
 
   async getSession(): Promise<Session | null> {
     const { data: { session }, error } = await this.client.auth.getSession()

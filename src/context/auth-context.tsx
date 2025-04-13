@@ -11,6 +11,7 @@ import {
   serverLogout,
   serverGetSession
 } from '@/lib/server-actions/auth-actions'
+import Cookies from 'js-cookie'
 
 interface AuthContextType {
   user: User | null
@@ -22,6 +23,8 @@ interface AuthContextType {
   logout: () => Promise<void>
   clearError: () => void
 }
+
+export const ACCESS_TOKEN_COOKIE_NAME = 'sb-access-token'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -39,6 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session) {
           setSession(session)
           setUser(session.user)
+          Cookies.set(ACCESS_TOKEN_COOKIE_NAME, session.access_token, {
+            expires: session.expires_in / 86400,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+          })
         }
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Session error')
@@ -53,12 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      const { user, error } = await serverLogin(email, password)
-      if (error) throw new Error(error)
-      if (!user) throw new Error('User not found')
+      const { user, session, error } = await serverLogin(email, password)
+      if (error || !user || !session) throw new Error(error || 'Authentication failed')
       
       setUser(user)
-      // onboarding context will redirect to lessons
+      setSession(session)
+      Cookies.set(ACCESS_TOKEN_COOKIE_NAME, session.access_token, {
+        expires: session.expires_in / 86400,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      })
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Login failed')
     } finally {
@@ -70,11 +82,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      const { user, error } = await serverRegister(email, password)
+      const { user, session, error } = await serverRegister(email, password)
       if (error) throw new Error(error)
-      if (!user) throw new Error('User not found')
+      if (!user || !session) throw new Error('User not found')
       
       setUser(user)
+      setSession(session)
+      Cookies.set(ACCESS_TOKEN_COOKIE_NAME, session.access_token, {
+        expires: session.expires_in / 86400,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      })
       router.push('/app/onboarding')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Registration failed')
@@ -90,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await serverLogout()
       setUser(null)
       setSession(null)
+      Cookies.remove(ACCESS_TOKEN_COOKIE_NAME)
       router.push('/app/login')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Logout failed')
