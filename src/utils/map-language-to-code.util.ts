@@ -8,6 +8,11 @@ export const mapLanguageToCode = (language: string): string => {
     'chinese': 'zh-CN',
     'japanese': 'ja-JP',
     'korean': 'ko-KR',
+    'polish': 'pl-PL',
+    'portuguese': 'pt-PT',
+    'russian': 'ru-RU',
+    'swedish': 'sv-SE',
+    'turkish': 'tr-TR',
     // Add more mappings as needed
   };
 
