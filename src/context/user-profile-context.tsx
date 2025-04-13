@@ -19,7 +19,7 @@ interface UserProfileContextType {
   loading: boolean;
   error: string | null;
   updateProfile: (data: Partial<UserProfileModel>) => Promise<void>;
-  saveInitialProfile: (email: string) => Promise<UserProfileModel | null>;
+  saveInitialProfile: (email: string, accessToken: string) => Promise<UserProfileModel | null>;
   clearError: () => void;
   hasActiveSubscription: () => boolean;
 
@@ -34,27 +34,29 @@ export function UserProfileProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [profile, setProfile] = useState<UserProfileModel | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load user profile when auth user changes
   useEffect(() => {
-    if (user?.id && user.email) {
+    if (user?.id && session) {
       fetchUserProfile(user.id);
     } else {
       setProfile(null);
     }
-  }, [user]);
+  }, [user, session]);
 
   const fetchUserProfile = async (userId: string) => {
     setLoading(true);
     try {
-      let userProfile = await getUserProfileAction(userId);
+      const token = Cookies.get('sb-access-token');
+      if (!token) throw new Error('Authentication required');
+      
+      let userProfile = await getUserProfileAction(userId, token);
       logger.info('get user profile in context', userProfile);
       if (!userProfile && user?.email) {
-        userProfile = await saveInitialProfile(user?.email);
+        userProfile = await saveInitialProfile(user?.email, token);
       }
       setProfile(userProfile);
     } catch (error) {
@@ -68,7 +70,8 @@ export function UserProfileProvider({
   };
 
   const saveInitialProfile = async (
-    email: string
+    email: string,
+    accessToken: string
   ): Promise<UserProfileModel | null> => {
     if (!user?.id) {
       setError('User not authenticated');
@@ -83,7 +86,7 @@ export function UserProfileProvider({
         onboardingCompleted: false,
       };
 
-      const userProfile = await createUserProfileAction(initialProfile );
+      const userProfile = await createUserProfileAction(initialProfile, accessToken);
       return userProfile;
     } catch (error) {
       logger.error('Error creating user profile:', error);
@@ -104,13 +107,10 @@ export function UserProfileProvider({
 
     setLoading(true);
     try {
-      const { subscriptionStatus, subscriptionEndDate, ...updateData } = data;
-      if (Object.keys(updateData).length === 0) {
-        logger.warn("updateProfile called with no updatable fields.");
-        setLoading(false);
-        return; // Nothing to update
-      }
-      const updatedProfile = await updateUserProfileAction(user.id, updateData);
+      const token = Cookies.get('sb-access-token');
+      if (!token || !user?.id) throw new Error('Authentication required');
+      
+      const updatedProfile = await updateUserProfileAction(user.id, data, token);
       if (updatedProfile) {
         setProfile(updatedProfile);
       } else {

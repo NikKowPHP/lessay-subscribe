@@ -8,19 +8,9 @@ import logger from '@/utils/logger';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 
-async function getAccessTokenFromRequest() {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('sb-access-token')?.value;
-  if (!accessToken) {
-    logger.error('No access token found in cookies');
-    throw new Error('Authentication required');
-  }
-  return accessToken;
-}
 
-async function createUserService(): Promise<UserService> {
+async function createUserService(accessToken: string): Promise<UserService> {
   try {
-    const accessToken = await getAccessTokenFromRequest();
     const authService = getAuthServiceBasedOnEnvironment(accessToken);
     return new UserService(new UserRepository(authService));
   } catch (error) {
@@ -29,10 +19,9 @@ async function createUserService(): Promise<UserService> {
   }
 }
 
-export async function getUserProfileAction(userId: string): Promise<UserProfileModel | null> {
-
+export async function getUserProfileAction(userId: string, accessToken: string): Promise<UserProfileModel | null> {
   try {
-    const userService = await createUserService();
+    const userService = await createUserService(accessToken);
     return await userService.getUserProfile(userId);
   } catch (error) {
     logger.error('Error fetching user profile:', error);
@@ -40,11 +29,9 @@ export async function getUserProfileAction(userId: string): Promise<UserProfileM
   }
 }
 
-
-
-export async function createUserProfileAction(profile: Partial<UserProfileModel>): Promise<UserProfileModel | null> {
+export async function createUserProfileAction(profile: Partial<UserProfileModel>, accessToken: string): Promise<UserProfileModel | null> {
   try {
-    const userService = await createUserService();
+    const userService = await createUserService(accessToken);
     return await userService.createUserProfile(profile);
   } catch (error) {
     logger.error('Error in createUserProfileAction:', error);
@@ -52,22 +39,24 @@ export async function createUserProfileAction(profile: Partial<UserProfileModel>
   }
 }
 
-export async function updateUserProfileAction(userId: string, profile: Partial<UserProfileModel>): Promise<UserProfileModel | null> {
+export async function updateUserProfileAction(
+  userId: string,
+  profile: Partial<UserProfileModel>,
+  accessToken: string
+): Promise<UserProfileModel | null> {
   try {
-    const userService = await createUserService();
+    const userService = await createUserService(accessToken);
     return await userService.updateUserProfile(userId, profile);
-
   } catch (error) {
-    logger.error('Error in updateUserProfileAction:', { error: (error as Error).message });
-    // Re-throw to indicate failure
+    logger.error('Error in updateUserProfileAction:', error);
     throw error;
   }
 }
-export async function deleteUserProfileAction(userId: string): Promise<{ success: boolean; error?: string }> {
+
+export async function deleteUserProfileAction(userId: string, accessToken: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const userService = await createUserService();
-    
-    
+    const userService = await createUserService(accessToken);
+
     await userService.deleteUserProfile(userId);
 
     logger.warn(`deleteUserProfileAction: Successfully completed profile deletion for user: ${userId}`);

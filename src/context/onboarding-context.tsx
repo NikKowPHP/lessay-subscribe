@@ -22,7 +22,6 @@ import { useUpload } from '@/hooks/use-upload';
 import { useAuth } from './auth-context';
 import { useUserProfile } from './user-profile-context';
 import Cookies from 'js-cookie';
-import { getAccessToken } from '@/utils/get-access-token-cookie.util';
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;
@@ -96,7 +95,10 @@ export function OnboardingProvider({
 
   const checkOnboardingStatus = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const status = await getStatusAction();
+      const token = Cookies.get('sb-access-token');
+      if (!token) throw new Error('Authentication required');
+      
+      const status = await getStatusAction(token);
       setIsOnboardingComplete(status);
       return status;
     });
@@ -104,14 +106,20 @@ export function OnboardingProvider({
 
   const startOnboarding = async () => {
     return withLoadingAndErrorHandling(async () => {
-      await createOnboardingAction();
+      const token = Cookies.get('sb-access-token');
+      if (!token) throw new Error('Authentication required');
+      
+      await createOnboardingAction(token);
       setIsOnboardingComplete(false);
     });
   };
 
   const markStepComplete = async (step: string, formData: any) => {
     return withLoadingAndErrorHandling(async () => {
-      await updateOnboardingAction(step, formData);
+      const token = Cookies.get('sb-access-token');
+      if (!token) throw new Error('Authentication required');
+      
+      await updateOnboardingAction(step, formData, token);
       await checkOnboardingStatus();
     });
   };
@@ -120,22 +128,33 @@ export function OnboardingProvider({
 
   const getAssessmentLesson = async () => {
     return withLoadingAndErrorHandling(async () => {
-      return await getAssessmentLessonAction();
+      const token = Cookies.get('sb-access-token');
+      if (!token) throw new Error('Authentication required');
+      
+      return await getAssessmentLessonAction(token);
     });
   };
+  const accessToken = () => {
+    const token = Cookies.get('sb-access-token');
+    if(!token) throw new Error('Authentication required');
+    return token;
+  }
 
   const completeAssessmentLesson = async (
     lessonId: string,
     userResponse: string
   ) => {
     return withLoadingAndErrorHandling(async () => {
-      return await completeAssessmentLessonAction(lessonId, userResponse);
+      const token = accessToken();
+      
+      return await completeAssessmentLessonAction(lessonId, userResponse, token);
     });
   };
 
   const markOnboardingAsCompleteAndGenerateLessons = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const completedOnboarding = await markOnboardingCompleteAndGenerateInitialLessonsAction();
+      const token = accessToken();
+      const completedOnboarding = await markOnboardingCompleteAndGenerateInitialLessonsAction(token);
       setOnboarding(completedOnboarding);
       toast.success('Onboarding completed! Lessons generated!');
     });
@@ -143,7 +162,8 @@ export function OnboardingProvider({
 
   const getOnboarding = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const result = await getOnboardingAction();
+      const token = accessToken();
+      const result = await getOnboardingAction(token);
       setOnboarding(result);
       return result;
     });
@@ -155,10 +175,12 @@ export function OnboardingProvider({
     userResponse: string
   ) => {
     return withLoadingAndErrorHandling(async () => {
+      const token = accessToken();
       return await recordAssessmentStepAttemptAction(
         lessonId,
         stepId,
-        userResponse
+        userResponse,
+        token
       );
     });
   };
@@ -177,6 +199,7 @@ export function OnboardingProvider({
     if (!sessionRecording) {
       throw new Error('No session recording provided');
     }
+    const token = accessToken();
     if (lesson.audioMetrics) {
       return lesson;
     }
@@ -185,14 +208,16 @@ export function OnboardingProvider({
       lesson.sessionRecordingUrl = uploadedAudioUrl;
       await updateOnboardingLessonAction(
         lesson.id,
-        { sessionRecordingUrl: uploadedAudioUrl }
+        { sessionRecordingUrl: uploadedAudioUrl },
+        token
       );
     }
     const lessonWithAudioMetrics = await processAssessmentLessonRecordingAction(
       sessionRecording,
       lesson,
       recordingSize,
-      recordingTime
+      recordingTime,
+      token
     );
     logger.info('lessonWithAudioMetrics', { lessonWithAudioMetrics });
     return lessonWithAudioMetrics;

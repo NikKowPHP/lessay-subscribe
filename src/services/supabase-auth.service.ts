@@ -44,26 +44,26 @@ if (supabaseServiceRoleKey && typeof window === 'undefined') { // Ensure server-
 export class SupabaseAuthService implements IAuthService {
   private client: SupabaseClient;
 
-  constructor(jwt?: string) {
+  constructor(jwt: string) {
     this.client = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false
       },
-      global: jwt ? {
+      global: {
         headers: { Authorization: `Bearer ${jwt}` }
-      } : {}
+      }
     });
   }
 
   async getSession(): Promise<Session | null> {
-    const { data: { session }, error } = await this.client.auth.getSession()
-    if (error) {
-      logger.error('Error getting session:', error)
-      throw error
+    try {
+      const { data: { session }, error } = await this.client.auth.getSession();
+      return error ? null : session;
+    } catch (error) {
+      return null;
     }
-    return session
   }
 
   async loginWithPassword(email: string, password: string) {
@@ -136,5 +136,5 @@ export function getAuthServiceBasedOnEnvironment(accessToken?: string) {
     return mockAuthService
   }
 
-  return new SupabaseAuthService()
+  return new SupabaseAuthService(accessToken!)
 }
