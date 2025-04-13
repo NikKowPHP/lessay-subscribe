@@ -2,34 +2,49 @@
 
 import UserService from '@/services/user.service';
 import { UserRepository } from '@/repositories/user.repository';
-import { getAuthServiceBasedOnEnvironment } from '@/services/supabase-auth.service';
+import { getAuthServiceBasedOnEnvironment, IAuthService } from '@/services/supabase-auth.service';
 import { UserProfileModel } from '@/models/AppAllModels.model';
 import logger from '@/utils/logger';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 
-function createUserService(accessToken?: string) {
-  const repository = new UserRepository(accessToken);
-  return new UserService(repository);
+async function getAccessTokenFromRequest() {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('sb-access-token')?.value;
+  if (!accessToken) {
+    logger.error('No access token found in cookies');
+    throw new Error('Authentication required');
+  }
+  return accessToken;
 }
 
-export async function getUserProfileAction(userId: string, accessToken?: string): Promise<UserProfileModel | null> {
+async function createUserService(): Promise<UserService> {
   try {
-    const userService = createUserService(accessToken);
-    logger.log('userService in getUserProfileAction', userService)
-    return await userService.getUserProfile(userId);
+    const accessToken = await getAccessTokenFromRequest();
+    const authService = getAuthServiceBasedOnEnvironment(accessToken);
+    return new UserService(new UserRepository(authService));
   } catch (error) {
-    logger.error('Error in getUserProfileAction:', { error: (error as Error).message });
-    // Don't return null for auth errors, let the error propagate
-    if ((error as Error).message.includes('Unauthorized') || (error as Error).message.includes('Authentication required')) {
-      throw error;
-    }
-    return null; // Return null for other fetch errors (e.g., user not found in DB)
+    logger.error('Error in createUserService:', error);
+    throw error;
   }
 }
 
-export async function createUserProfileAction(profile: Partial<UserProfileModel>, accessToken?: string): Promise<UserProfileModel | null> {
+export async function getUserProfileAction(userId: string): Promise<UserProfileModel | null> {
+
   try {
-    const userService = createUserService(accessToken);
+    const userService = await createUserService();
+    return await userService.getUserProfile(userId);
+  } catch (error) {
+    logger.error('Error fetching user profile:', error);
+    throw error;
+  }
+}
+
+
+
+export async function createUserProfileAction(profile: Partial<UserProfileModel>): Promise<UserProfileModel | null> {
+  try {
+    const userService = await createUserService();
     return await userService.createUserProfile(profile);
   } catch (error) {
     logger.error('Error in createUserProfileAction:', error);
@@ -37,30 +52,22 @@ export async function createUserProfileAction(profile: Partial<UserProfileModel>
   }
 }
 
-export async function updateUserProfileAction(userId: string, profile: Partial<UserProfileModel>, accessToken?: string): Promise<UserProfileModel | null> {
+export async function updateUserProfileAction(userId: string, profile: Partial<UserProfileModel>): Promise<UserProfileModel | null> {
   try {
-    // Security check: Ensure the user is updating their own profile
-  
-    const userService = createUserService(accessToken);
+    const userService = await createUserService();
     return await userService.updateUserProfile(userId, profile);
+
   } catch (error) {
     logger.error('Error in updateUserProfileAction:', { error: (error as Error).message });
     // Re-throw to indicate failure
     throw error;
   }
 }
-export async function deleteUserProfileAction(userId: string, accessToken?: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteUserProfileAction(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-
-    const userService = createUserService(accessToken);
-    const authService = getAuthServiceBasedOnEnvironment(accessToken);
-    const session = await authService.getSession();
-    logger.log('session in deleteUserProfileAction', session)
-    if (!session?.user?.id) {
-      throw new Error('Authentication required.');
-    }
-    userId = session.user.id;
-    // Call the service layer method to delete the user (handles DB + Auth)
+    const userService = await createUserService();
+    
+    
     await userService.deleteUserProfile(userId);
 
     logger.warn(`deleteUserProfileAction: Successfully completed profile deletion for user: ${userId}`);

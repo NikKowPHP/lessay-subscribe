@@ -17,29 +17,34 @@ export class UserRepository implements IUserRepository {
   private authService: IAuthService
   private adminAuthService: IAuthService | null = null;
 
-  constructor(accessToken?: string) {
-    this.authService = getAuthServiceBasedOnEnvironment(accessToken)
+  constructor(authService?: IAuthService) {
+    this.authService = authService || getAuthServiceBasedOnEnvironment();
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
       this.adminAuthService = getAuthServiceBasedOnEnvironment(); // Pass flag for admin
     }
   }
 
   async getSession() {
-    const session = await this.authService.getSession()
-    logger.log('session in user repository', session)
-    if (!session?.user?.id) {
-      throw new Error('Unauthorized')
+    try {
+      const session = await this.authService.getSession();
+      logger.info('Session in repository:', session);
+      
+      if (!session?.user?.id) {
+        logger.error('Session validation failed - no user ID');
+        return null;
+      }
+      return session;
+    } catch (error) {
+      logger.error('Session retrieval failed:', error);
+      return null;
     }
-    logger.info('session in user repository', session)
-    return session
   }
 
   async getUserProfile(userId: string): Promise<UserProfileModel | null> {
     try {
-      // First ensure the user is authorized to access this profile
       const session = await this.getSession()
-      if (session.user.id !== userId) {
-        throw new Error('Unauthorized to access this profile')
+      if (!session || session.user.id !== userId) {
+        return null
       }
 
       const user = await prisma.user.findUnique({
@@ -69,7 +74,7 @@ export class UserRepository implements IUserRepository {
       }
     } catch (error) {
       logger.error('Error fetching user profile:', error)
-      throw error
+      return null
     }
   }
 
@@ -79,7 +84,7 @@ export class UserRepository implements IUserRepository {
       // when session isn't fully established yet
       const session = await this.getSession()
       logger.info('session', session)
-      if (session.user.id !== profile.userId) {
+      if (session && session.user.id !== profile.userId) {
         throw new Error('Unauthorized to create this profile')
       }
 
@@ -155,7 +160,7 @@ export class UserRepository implements IUserRepository {
     try {
       // First ensure the user is authorized to update this profile
       const session = await this.getSession()
-      if (session.user.id !== userId) {
+      if (session && session.user.id !== userId) {
         throw new Error('Unauthorized to update this profile')
       }
 
@@ -221,7 +226,7 @@ export class UserRepository implements IUserRepository {
     try {
       // CRITICAL: Verify authorization again within the repository method
       const session = await this.getSession();
-      if (session.user.id !== userId) {
+      if (session && session.user.id !== userId) {
         logger.error(`Unauthorized attempt to delete user profile in repository. Session user: ${session.user.id}, Target user: ${userId}`);
         throw new Error('Unauthorized: You can only delete your own profile.');
       }
@@ -237,7 +242,11 @@ export class UserRepository implements IUserRepository {
 
       // Step 2: Delete the user from the authentication provider (Supabase Auth)
       logger.info(`Attempting to delete user from Auth Provider for userId: ${userId}`);
-      const { error: authError } = await adminAuthService.deleteUserById(userId);
+      if (!this.adminAuthService) {
+        logger.error('Admin Auth Service is not initialized');
+        throw new Error('Admin Auth Service is not initialized');
+      }
+      const { error: authError } = await this.adminAuthService.deleteUserById(userId);
 
       if (authError) {
         logger.error(`Failed to delete user from Auth Provider (Supabase Auth): ${authError.message || authError}`, { userId });
@@ -257,7 +266,11 @@ export class UserRepository implements IUserRepository {
         // Still attempt Auth deletion just in case.
         try {
           logger.info(`Attempting Auth Provider deletion for potentially orphaned user: ${userId}`);
-          const { error: authError } = await adminAuthService.deleteUserById(userId);
+          if (!this.adminAuthService) {
+            logger.error('Admin Auth Service is not initialized');
+            throw new Error('Admin Auth Service is not initialized');
+          }
+          const { error: authError } = await this.adminAuthService.deleteUserById(userId);
           if (authError) {
             logger.error(`Failed to delete potentially orphaned user ${userId} from Auth Provider: ${authError.message || authError}`);
           } else {

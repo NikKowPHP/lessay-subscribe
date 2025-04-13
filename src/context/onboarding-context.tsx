@@ -94,12 +94,9 @@ export function OnboardingProvider({
     }
   };
 
-
-
-  // Modified server action calls with access token
   const checkOnboardingStatus = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const status = await getStatusAction(getAccessToken());
+      const status = await getStatusAction();
       setIsOnboardingComplete(status);
       return status;
     });
@@ -107,14 +104,14 @@ export function OnboardingProvider({
 
   const startOnboarding = async () => {
     return withLoadingAndErrorHandling(async () => {
-      await createOnboardingAction(getAccessToken());
+      await createOnboardingAction();
       setIsOnboardingComplete(false);
     });
   };
 
   const markStepComplete = async (step: string, formData: any) => {
     return withLoadingAndErrorHandling(async () => {
-      await updateOnboardingAction(step, formData, getAccessToken());
+      await updateOnboardingAction(step, formData);
       await checkOnboardingStatus();
     });
   };
@@ -123,7 +120,7 @@ export function OnboardingProvider({
 
   const getAssessmentLesson = async () => {
     return withLoadingAndErrorHandling(async () => {
-      return await getAssessmentLessonAction(getAccessToken());
+      return await getAssessmentLessonAction();
     });
   };
 
@@ -132,23 +129,21 @@ export function OnboardingProvider({
     userResponse: string
   ) => {
     return withLoadingAndErrorHandling(async () => {
-      return await completeAssessmentLessonAction(lessonId, userResponse, getAccessToken());
+      return await completeAssessmentLessonAction(lessonId, userResponse);
     });
   };
 
   const markOnboardingAsCompleteAndGenerateLessons = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const completedOnboarding = await markOnboardingCompleteAndGenerateInitialLessonsAction(getAccessToken());
+      const completedOnboarding = await markOnboardingCompleteAndGenerateInitialLessonsAction();
       setOnboarding(completedOnboarding);
-      toast.success(
-        'Onboarding completed! Lessons generated!'
-      );
+      toast.success('Onboarding completed! Lessons generated!');
     });
   };
 
   const getOnboarding = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const result = await getOnboardingAction(getAccessToken());
+      const result = await getOnboardingAction();
       setOnboarding(result);
       return result;
     });
@@ -163,8 +158,7 @@ export function OnboardingProvider({
       return await recordAssessmentStepAttemptAction(
         lessonId,
         stepId,
-        userResponse,
-        getAccessToken()
+        userResponse
       );
     });
   };
@@ -173,7 +167,6 @@ export function OnboardingProvider({
     setIsOnboardingComplete(true);
     router.push('/app/lessons');
   };
-
 
   const processAssessmentLessonRecording = async (
     sessionRecording: RecordingBlob,
@@ -190,25 +183,20 @@ export function OnboardingProvider({
     if (!lesson.sessionRecordingUrl) {
       const uploadedAudioUrl = await uploadFilesToStorage(sessionRecording);
       lesson.sessionRecordingUrl = uploadedAudioUrl;
-      updateOnboardingLessonAction(
+      await updateOnboardingLessonAction(
         lesson.id,
-        { sessionRecordingUrl: uploadedAudioUrl },
-        getAccessToken()
+        { sessionRecordingUrl: uploadedAudioUrl }
       );
     }
     const lessonWithAudioMetrics = await processAssessmentLessonRecordingAction(
       sessionRecording,
       lesson,
       recordingSize,
-      recordingTime,
-      getAccessToken()
+      recordingTime
     );
     logger.info('lessonWithAudioMetrics', { lessonWithAudioMetrics });
     return lessonWithAudioMetrics;
-    // TODO: sync when generating new lessons
-    // TODO: each target langauge should have its own onboarding, and data
   };
-
 
   const uploadFilesToStorage = useCallback(
     async (data: Blob): Promise<string> => {
@@ -231,10 +219,7 @@ export function OnboardingProvider({
     [uploadFile]
   );
 
-
-
   useEffect(() => {
-   
     const initializeOnboarding = async () => {
       if (!user) return;
       if(!profile) return;

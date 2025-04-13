@@ -1,14 +1,16 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { Session, User, AuthError } from '@supabase/supabase-js'
-import { SupabaseAuthService } from '@/services/supabase-auth.service'
+import { Session, User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { MockAuthService } from '@/services/mock-auth-service.service'
 import logger from '@/utils/logger'
 import { UserProfileProvider } from '@/context/user-profile-context'
-import Cookies from 'js-cookie'
-import { clearAccessToken, setAccessToken } from '@/utils/get-access-token-cookie.util'
+import { 
+  serverLogin, 
+  serverRegister, 
+  serverLogout,
+  serverGetSession
+} from '@/lib/server-actions/auth-actions'
 
 interface AuthContextType {
   user: User | null
@@ -17,83 +19,48 @@ interface AuthContextType {
   error: string | null
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
-  loginWithGoogle: () => Promise<void>
   logout: () => Promise<void>
   clearError: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isMock] = useState(() => process.env.NEXT_PUBLIC_MOCK_AUTH === 'true')
-  const [authService] = useState(() =>
-    isMock ? new MockAuthService() : new SupabaseAuthService()
-  )
-
-  logger.log('isMock', isMock)
-
-
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-
-
-
   useEffect(() => {
-
-    authService.getSession().then((session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-      logger.log('session in auth context', session)
-      
-      // Store access token in cookies when session changes
-      if (session?.access_token) {
-        setAccessToken(session.access_token)
-      }
-    })
-      .catch((error) => {
-        setError(error instanceof Error ? error.message : 'Session error occurred')
-        setLoading(false)
-      })
-
-    const { data: { subscription } } = authService.onAuthStateChange(
-      async (event, session) => {
-        setSession(session)
-        setUser(session?.user ?? null)
-        setLoading(false)
-        logger.log('session in auth context', session)
-        const currentPath = window.location.pathname
-
-        if (event === 'SIGNED_OUT' && currentPath.startsWith('/app')) {
-          router.replace('/app/login')
+    const checkSession = async () => {
+      try {
+        const session = await serverGetSession()
+        if (session) {
+          setSession(session)
+          setUser(session.user)
         }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Session error')
+      } finally {
+        setLoading(false)
       }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [router])
+    }
+    checkSession()
+  }, [])
 
   const login = async (email: string, password: string) => {
     setError(null)
     setLoading(true)
     try {
-      const { user, session } = await authService.login(email, password)
+      const { user, error } = await serverLogin(email, password)
+      if (error) throw new Error(error)
+      if (!user) throw new Error('User not found')
+      
       setUser(user)
-      setSession(session)
-      if (user) {
-        router.push('/app/lessons')
-      }
+      // onboarding context will redirect to lessons
     } catch (error) {
-      const message = error instanceof AuthError
-        ? error.message
-        : 'Failed to login'
-      setError(message)
-      throw error
+      setError(error instanceof Error ? error.message : 'Login failed')
     } finally {
       setLoading(false)
     }
@@ -103,36 +70,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      const { user, session } = await authService.register(email, password)
+      const { user, error } = await serverRegister(email, password)
+      if (error) throw new Error(error)
+      if (!user) throw new Error('User not found')
+      
       setUser(user)
-      setSession(session)
-      setAccessToken(session?.access_token ?? '')
-
-      if (user) {
-        router.push('/app/onboarding')
-      }
+      router.push('/app/onboarding')
     } catch (error) {
-      const message = error instanceof AuthError
-        ? error.message
-        : 'Registration failed'
-      setError(message)
-      throw error
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loginWithGoogle = async () => {
-    setError(null)
-    setLoading(true)
-    try {
-      await authService.loginWithGoogle()
-    } catch (error) {
-      const message = error instanceof AuthError
-        ? error.message
-        : 'Google login failed'
-      setError(message)
-      throw error
+      setError(error instanceof Error ? error.message : 'Registration failed')
     } finally {
       setLoading(false)
     }
@@ -140,13 +85,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setError(null)
+    setLoading(true)
     try {
-      await authService.logout()
+      await serverLogout()
       setUser(null)
       setSession(null)
-      clearAccessToken()
+      router.push('/app/login')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Logout failed')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -160,7 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       login,
       register,
-      loginWithGoogle,
       logout,
       clearError
     }}>

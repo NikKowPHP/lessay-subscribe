@@ -5,9 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 
 
 export interface IAuthService {
-  login(email: string, password: string): Promise<{ user: User | null; session: Session | null }>
-  register(email: string, password: string): Promise<{ user: User | null; session: Session | null }>
-  loginWithGoogle(): Promise<void>
+  // loginWithGoogle(): Promise<void>
   logout(): Promise<void>
   getSession(): Promise<Session | null>
   onAuthStateChange(callback: (event: any, session: Session | null) => Promise<void> | void): any
@@ -15,9 +13,9 @@ export interface IAuthService {
 } 
 
 // Use environment variables directly for client creation
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 // Public client (browser-safe)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
@@ -43,64 +41,37 @@ if (supabaseServiceRoleKey && typeof window === 'undefined') { // Ensure server-
 
 
 export class SupabaseAuthService implements IAuthService {
-  private client: ReturnType<typeof createClient>;
-  
-  constructor(accessToken?: string) {
-    this.client = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        detectSessionInUrl: false,
-        persistSession: true,
-        autoRefreshToken: true
-      },
-      global: {
-        headers: {
-          Authorization: accessToken ? `Bearer ${accessToken}` : '',
-        }
-      }
-    });
+  private client = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  })
+
+  async getSession(): Promise<Session | null> {
+    const { data: { session }, error } = await this.client.auth.getSession()
+    if (error) {
+      logger.error('Error getting session:', error)
+      throw error
+    }
+    return session
   }
 
-  async login(email: string, password: string) {
-    const { data, error } = await this.client.auth.signInWithPassword({
-      email,
-      password,
-    })
-    console.log('login', data, error)
-    if (error) throw new Error(error.message)
+  async loginWithPassword(email: string, password: string) {
+    const { data, error } = await this.client.auth.signInWithPassword({ email, password })
+    if (error) throw error
     return data
   }
 
-  async register(email: string, password: string) {
-    const { data, error } = await this.client.auth.signUp({
-      email,
-      password,
-    })
-    console.log('register', data, error)
-    if (error) throw new Error(error.message)
+  async signUp(email: string, password: string) {
+    const { data, error } = await this.client.auth.signUp({ email, password })
+    if (error) throw error
     return data
-  }
-
-  async loginWithGoogle() {
-    const { error } = await this.client.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/app/lessons`
-      }
-    })
-
-    if (error) throw new Error(error.message)
-    // No need to return data as this will redirect the browser
   }
 
   async logout() {
     const { error } = await this.client.auth.signOut()
-    if (error) throw new Error(error.message)
-  }
-
-  async getSession() {
-    const { data: { session }, error } = await this.client.auth.getSession()
-    if (error) throw new Error(error.message)
-    return session
+    if (error) throw error
   }
 
   onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => Promise<void> | void) {
@@ -156,5 +127,5 @@ export function getAuthServiceBasedOnEnvironment(accessToken?: string) {
     return mockAuthService
   }
 
-  return new SupabaseAuthService(accessToken)
+  return new SupabaseAuthService()
 }

@@ -51,7 +51,7 @@ export function UserProfileProvider({
   const fetchUserProfile = async (userId: string) => {
     setLoading(true);
     try {
-      let userProfile = await getUserProfileAction(userId, getAccessToken());
+      let userProfile = await getUserProfileAction(userId);
       logger.info('get user profile in context', userProfile);
       if (!userProfile && user?.email) {
         userProfile = await saveInitialProfile(user?.email);
@@ -83,7 +83,7 @@ export function UserProfileProvider({
         onboardingCompleted: false,
       };
 
-      const userProfile = await createUserProfileAction(initialProfile, getAccessToken());
+      const userProfile = await createUserProfileAction(initialProfile );
       return userProfile;
     } catch (error) {
       logger.error('Error creating user profile:', error);
@@ -110,7 +110,7 @@ export function UserProfileProvider({
         setLoading(false);
         return; // Nothing to update
       }
-      const updatedProfile = await updateUserProfileAction(user.id, updateData, getAccessToken());
+      const updatedProfile = await updateUserProfileAction(user.id, updateData);
       if (updatedProfile) {
         setProfile(updatedProfile);
       } else {
