@@ -1,5 +1,5 @@
 // src/services/mock-auth-service.service.ts
-import { IAuthService } from '@/services/auth.service'
+import { IAuthService } from '@/services/supabase-auth.service'
 import { Session, User, AuthChangeEvent, Subscription } from '@supabase/supabase-js'
 import logger from '@/utils/logger'
 

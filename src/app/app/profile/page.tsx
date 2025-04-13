@@ -30,7 +30,7 @@ export default function ProfilePage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [learningProgress, setLearningProgress] = useState<LearningProgressModel | null>(null)
   const [progressLoading, setProgressLoading] = useState(true)
-
+  const { getAccessToken } = useAuth();
   const handleDeleteAccount = async () => {
     if (!user) {
       setDeleteError("You must be logged in to delete your account.");
@@ -40,9 +40,13 @@ export default function ProfilePage() {
     setIsDeleting(true);
     setDeleteError(null);
     logger.warn(`User ${user.id} confirmed account deletion.`);
-
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      setDeleteError("Failed to get access token. Please try again.");
+      return;
+    }
     try {
-      const result = await deleteUserProfileAction();
+      const result = await deleteUserProfileAction(user.id, accessToken);
 
       if (result.success) {
         logger.warn(`Account deletion successful for user ${user.id}. Logging out.`);

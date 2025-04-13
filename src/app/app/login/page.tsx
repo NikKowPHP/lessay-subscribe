@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
-  const { login, register, loginWithGoogle, error, loading, user, clearError } = useAuth()
+  const { login, register,  error, loading, user, clearError } = useAuth()
 
   useEffect(() => {
     console.log('user', user)
@@ -47,7 +47,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     clearError()
     try {
-      await loginWithGoogle()
+      // await loginWithGoogle()
       // Redirect is handled by Supabase OAuth
     } catch (error) {
       logger.log('Google login failed:', error)

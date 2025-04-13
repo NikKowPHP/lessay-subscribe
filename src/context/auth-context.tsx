@@ -21,6 +21,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  getAccessToken: () => Promise<string | null>
   clearError: () => void
 }
 
@@ -117,6 +118,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const getAccessToken = async () => {
+    const session = await serverGetSession();
+    return session?.access_token || null;
+  }
+
   const clearError = () => setError(null)
 
   return (
@@ -128,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       register,
       logout,
+      getAccessToken,
       clearError
     }}>
       <UserProfileProvider>
