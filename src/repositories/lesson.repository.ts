@@ -1,8 +1,8 @@
-import { IAuthService } from '@/services/auth.service'
 import { ILessonRepository } from '@/lib/interfaces/all-interfaces'
 import logger from '@/utils/logger'
-import { LessonModel, LessonStep, OnboardingModel } from '@/models/AppAllModels.model'
+import { LessonModel, LessonStep  } from '@/models/AppAllModels.model'
 import prisma from '@/lib/prisma'
+import { IAuthService } from '@/services/supabase-auth.service'
 
 export class LessonRepository implements ILessonRepository {
   private authService: IAuthService
@@ -10,20 +10,21 @@ export class LessonRepository implements ILessonRepository {
   constructor(authService: IAuthService) {
     this.authService = authService
   }
-
-  async getSession() {
-    const session = await this.authService.getSession()
+  
+  private async validateUser() {
+    const session = await this.authService.getSession();
     if (!session?.user?.id) {
-      throw new Error('Unauthorized')
+      throw new Error('Authentication required');
     }
-    return session
+    return session.user.id;
   }
+
 
   async getLessons(): Promise<LessonModel[]> {
     try {
-      const session = await this.getSession()
+      const userId = await this.validateUser();
       return await prisma.lesson.findMany({
-        where: { userId: session.user.id },
+        where: { userId },
         orderBy: { createdAt: 'desc' },
         include: { steps: true }
       })
@@ -35,11 +36,11 @@ export class LessonRepository implements ILessonRepository {
 
   async getLessonById(lessonId: string): Promise<LessonModel | null> {
     try {
-      const session = await this.getSession()
+      const userId = await this.validateUser();
       return await prisma.lesson.findUnique({
         where: { 
           id: lessonId,
-          userId: session.user.id
+          userId
         },
         include: { steps: true }
       })
@@ -55,10 +56,10 @@ export class LessonRepository implements ILessonRepository {
     steps: LessonStep[]
   }): Promise<LessonModel> {
     try {
-      const session = await this.getSession()
+      const userId = await this.validateUser();
       return await prisma.lesson.create({
         data: {
-          userId: session.user.id,
+          userId,
           lessonId: `lesson-${Date.now()}`,
           focusArea: lessonData.focusArea,
           targetSkills: lessonData.targetSkills,
@@ -92,7 +93,7 @@ export class LessonRepository implements ILessonRepository {
 
   async updateLesson(lessonId: string, lessonData: Partial<LessonModel>): Promise<LessonModel> {
     try {
-      const session = await this.getSession()
+      const userId = await this.validateUser();
       
       // Remove related fields from direct spread to handle them properly
       const { steps, audioMetrics, ...otherData } = lessonData
@@ -177,7 +178,7 @@ export class LessonRepository implements ILessonRepository {
       const updatedLesson = await prisma.lesson.update({
         where: { 
           id: lessonId,
-          userId: session.user.id
+          userId
         },
         data: data,
         include: { steps: true, audioMetrics: true }
@@ -196,11 +197,11 @@ export class LessonRepository implements ILessonRepository {
     errorPatterns?: string[]
   }): Promise<LessonModel> {
     try {
-      const session = await this.getSession()
+      const userId = await this.validateUser();
       return await prisma.lesson.update({
         where: { 
           id: lessonId,
-          userId: session.user.id
+          userId
         },
         data: { 
           completed: true,
@@ -216,11 +217,11 @@ export class LessonRepository implements ILessonRepository {
 
   async deleteLesson(lessonId: string): Promise<void> {
     try {
-      const session = await this.getSession()
+      const userId = await this.validateUser();
       await prisma.lesson.delete({
         where: { 
           id: lessonId,
-          userId: session.user.id
+          userId
         }
       })
     } catch (error) {
