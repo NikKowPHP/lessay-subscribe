@@ -1,6 +1,8 @@
 import fetch, { Request, Response, Headers } from 'node-fetch';
 import '@testing-library/jest-dom';
 import { TextEncoder, TextDecoder } from 'util';
+import '@testing-library/jest-dom';
+
 
 // Polyfill TextEncoder and TextDecoder for Next.js request parsing in Node.
 globalThis.TextEncoder = TextEncoder;
