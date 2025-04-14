@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { MockAuthService } from '@/services/mock-auth-service.service'
 import logger from '@/utils/logger'
 import { UserProfileProvider } from '@/context/user-profile-context'
+import { loginAction, registerAction, loginWithGoogleAction, logoutAction, getSessionAction } from '@/lib/server-actions/auth-actions'
 
 interface AuthContextType {
   user: User | null
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
 
-    authService.getSession().then((session) => {
+    getSessionAction().then((session) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
@@ -71,10 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      const { user, session } = await authService.login(email, password)
-      setUser(user)
-      setSession(session)
-      if (user) {
+      const { data, error } = await loginAction(email, password)
+      if (error) {
+        setError(error.message)
+        throw error
+      }
+      setUser(data.user)
+      setSession(data.session)
+      if (data.user) {
         router.push('/app/lessons')
       }
     } catch (error) {
@@ -92,19 +97,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      const { user, session } = await authService.register(email, password)
-      setUser(user)
-      setSession(session)
+      const { data, error } = await registerAction(email, password)
+      if (error) {
+        setError(error.message)
+        throw error
+      }
+      setUser(data.user)
+      setSession(data.session)
 
-      // if (!user?.email) return;
-
-
-      // set initial profile on register
-      // saveInitialProfile(user?.email);
-      // user context handles automatically the user
-
-
-      if (user) {
+      if (data.user) {
         router.push('/app/onboarding') // Redirect to onboarding instead of lessons
       }
     } catch (error) {
@@ -122,7 +123,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      await authService.loginWithGoogle()
+      const { error } = await loginWithGoogleAction()
+      if (error) {
+        setError(error.message)
+        throw error
+      }
       // No need to set user/session here as it will be handled by the auth state change
     } catch (error) {
       const message = error instanceof AuthError
@@ -138,7 +143,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     setError(null)
     try {
-      await authService.logout()
+      const { error } = await logoutAction()
+      if (error) {
+        setError(error.message)
+        return
+      }
       setUser(null)
       setSession(null)
     } catch (error) {
