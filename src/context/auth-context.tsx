@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import React  from 'react'
 import { Session, User, AuthError } from '@supabase/supabase-js'
 import { SupabaseAuthService } from '@/services/auth.service'
 import { useRouter } from 'next/navigation'
@@ -40,22 +41,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates on unmounted component
 
+    setLoading(true); // Ensure loading starts true
     getSessionAction().then((session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
+      if (isMounted) {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
     })
       .catch((error) => {
-        setError(error instanceof Error ? error.message : 'Session error occurred')
-        setLoading(false)
+        if (isMounted) {
+          setError(error instanceof Error ? error.message : 'Session error occurred')
+          setLoading(false)
+        }
       })
 
     const { data: { subscription } } = authService.onAuthStateChange(
       async (event, session) => {
-        setSession(session)
-        setUser(session?.user ?? null)
-        setLoading(false)
+        if (isMounted) {
+          setSession(session)
+          setUser(session?.user ?? null)
+          setLoading(false)
+        }
 
         const currentPath = window.location.pathname
 
@@ -65,8 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     )
 
-    return () => subscription.unsubscribe()
-  }, [router])
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router, authService])
 
   const login = async (email: string, password: string) => {
     setError(null)

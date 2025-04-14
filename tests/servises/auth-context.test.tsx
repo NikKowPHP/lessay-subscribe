@@ -1,4 +1,5 @@
 // File: /tests/context/auth-context.test.tsx
+/// <reference types="@testing-library/jest-dom" />
 
 import React, { ReactNode } from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
