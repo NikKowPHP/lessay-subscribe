@@ -55,6 +55,7 @@ describe('SupabaseAuthService', () => {
   let authService: SupabaseAuthService;
   let mockSupabaseAuth: any; // Type assertion for easier mocking access
   let mockSupabaseAdminAuth: any;
+  let mockSupabaseAdminAuthDeleteUser: jest.Mock; 
 
   const mockUser = { id: 'user-123', email: 'test@example.com' } as User;
   const mockSession = {
@@ -130,13 +131,13 @@ describe('SupabaseAuthService', () => {
     mockSupabaseAuth = (supabase as any).auth;
     // We need to simulate the admin client creation for deleteUserById
     // Since createClient is mocked, we can access the admin mock through it
-    mockSupabaseAdminAuth = (
-      createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { autoRefreshToken: false, persistSession: false } }
-      ) as any
-    ).auth.admin; // Get the mocked admin object
+    // mockSupabaseAdminAuth = (
+    //   createClient(
+    //     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    //     process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    //     { auth: { autoRefreshToken: false, persistSession: false } }
+    //   ) as any
+    // ).auth.admin; // Get the mocked admin object
 
     authService = new SupabaseAuthService();
   });
@@ -337,22 +338,23 @@ describe('SupabaseAuthService', () => {
   // --- deleteUserById ---
   describe('deleteUserById', () => {
     const userIdToDelete = 'user-to-delete';
+    const testAdminKey = 'test-admin-key';
+
     const originalWindow = global.window;
 
-    // Simulate server-side environment
-    const setupServerEnv = () => {
-      // @ts-ignore
-      delete global.window;
-      process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-admin-key';
-      // Crucially, re-initialize the service *within* the server env context
-      // so it correctly initializes supabaseAdmin using the mocked createClient
-      authService = new SupabaseAuthService();
-      // Ensure the admin mock is ready
-      (createClient as jest.Mock)
-        .mockClear()
-        .mockReturnValue(mockSupabaseClient);
-      mockSupabaseAdminAuth.deleteUser.mockClear(); // Clear previous calls
-    };
+   // Helper to set up server environment for tests
+   const setupServerEnv = (withKey = true) => {
+    // @ts-ignore
+    delete global.window; // Simulate server
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://test-url.com';
+    if (withKey) {
+        process.env.SUPABASE_SERVICE_ROLE_KEY = testAdminKey;
+    } else {
+        delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    }
+    // Re-initialize service AFTER setting env vars, so constructor uses them
+    authService = new SupabaseAuthService();
+};
 
     beforeEach(() => {
       // @ts-ignore
@@ -370,7 +372,7 @@ describe('SupabaseAuthService', () => {
           process.env.SUPABASE_SERVICE_ROLE_KEY!,
           { auth: { autoRefreshToken: false, persistSession: false } }
         ) as any
-      ).auth.admin;
+      ).auth.admin; // This correctly assigns the admin mock object
     });
     afterEach(() => {
       global.window = originalWindow; // Restore window object
@@ -405,7 +407,7 @@ describe('SupabaseAuthService', () => {
       expect(result.error).toBeDefined();
       expect(result.error.message).toContain('Admin client not available');
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Supabase Admin client not initialized')
+        expect.stringContaining('SUPABASE_SERVICE_ROLE_KEY is not set. Admin operations will not be available.')
       );
       expect(mockSupabaseAdminAuth.deleteUser).not.toHaveBeenCalled();
     });
@@ -458,22 +460,21 @@ describe('SupabaseAuthService', () => {
     });
 
     it('should return the error object if admin deletion fails', async () => {
-      setupServerEnv(); // Setup server environment
-      mockSupabaseAdminAuth.deleteUser.mockResolvedValueOnce({
-        data: { user: null },
-        error: deleteAdminError,
-      });
+      setupServerEnv(true); // Setup server environment
+    // Mock the admin call to return a generic error
+    mockSupabaseAdminAuth.deleteUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: deleteAdminError,
+    });
       const result = await authService.deleteUserById(userIdToDelete);
 
       expect(result.error).toEqual(deleteAdminError);
-      expect(mockSupabaseAdminAuth.deleteUser).toHaveBeenCalledWith(
-        userIdToDelete
-      ); // Verify call happened
+      expect(mockSupabaseAdminAuth.deleteUser).toHaveBeenCalledWith(userIdToDelete);
       expect(logger.error).toHaveBeenCalledWith(
         expect.stringContaining(
           `Supabase Auth Admin Error deleting user ${userIdToDelete}`
         ),
-        deleteAdminError
+        deleteAdminError // Expect the error object itself to be logged
       );
     });
 

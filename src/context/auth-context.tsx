@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User, AuthError } from '@supabase/supabase-js'
-import { SupabaseAuthService } from '@/services/supabase-auth.service'
+import { SupabaseAuthService } from '@/services/auth.service'
 import { useRouter } from 'next/navigation'
 import { MockAuthService } from '@/services/mock-auth-service.service'
 import logger from '@/utils/logger'

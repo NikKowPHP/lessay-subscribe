@@ -6,7 +6,7 @@ import { UserProfileModel } from '@/models/AppAllModels.model';
 import logger from '@/utils/logger';
 import { revalidatePath } from 'next/cache';
 import { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
-import { supabase, SupabaseAuthService } from '@/services/supabase-auth.service';
+import { supabase, SupabaseAuthService } from '@/services/auth.service';
 import { AuthError } from '@supabase/supabase-js';
 
 function createUserService() {
