@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import React  from 'react'
 import { Session, User, AuthError } from '@supabase/supabase-js'
 import { SupabaseAuthService } from '@/services/auth.service'
@@ -27,9 +27,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isMock] = useState(() => process.env.NEXT_PUBLIC_MOCK_AUTH === 'true')
-  const [authService] = useState(() =>
-    isMock ? new MockAuthService() : new SupabaseAuthService()
-  )
+  const authService = useRef(isMock ? new MockAuthService() : new SupabaseAuthService()).current;
+
 
   logger.log('isMock', isMock)
 
@@ -40,134 +39,181 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    let isMounted = true; // Flag to prevent state updates on unmounted component
+    const isMounted = useRef(true);
 
-    setLoading(true); // Ensure loading starts true
-    getSessionAction().then((session) => {
-      if (isMounted) {
-        setSession(session)
-        setUser(session?.user ?? null)
-        setLoading(false)
-      }
-    })
-      .catch((error) => {
-        if (isMounted) {
-          setError(error instanceof Error ? error.message : 'Session error occurred')
-          setLoading(false)
+    useEffect(() => {
+      isMounted.current = true; 
+      logger.log("AuthProvider Effect: Mounting / Running");
+  
+      setLoading(true); 
+      getSessionAction().then((initialSession) => {
+        if (isMounted.current) {
+          logger.log("AuthProvider Effect: getSessionAction resolved", initialSession);
+          setSession(initialSession);
+          setUser(initialSession?.user ?? null);
+          setLoading(false); 
         }
       })
-
-    const { data: { subscription } } = authService.onAuthStateChange(
-      async (event, session) => {
-        if (isMounted) {
-          setSession(session)
-          setUser(session?.user ?? null)
-          setLoading(false)
+      .catch((err) => { 
+        if (isMounted.current) {
+          logger.error("AuthProvider Effect: getSessionAction failed", err);
+          setError(err instanceof Error ? err.message : 'Session error occurred');
+          setLoading(false); 
         }
+      });
 
-        const currentPath = window.location.pathname
+      const { data: { subscription } } = authService.onAuthStateChange(
+        async (event, changedSession) => {
+          if (isMounted.current) {
+              logger.log("AuthProvider Effect: onAuthStateChange fired", event, changedSession);
+              setSession(changedSession);
+              setUser(changedSession?.user ?? null);
+  
+              const currentPath = window.location.pathname; // Safe to access here if needed
+              if (event === 'SIGNED_OUT' && currentPath.startsWith('/app')) {
+                  logger.log("AuthProvider Effect: Redirecting on SIGNED_OUT");
+                  router.replace('/app/login');
+              }
+          } else {
+              logger.log("AuthProvider Effect: onAuthStateChange fired AFTER unmount, ignoring.");
+          }
+        }
+      );
+  
+      return () => {
+        logger.log("AuthProvider Effect: Unmounting");
+        isMounted.current = false; // Set false on cleanup
+        subscription.unsubscribe();
+      };
+    }, [router, authService]);
+  
 
-        if (event === 'SIGNED_OUT' && currentPath.startsWith('/app')) {
-          router.replace('/app/login')
+    const login = async (email: string, password: string) => {
+      // Check mount status at the beginning of async operations
+      if (!isMounted.current) return;
+      setError(null)
+      setLoading(true)
+      try {
+        const { data, error: actionError } = await loginAction(email, password) // Rename error variable
+        if (actionError) {
+          // Use the error from the action result
+          setError(actionError.message);
+          // Throw the specific error object for tests or further handling if needed
+          throw actionError;
+        }
+        // Check mount status again before setting state
+        if (isMounted.current) {
+          setUser(data.user);
+          setSession(data.session);
+          if (data.user) {
+            router.push('/app/lessons');
+          }
+        }
+      } catch (caughtError: any) { // Catch any error type
+          // Check mount status before setting error state
+          if (isMounted.current) {
+              // Set error based on the caught error's message if available
+              const message = caughtError?.message ? caughtError.message : 'Failed to login';
+              setError(message);
+          }
+          // Re-throw the original error so promise rejects as expected
+          throw caughtError;
+      } finally {
+        // Check mount status before final state update
+        if (isMounted.current) {
+          setLoading(false);
         }
       }
-    )
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, [router, authService])
-
-  const login = async (email: string, password: string) => {
-    setError(null)
-    setLoading(true)
-    try {
-      const { data, error } = await loginAction(email, password)
-      if (error) {
-        setError(error.message)
-        throw error
-      }
-      setUser(data.user)
-      setSession(data.session)
-      if (data.user) {
-        router.push('/app/lessons')
-      }
-    } catch (error) {
-      const message = error instanceof AuthError
-        ? error.message
-        : 'Failed to login'
-      setError(message)
-      throw error
-    } finally {
-      setLoading(false)
     }
-  }
 
-  const register = async (email: string, password: string) => {
-    setError(null)
-    setLoading(true)
-    try {
-      const { data, error } = await registerAction(email, password)
-      if (error) {
-        setError(error.message)
-        throw error
+    const register = async (email: string, password: string) => {
+      if (!isMounted.current) return;
+      setError(null)
+      setLoading(true)
+      try {
+        const { data, error: actionError } = await registerAction(email, password)
+        if (actionError) {
+          setError(actionError.message);
+          throw actionError;
+        }
+        if (isMounted.current) {
+          setUser(data.user);
+          setSession(data.session);
+          if (data.user) {
+            router.push('/app/onboarding'); // Redirect to onboarding instead of lessons
+          }
+        }
+      } catch (caughtError: any) {
+          if (isMounted.current) {
+              const message = caughtError?.message ? caughtError.message : 'Registration failed';
+              setError(message);
+          }
+          throw caughtError;
+      } finally {
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
-      setUser(data.user)
-      setSession(data.session)
-
-      if (data.user) {
-        router.push('/app/onboarding') // Redirect to onboarding instead of lessons
-      }
-    } catch (error) {
-      const message = error instanceof AuthError
-        ? error.message
-        : 'Registration failed'
-      setError(message)
-      throw error
-    } finally {
-      setLoading(false)
     }
-  }
+  
 
-  const loginWithGoogle = async () => {
-    setError(null)
-    setLoading(true)
-    try {
-      const { error } = await loginWithGoogleAction()
-      if (error) {
-        setError(error.message)
-        throw error
+    const loginWithGoogle = async () => {
+      if (!isMounted.current) return;
+      setError(null)
+      setLoading(true)
+      try {
+        const { error: actionError } = await loginWithGoogleAction()
+        if (actionError) {
+          setError(actionError.message);
+          throw actionError;
+        }
+        // No need to set user/session here as it will be handled by the auth state change
+      } catch (caughtError: any) {
+          if (isMounted.current) {
+              const message = caughtError?.message ? caughtError.message : 'Google login failed';
+              setError(message);
+          }
+          throw caughtError;
+      } finally {
+        // Google login might involve redirects, setting loading might be tricky,
+        // but let's keep it for consistency if the action itself completes/errors quickly.
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
-      // No need to set user/session here as it will be handled by the auth state change
-    } catch (error) {
-      const message = error instanceof AuthError
-        ? error.message
-        : 'Google login failed'
-      setError(message)
-      throw error
-    } finally {
-      setLoading(false)
     }
-  }
+  
 
-  const logout = async () => {
-    setError(null)
-    try {
-      const { error } = await logoutAction()
-      if (error) {
-        setError(error.message)
-        return
+    const logout = async () => {
+      // No need to set loading for logout usually
+      if (!isMounted.current) return;
+      setError(null)
+      try {
+        const { error: actionError } = await logoutAction()
+        if (actionError) {
+           if (isMounted.current) {
+              setError(actionError.message);
+           }
+          return;
+        }
+        if (isMounted.current) {
+          setUser(null);
+          setSession(null);
+        }
+      } catch (caughtError: any) { 
+          if (isMounted.current) {
+              setError(caughtError instanceof Error ? caughtError.message : 'Logout failed');
+          }
       }
-      setUser(null)
-      setSession(null)
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Logout failed')
     }
-  }
-
-  const clearError = () => setError(null)
+  
+    const clearError = () => {
+        // Check mount status before setting state
+        if (isMounted.current) {
+          setError(null);
+        }
+    }
+  
 
   return (
     <AuthContext.Provider value={{

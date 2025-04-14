@@ -15,7 +15,6 @@ export default function AdminLayout({
 
   return (
     <AuthProvider>
-      <UserProfileProvider>
         <OnboardingProvider>
           <LessonProvider>
             <div className="min-h-screen bg-gray-50">
@@ -25,7 +24,6 @@ export default function AdminLayout({
             <Toaster />
           </LessonProvider>
         </OnboardingProvider>
-      </UserProfileProvider>
     </AuthProvider>
   );
 }
