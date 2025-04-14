@@ -9,6 +9,5 @@
   - [ ] Add UI for Payment History (Optional - Requires querying Payment records)
 
 
+- [ ] getLessons if empty generates new one 
 
-
-- [ ] Add basic statistics ui with progress

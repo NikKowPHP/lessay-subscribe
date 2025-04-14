@@ -3,7 +3,7 @@
 import {
   SupabaseAuthService,
   supabase,
-} from '@/services/supabase-auth.service';
+} from '@/services/auth.service';
 import { createClient } from '@supabase/supabase-js';
 import {
   AuthChangeEvent,
@@ -12,6 +12,12 @@ import {
   AuthError,
 } from '@supabase/supabase-js';
 import logger from '@/utils/logger';
+
+
+
+// Use environment variables directly for client creation
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 // --- Mocks ---
 jest.mock('@supabase/supabase-js', () => {
