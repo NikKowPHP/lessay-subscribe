@@ -15,6 +15,8 @@ globalThis.fetch = fetch;
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'mock-url';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-key';
 
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
 if (!globalThis.Request) {
   globalThis.Request = Request;
   globalThis.Response = Response;

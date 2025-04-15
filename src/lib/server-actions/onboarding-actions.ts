@@ -1,9 +1,6 @@
 'use server';
 import OnboardingService from '@/services/onboarding.service';
 import { OnboardingRepository } from '@/repositories/onboarding.repository';
-import {
-  getAuthServiceBasedOnEnvironment,
-} from '@/services/supabase-auth.service';
 import 'server-only';
 import logger from '@/utils/logger';
 import LessonService from '@/services/lesson.service';
@@ -16,12 +13,8 @@ import { AssessmentLesson } from '@/models/AppAllModels.model';
 
 
 function createOnboardingService() {
-  const repository = new OnboardingRepository(
-    getAuthServiceBasedOnEnvironment()
-  );
-  const lessonRepository = new LessonRepository(
-    getAuthServiceBasedOnEnvironment()
-  );
+  const repository = new OnboardingRepository();
+  const lessonRepository = new LessonRepository();
   return new OnboardingService(
     repository,
     new LessonService(lessonRepository, new LessonGeneratorService(new AIService(), new GoogleTTS()), repository),
@@ -76,15 +69,11 @@ export async function getStatusAction() {
 }
 
 export async function getAssessmentLessonAction() {
-  const authService = getAuthServiceBasedOnEnvironment();
-  const session = await authService.getSession();
-  if (!session) {
-    throw new Error('User not authenticated');
-  }
+
 
   const onboardingService = createOnboardingService();
 
-  const lesson = await onboardingService.getAssessmentLesson(session.user.id);
+  const lesson = await onboardingService.getAssessmentLesson();
   logger.log('lessons:', lesson);
   return lesson;
 }

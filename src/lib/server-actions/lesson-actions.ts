@@ -2,7 +2,6 @@
 
 import LessonService from '@/services/lesson.service';
 import { LessonRepository } from '@/repositories/lesson.repository';
-import { getAuthServiceBasedOnEnvironment } from '@/services/supabase-auth.service';
 import { LessonModel, LessonStep } from '@/models/AppAllModels.model';
 import { OnboardingModel } from '@/models/AppAllModels.model';
 import { MockLessonGeneratorService } from '@/__mocks__/generated-lessons.mock';
@@ -11,14 +10,15 @@ import logger from '@/utils/logger';
 import LessonGeneratorService from '@/services/lesson-generator.service';
 import AIService from '@/services/ai.service';
 import { GoogleTTS } from '@/services/google-tts.service';
+import { createSupabaseServerClient } from '@/utils/supabase/server';
 
 // TODO: Convert to container
 function createLessonService() {
-  const repository = new LessonRepository(getAuthServiceBasedOnEnvironment());
+  const repository = new LessonRepository();
   return new LessonService(
     repository,
     new LessonGeneratorService(new AIService(), new GoogleTTS()),
-    new OnboardingRepository(getAuthServiceBasedOnEnvironment())
+    new OnboardingRepository()
   );
 }
 

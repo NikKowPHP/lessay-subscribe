@@ -78,11 +78,11 @@ export default class OnboardingService {
     return this.onboardingRepository.getStatus();
   };
 
-  async getAssessmentLesson(userId: string): Promise<AssessmentLesson> {
+  async getAssessmentLesson(): Promise<AssessmentLesson> {
     try {
       // First check if there's already an assessment lesson
       const existingAssessment =
-        await this.onboardingRepository.getAssessmentLesson(userId);
+        await this.onboardingRepository.getAssessmentLesson();
       if (existingAssessment) {
         return existingAssessment;
       }
@@ -116,7 +116,7 @@ export default class OnboardingService {
 
 
       const assessmentLesson = {
-        userId,
+        userId: onboarding?.userId,
         description: `Comprehensive ${onboarding?.targetLanguage || 'German'
           } language assessment`,
         completed: false,
@@ -139,7 +139,7 @@ export default class OnboardingService {
       logger.info(`Assessment lesson: ${JSON.stringify(assessmentLesson)}`);
       // Save to database
       return this.onboardingRepository.createAssessmentLesson(
-        userId,
+        onboarding?.userId,
         assessmentLesson
       );
     } catch (error) {

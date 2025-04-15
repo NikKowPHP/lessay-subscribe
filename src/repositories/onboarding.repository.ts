@@ -11,24 +11,43 @@ import {
 } from '@/models/AppAllModels.model';
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
-import { IAuthService } from '@/services/auth.service';
 import prisma from '@/lib/prisma';
 import { JsonValue } from 'type-fest';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { createSupabaseServerClient } from '@/utils/supabase/server';
+import { cookies } from 'next/headers';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export class OnboardingRepository implements IOnboardingRepository {
-  private authService: IAuthService;
+  private supabase: SupabaseClient | null = null;
 
-  constructor(authService: IAuthService) {
-    this.authService = authService;
+  constructor() {
+    if (typeof window === 'undefined') {
+      this.supabase = null;
+      this.getSupabaseClient = async () => {
+        if (!this.supabase) {
+          this.supabase = await createSupabaseServerClient();
+        }
+        return this.supabase;
+      };
+    }
   }
 
+  private getSupabaseClient?: () => Promise<SupabaseClient>;
+
   async getSession() {
-    const session = await this.authService.getSession();
-    if (!session?.user?.id) {
-      throw new Error('Unauthorized');
+    if (typeof window === 'undefined' && this.getSupabaseClient) {
+      const supabase = await this.getSupabaseClient();
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+      if (error || !session?.user?.id) {
+        throw new Error('Unauthorized');
+      }
+      return session;
     }
-    return session;
+    throw new Error('No auth service available');
   }
 
   async getOnboarding(): Promise<OnboardingModel | null> {
@@ -159,7 +178,7 @@ export class OnboardingRepository implements IOnboardingRepository {
     }
   }
 
-  async getAssessmentLesson(userId: string): Promise<AssessmentLesson | null> {
+  async getAssessmentLesson(): Promise<AssessmentLesson | null> {
     try {
       // Validate the user has permission to access this data
       const session = await this.getSession();
@@ -168,7 +187,7 @@ export class OnboardingRepository implements IOnboardingRepository {
       }
 
       return await prisma.assessmentLesson.findUnique({
-        where: { userId },
+        where: { userId: session.user.id },
         include: {
           steps: {
             orderBy: {

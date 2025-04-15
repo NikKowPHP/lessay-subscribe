@@ -8,7 +8,7 @@ export  interface IOnboardingRepository {
   completeOnboarding(): Promise<OnboardingModel>
   deleteOnboarding(): Promise<void>
   getStatus(): Promise<boolean>
-  getAssessmentLesson(userId: string): Promise<AssessmentLesson | null>
+  getAssessmentLesson(): Promise<AssessmentLesson | null>
   getAssessmentLessonById(lessonId: string): Promise<AssessmentLesson | null>
   completeAssessmentLesson(assessment: AssessmentLesson, data: {
     summary: string;

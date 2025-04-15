@@ -267,7 +267,7 @@ export default class LessonService {
     // Get assessment data with audio metrics if available
     if (onboardingData.initialAssessmentCompleted) {
       // Get the latest assessment with audio metrics
-      const assessment = await this.onboardingRepository.getAssessmentLesson(onboardingData.userId);
+      const assessment = await this.onboardingRepository.getAssessmentLesson();
 
       if (assessment) {
         // Collect topics from assessment

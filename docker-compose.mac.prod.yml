@@ -14,7 +14,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=false
-      - NODE_ENV=production
+      - NODE_ENV=development
       - CHOKIDAR_INTERVAL=300
     # depends_on:
     #   - db

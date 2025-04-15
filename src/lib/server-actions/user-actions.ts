@@ -2,14 +2,13 @@
 
 import UserService from '@/services/user.service';
 import { UserRepository } from '@/repositories/user.repository';
-import { getAuthServiceBasedOnEnvironment } from '@/services/auth.service';
 import { UserProfileModel } from '@/models/AppAllModels.model';
 import logger from '@/utils/logger';
 import { revalidatePath } from 'next/cache';
+import { createSupabaseServerClient } from '@/utils/supabase/server';
 
 function createUserService() {
-  // const authService = getAuthServiceBasedOnEnvironment();
-  const repository = new UserRepository(authService);
+  const repository = new UserRepository();
   return new UserService(repository);
 }
 
@@ -94,9 +93,9 @@ export async function deleteUserProfileAction(): Promise<{ success: boolean; err
 }
 
 async function getCurrentUserId(): Promise<string> {
-  const authService = getAuthServiceBasedOnEnvironment();
-  const session = await authService.getSession();
-  if (!session?.user?.id) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session?.user?.id) {
     throw new Error('Authentication required.');
   }
   return session.user.id;
