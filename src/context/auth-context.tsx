@@ -3,12 +3,12 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import React  from 'react'
 import { Session, User, AuthError } from '@supabase/supabase-js'
-import { SupabaseAuthService } from '@/services/auth.service'
 import { useRouter } from 'next/navigation'
 import { MockAuthService } from '@/services/mock-auth-service.service'
 import logger from '@/utils/logger'
 import { UserProfileProvider } from '@/context/user-profile-context'
 import { loginAction, registerAction, loginWithGoogleAction, logoutAction, getSessionAction } from '@/lib/server-actions/auth-actions'
+import { createClient } from '@/utils/supabase/client'
 
 interface AuthContextType {
   user: User | null
@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isMock] = useState(() => process.env.NEXT_PUBLIC_MOCK_AUTH === 'true')
-  const authService = useRef(isMock ? new MockAuthService() : new SupabaseAuthService()).current;
+  const supabase = useRef(createClient()).current;
 
 
   logger.log('isMock', isMock)
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      const { data: { subscription } } = authService.onAuthStateChange(
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, changedSession) => {
           if (isMounted.current) {
               logger.log("AuthProvider Effect: onAuthStateChange fired", event, changedSession);
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isMounted.current = false; // Set false on cleanup
         subscription.unsubscribe();
       };
-    }, [router, authService]);
+    }, [router, supabase]);
   
 
     const login = async (email: string, password: string) => {

@@ -2,13 +2,13 @@
 
 import UserService from '@/services/user.service';
 import { UserRepository } from '@/repositories/user.repository';
-import { getAuthServiceBasedOnEnvironment } from '@/services/supabase-auth.service';
+import { getAuthServiceBasedOnEnvironment } from '@/services/auth.service';
 import { UserProfileModel } from '@/models/AppAllModels.model';
 import logger from '@/utils/logger';
 import { revalidatePath } from 'next/cache';
 
 function createUserService() {
-  const authService = getAuthServiceBasedOnEnvironment();
+  // const authService = getAuthServiceBasedOnEnvironment();
   const repository = new UserRepository(authService);
   return new UserService(repository);
 }

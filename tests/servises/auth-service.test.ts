@@ -1,47 +1,20 @@
-// File: tests/services/supabase-auth.service.test.ts
+// File: /tests/lib/server-actions/auth-actions.test.ts
 
 import {
-  SupabaseAuthService,
-  supabase,
-} from '@/services/auth.service';
-import { createClient } from '@supabase/supabase-js';
-import {
-  AuthChangeEvent,
-  Session,
-  User,
-  AuthError,
-} from '@supabase/supabase-js';
+  loginAction,
+  registerAction,
+  loginWithGoogleAction,
+  logoutAction,
+  getSessionAction,
+} from '@/lib/server-actions/auth-actions';
+import { createSupabaseServerClient } from '@/utils/supabase/server';
 import logger from '@/utils/logger';
-
-
-
-// Use environment variables directly for client creation
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+import { Session, User, AuthError } from '@supabase/supabase-js';
 
 // --- Mocks ---
-jest.mock('@supabase/supabase-js', () => {
-  const mockAuth = {
-    signInWithPassword: jest.fn(),
-    signUp: jest.fn(),
-    signInWithOAuth: jest.fn(),
-    signOut: jest.fn(),
-    getSession: jest.fn(),
-    onAuthStateChange: jest.fn().mockReturnValue({
-      data: { subscription: { unsubscribe: jest.fn() } },
-    }),
-    admin: {
-      // Mock admin functions
-      deleteUser: jest.fn(),
-    },
-  };
-  const mockClient = {
-    auth: mockAuth,
-  };
-  return {
-    createClient: jest.fn(() => mockClient), // Mock the factory function
-  };
-});
+jest.mock('@/utils/supabase/server', () => ({
+  createSupabaseServerClient: jest.fn(),
+}));
 
 jest.mock('@/utils/logger', () => ({
   info: jest.fn(),
@@ -50,111 +23,85 @@ jest.mock('@/utils/logger', () => ({
   log: jest.fn(),
 }));
 
+// Mock environment variables
+const mockSiteUrl = 'http://localhost:3000';
+process.env.NEXT_PUBLIC_SITE_URL = mockSiteUrl;
+
 // --- Test Suite ---
-describe('SupabaseAuthService', () => {
-  let authService: SupabaseAuthService;
-  let mockSupabaseAuth: any; // Type assertion for easier mocking access
-  let mockSupabaseAdminAuth: any;
-  let mockSupabaseAdminAuthDeleteUser: jest.Mock; 
+describe('Auth Server Actions', () => {
+  let mockSupabaseClient: any;
+  let mockAuth: any;
 
   const mockUser = { id: 'user-123', email: 'test@example.com' } as User;
   const mockSession = {
     access_token: 'abc',
     refresh_token: 'def',
     user: mockUser,
+    expires_in: 3600,
+    token_type: 'bearer',
   } as Session;
 
-  const mockAdminAuth = {
-    deleteUser: jest.fn(),
-  };
-
-  const mockRegularAuth = {
-    signInWithPassword: jest.fn(),
-    signUp: jest.fn(),
-    signInWithOAuth: jest.fn(),
-    signOut: jest.fn(),
-    getSession: jest.fn(),
-    onAuthStateChange: jest.fn().mockReturnValue({
-      data: { subscription: { unsubscribe: jest.fn() } },
-    }),
-    // IMPORTANT: Include admin mock here for when createClient might be called for admin purposes
-    admin: mockAdminAuth,
-  };
-
-  const mockSupabaseClient = {
-    auth: mockRegularAuth,
-  };
-
-  // Use plain objects for mock errors
+  // Use plain objects for mock errors to avoid instanceof issues with mocked classes
   const mockAuthError = {
-    name: 'AuthError',
+    name: 'AuthApiError', // Supabase errors often have this name
     message: 'Invalid credentials',
     status: 400,
-  };
+  } as AuthError; // Cast for type checking
+
   const registerError = {
-    name: 'AuthError',
+    name: 'AuthApiError',
     message: 'User already registered',
     status: 400,
-  };
+  } as AuthError;
+
   const googleError = {
-    name: 'AuthError',
+    name: 'AuthApiError',
     message: 'OAuth provider error',
     status: 500,
-  };
+  } as AuthError;
+
   const logoutError = {
-    name: 'AuthError',
+    name: 'AuthApiError',
     message: 'Logout failed',
     status: 500,
-  };
+  } as AuthError;
+
   const sessionError = {
-    name: 'AuthError',
+    name: 'AuthApiError',
     message: 'Failed to get session',
     status: 500,
-  };
-  const notFoundError = {
-    message: 'User not found',
-    status: 404,
-    name: 'AuthApiError',
-  };
-  const deleteAdminError = {
-    message: 'Database error',
-    status: 500,
-    name: 'AuthApiError',
-  };
+  } as AuthError;
 
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
 
-    // Re-assign mocked Supabase auth object for easier access in tests
-    // We mock createClient, so the 'supabase' export is also mocked
-    mockSupabaseAuth = (supabase as any).auth;
-    // We need to simulate the admin client creation for deleteUserById
-    // Since createClient is mocked, we can access the admin mock through it
-    // mockSupabaseAdminAuth = (
-    //   createClient(
-    //     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    //     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    //     { auth: { autoRefreshToken: false, persistSession: false } }
-    //   ) as any
-    // ).auth.admin; // Get the mocked admin object
+    // Setup the mock Supabase client and its auth methods
+    mockAuth = {
+      signInWithPassword: jest.fn(),
+      signUp: jest.fn(),
+      signInWithOAuth: jest.fn(),
+      signOut: jest.fn(),
+      getSession: jest.fn(),
+    };
+    mockSupabaseClient = {
+      auth: mockAuth,
+    };
 
-    authService = new SupabaseAuthService();
+    // Configure the mock factory to return our mock client
+    (createSupabaseServerClient as jest.Mock).mockResolvedValue(mockSupabaseClient);
   });
 
-  it('should be defined', () => {
-    expect(authService).toBeDefined();
-  });
-
-  // --- login ---
-  describe('login', () => {
-    it('should call supabase.auth.signInWithPassword with correct credentials', async () => {
-      mockSupabaseAuth.signInWithPassword.mockResolvedValueOnce({
+  // --- loginAction ---
+  describe('loginAction', () => {
+    it('should call createSupabaseServerClient and supabase.auth.signInWithPassword', async () => {
+      mockAuth.signInWithPassword.mockResolvedValueOnce({
         data: { user: mockUser, session: mockSession },
         error: null,
       });
-      await authService.login('test@example.com', 'password123');
-      expect(mockSupabaseAuth.signInWithPassword).toHaveBeenCalledWith({
+      await loginAction('test@example.com', 'password123');
+      expect(createSupabaseServerClient).toHaveBeenCalledTimes(1);
+      expect(mockAuth.signInWithPassword).toHaveBeenCalledWith({
         email: 'test@example.com',
         password: 'password123',
       });
@@ -162,34 +109,35 @@ describe('SupabaseAuthService', () => {
 
     it('should return user and session data on successful login', async () => {
       const expectedData = { user: mockUser, session: mockSession };
-      mockSupabaseAuth.signInWithPassword.mockResolvedValueOnce({
+      mockAuth.signInWithPassword.mockResolvedValueOnce({
         data: expectedData,
         error: null,
       });
-      const result = await authService.login('test@example.com', 'password123');
-      expect(result).toEqual(expectedData);
+      const result = await loginAction('test@example.com', 'password123');
+      expect(result).toEqual({ data: expectedData, error: null });
     });
 
-    it('should throw an error if supabase login fails', async () => {
-      mockSupabaseAuth.signInWithPassword.mockResolvedValueOnce({
+    it('should return error and log it if supabase login fails', async () => {
+      mockAuth.signInWithPassword.mockResolvedValueOnce({
         data: { user: null, session: null },
         error: mockAuthError,
       });
-      await expect(
-        authService.login('test@example.com', 'password123')
-      ).rejects.toThrow(mockAuthError.message);
+      const result = await loginAction('test@example.com', 'password123');
+      expect(result).toEqual({ data: { user: null, session: null }, error: mockAuthError });
+      expect(logger.error).toHaveBeenCalledWith('Login error:', mockAuthError);
     });
   });
 
-  // --- register ---
-  describe('register', () => {
-    it('should call supabase.auth.signUp with correct credentials', async () => {
-      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+  // --- registerAction ---
+  describe('registerAction', () => {
+    it('should call createSupabaseServerClient and supabase.auth.signUp', async () => {
+      mockAuth.signUp.mockResolvedValueOnce({
         data: { user: mockUser, session: mockSession },
         error: null,
       });
-      await authService.register('new@example.com', 'newpassword');
-      expect(mockSupabaseAuth.signUp).toHaveBeenCalledWith({
+      await registerAction('new@example.com', 'newpassword');
+      expect(createSupabaseServerClient).toHaveBeenCalledTimes(1);
+      expect(mockAuth.signUp).toHaveBeenCalledWith({
         email: 'new@example.com',
         password: 'newpassword',
       });
@@ -197,298 +145,115 @@ describe('SupabaseAuthService', () => {
 
     it('should return user and session data on successful registration', async () => {
       const expectedData = { user: mockUser, session: mockSession };
-      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+      mockAuth.signUp.mockResolvedValueOnce({
         data: expectedData,
         error: null,
       });
-      const result = await authService.register(
-        'new@example.com',
-        'newpassword'
-      );
-      expect(result).toEqual(expectedData);
+      const result = await registerAction('new@example.com', 'newpassword');
+      expect(result).toEqual({ data: expectedData, error: null });
     });
 
-    it('should throw an error if supabase registration fails', async () => {
-      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+    it('should return error and log it if supabase registration fails', async () => {
+      mockAuth.signUp.mockResolvedValueOnce({
         data: { user: null, session: null },
         error: registerError,
       });
-      await expect(
-        authService.register('new@example.com', 'newpassword')
-      ).rejects.toThrow(registerError.message);
+      const result = await registerAction('new@example.com', 'newpassword');
+      expect(result).toEqual({ data: { user: null, session: null }, error: registerError });
+      expect(logger.error).toHaveBeenCalledWith('Registration error:', registerError);
     });
   });
 
-  // --- loginWithGoogle ---
-  describe('loginWithGoogle', () => {
-    // Need to mock window.location.origin
-    const originalLocation = window.location;
-    beforeAll(() => {
-      Object.defineProperty(window, 'location', {
-        configurable: true,
-        value: { ...originalLocation, origin: 'http://localhost:3000' }, // Mock origin
-      });
-    });
-    afterAll(() => {
-      Object.defineProperty(window, 'location', {
-        // Restore original location
-        configurable: true,
-        value: originalLocation,
-      });
-    });
-
-    it('should call supabase.auth.signInWithOAuth with google provider and redirect', async () => {
-      mockSupabaseAuth.signInWithOAuth.mockResolvedValueOnce({
-        data: {},
-        error: null,
-      }); // signInWithOAuth doesn't return user/session directly on success
-      await authService.loginWithGoogle();
-      expect(mockSupabaseAuth.signInWithOAuth).toHaveBeenCalledWith({
+  // --- loginWithGoogleAction ---
+  describe('loginWithGoogleAction', () => {
+    it('should call createSupabaseServerClient and supabase.auth.signInWithOAuth', async () => {
+      mockAuth.signInWithOAuth.mockResolvedValueOnce({ data: {}, error: null });
+      await loginWithGoogleAction();
+      expect(createSupabaseServerClient).toHaveBeenCalledTimes(1);
+      expect(mockAuth.signInWithOAuth).toHaveBeenCalledWith({
         provider: 'google',
         options: {
-          redirectTo: `http://localhost:3000/app/lessons`, // Ensure this matches the mock origin + path
+          redirectTo: `${mockSiteUrl}/app/lessons`,
         },
       });
     });
 
-    it('should throw an error if supabase Google login fails', async () => {
-      mockSupabaseAuth.signInWithOAuth.mockResolvedValueOnce({
-        data: {},
-        error: googleError,
-      });
-      await expect(authService.loginWithGoogle()).rejects.toThrow(
-        googleError.message
-      );
+    it('should return { error: null } on successful initiation', async () => {
+       mockAuth.signInWithOAuth.mockResolvedValueOnce({ data: {}, error: null });
+       const result = await loginWithGoogleAction();
+       expect(result).toEqual({ error: null });
+    });
+
+
+    it('should return error and log it if supabase Google login fails', async () => {
+      mockAuth.signInWithOAuth.mockResolvedValueOnce({ data: {}, error: googleError });
+      const result = await loginWithGoogleAction();
+      expect(result).toEqual({ error: googleError });
+      expect(logger.error).toHaveBeenCalledWith('Google login error:', googleError);
     });
   });
 
-  // --- logout ---
-  describe('logout', () => {
-    it('should call supabase.auth.signOut', async () => {
-      mockSupabaseAuth.signOut.mockResolvedValueOnce({ error: null });
-      await authService.logout();
-      expect(mockSupabaseAuth.signOut).toHaveBeenCalledTimes(1);
+  // --- logoutAction ---
+  describe('logoutAction', () => {
+    it('should call createSupabaseServerClient and supabase.auth.signOut', async () => {
+      mockAuth.signOut.mockResolvedValueOnce({ error: null });
+      await logoutAction();
+      expect(createSupabaseServerClient).toHaveBeenCalledTimes(1);
+      expect(mockAuth.signOut).toHaveBeenCalledTimes(1);
     });
 
-    it('should throw an error if supabase logout fails', async () => {
-      mockSupabaseAuth.signOut.mockResolvedValueOnce({ error: logoutError });
-      await expect(authService.logout()).rejects.toThrow(logoutError.message);
+     it('should return { error: null } on successful logout', async () => {
+       mockAuth.signOut.mockResolvedValueOnce({ error: null });
+       const result = await logoutAction();
+       expect(result).toEqual({ error: null });
+    });
+
+    it('should return error and log it if supabase logout fails', async () => {
+      mockAuth.signOut.mockResolvedValueOnce({ error: logoutError });
+      const result = await logoutAction();
+      expect(result).toEqual({ error: logoutError });
+      expect(logger.error).toHaveBeenCalledWith('Logout error:', logoutError);
     });
   });
 
-  // --- getSession ---
-  describe('getSession', () => {
-    it('should call supabase.auth.getSession', async () => {
-      mockSupabaseAuth.getSession.mockResolvedValueOnce({
+  // --- getSessionAction ---
+  describe('getSessionAction', () => {
+    it('should call createSupabaseServerClient and supabase.auth.getSession', async () => {
+      mockAuth.getSession.mockResolvedValueOnce({
         data: { session: mockSession },
         error: null,
       });
-      await authService.getSession();
-      expect(mockSupabaseAuth.getSession).toHaveBeenCalledTimes(1);
+      await getSessionAction();
+      expect(createSupabaseServerClient).toHaveBeenCalledTimes(1);
+      expect(mockAuth.getSession).toHaveBeenCalledTimes(1);
     });
 
     it('should return the session on success', async () => {
-      mockSupabaseAuth.getSession.mockResolvedValueOnce({
+      mockAuth.getSession.mockResolvedValueOnce({
         data: { session: mockSession },
         error: null,
       });
-      const result = await authService.getSession();
+      const result = await getSessionAction();
       expect(result).toEqual(mockSession);
     });
 
     it('should return null if no session exists', async () => {
-      mockSupabaseAuth.getSession.mockResolvedValueOnce({
+      mockAuth.getSession.mockResolvedValueOnce({
         data: { session: null },
         error: null,
       });
-      const result = await authService.getSession();
+      const result = await getSessionAction();
       expect(result).toBeNull();
     });
 
-    it('should throw an error if supabase getSession fails', async () => {
-      mockSupabaseAuth.getSession.mockResolvedValueOnce({
+    it('should return null and log error if supabase getSession fails', async () => {
+      mockAuth.getSession.mockResolvedValueOnce({
         data: { session: null },
         error: sessionError,
       });
-      await expect(authService.getSession()).rejects.toThrow(
-        sessionError.message
-      );
-    });
-  });
-
-  // --- onAuthStateChange ---
-  describe('onAuthStateChange', () => {
-    it('should call supabase.auth.onAuthStateChange with the callback', () => {
-      const callback = jest.fn();
-      authService.onAuthStateChange(callback);
-      expect(mockSupabaseAuth.onAuthStateChange).toHaveBeenCalledWith(callback);
-    });
-
-    it('should return the subscription data', () => {
-      const callback = jest.fn();
-      const unsubscribe = jest.fn();
-      const subscriptionData = { data: { subscription: { unsubscribe } } };
-      mockSupabaseAuth.onAuthStateChange.mockReturnValueOnce(subscriptionData); // Return the specific mock value
-      const result = authService.onAuthStateChange(callback);
-      expect(result).toEqual(subscriptionData);
-      expect(result.data.subscription.unsubscribe).toBeDefined();
-    });
-  });
-
-  // --- deleteUserById ---
-  describe('deleteUserById', () => {
-    const userIdToDelete = 'user-to-delete';
-    const testAdminKey = 'test-admin-key';
-
-    const originalWindow = global.window;
-
-   // Helper to set up server environment for tests
-   const setupServerEnv = (withKey = true) => {
-    // @ts-ignore
-    delete global.window; // Simulate server
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://test-url.com';
-    if (withKey) {
-        process.env.SUPABASE_SERVICE_ROLE_KEY = testAdminKey;
-    } else {
-        delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    }
-    // Re-initialize service AFTER setting env vars, so constructor uses them
-    authService = new SupabaseAuthService();
-};
-
-    beforeEach(() => {
-      // @ts-ignore
-      delete global.window; // Simulate server environment for this test block
-      // Set environment variable for admin key (needed for initialization check)
-      process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-admin-key';
-      // Reset mock for admin client creation check
-      (createClient as jest.Mock).mockClear();
-      // Re-initialize service to pick up server environment
-      authService = new SupabaseAuthService();
-      // Ensure the admin client mock is correctly referenced after re-initialization
-      mockSupabaseAdminAuth = (
-        createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          { auth: { autoRefreshToken: false, persistSession: false } }
-        ) as any
-      ).auth.admin; // This correctly assigns the admin mock object
-    });
-    afterEach(() => {
-      global.window = originalWindow; // Restore window object
-      delete process.env.SUPABASE_SERVICE_ROLE_KEY; // Clean up env var
-    });
-
-    it('should return error if called on the client-side', async () => {
-      global.window = originalWindow; // Temporarily restore window for this test
-      authService = new SupabaseAuthService(); // Re-init in client env
-
-      const result = await authService.deleteUserById(userIdToDelete);
-
-      expect(result.error).toBeDefined();
-      expect(result.error.message).toContain(
-        'User deletion can only be performed server-side'
-      );
-      expect(mockSupabaseAdminAuth.deleteUser).not.toHaveBeenCalled();
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Attempted to call deleteUserById from the client-side'
-        )
-      );
-      global.window = undefined as any; // Set back for other tests in block
-    });
-
-    it('should return error if admin client is not initialized', async () => {
-      delete process.env.SUPABASE_SERVICE_ROLE_KEY; // Simulate missing key
-      authService = new SupabaseAuthService(); // Re-init without key
-
-      const result = await authService.deleteUserById(userIdToDelete);
-
-      expect(result.error).toBeDefined();
-      expect(result.error.message).toContain('Admin client not available');
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('SUPABASE_SERVICE_ROLE_KEY is not set. Admin operations will not be available.')
-      );
-      expect(mockSupabaseAdminAuth.deleteUser).not.toHaveBeenCalled();
-    });
-
-    it('should call supabaseAdmin.auth.admin.deleteUser with the correct userId', async () => {
-      mockSupabaseAdminAuth.deleteUser.mockResolvedValueOnce({
-        data: { user: null },
-        error: null,
-      }); // Mock successful deletion
-      await authService.deleteUserById(userIdToDelete);
-      expect(mockSupabaseAdminAuth.deleteUser).toHaveBeenCalledWith(
-        userIdToDelete
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `Attempting Supabase Auth deletion for user ${userIdToDelete}`
-        )
-      );
-    });
-
-    it('should return { error: null } on successful deletion', async () => {
-      mockSupabaseAdminAuth.deleteUser.mockResolvedValueOnce({
-        data: { user: null },
-        error: null,
-      });
-      const result = await authService.deleteUserById(userIdToDelete);
-      expect(result.error).toBeNull();
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`Successfully deleted user ${userIdToDelete}`)
-      );
-    });
-
-    it('should return { error: null } if user is not found (already deleted)', async () => {
-      setupServerEnv(); // Setup server environment
-      mockSupabaseAdminAuth.deleteUser.mockResolvedValueOnce({
-        data: { user: null },
-        error: notFoundError,
-      });
-      const result = await authService.deleteUserById(userIdToDelete);
-
-      expect(result.error).toBeNull(); // Treat as success
-      expect(mockSupabaseAdminAuth.deleteUser).toHaveBeenCalledWith(
-        userIdToDelete
-      ); // Verify call happened
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `User ${userIdToDelete} not found in Supabase Auth`
-        )
-      );
-    });
-
-    it('should return the error object if admin deletion fails', async () => {
-      setupServerEnv(true); // Setup server environment
-    // Mock the admin call to return a generic error
-    mockSupabaseAdminAuth.deleteUser.mockResolvedValueOnce({
-      data: { user: null },
-      error: deleteAdminError,
-    });
-      const result = await authService.deleteUserById(userIdToDelete);
-
-      expect(result.error).toEqual(deleteAdminError);
-      expect(mockSupabaseAdminAuth.deleteUser).toHaveBeenCalledWith(userIdToDelete);
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `Supabase Auth Admin Error deleting user ${userIdToDelete}`
-        ),
-        deleteAdminError // Expect the error object itself to be logged
-      );
-    });
-
-    it('should return the error object if an exception occurs during deletion', async () => {
-      const exception = new Error('Unexpected exception');
-      mockSupabaseAdminAuth.deleteUser.mockRejectedValueOnce(exception);
-      const result = await authService.deleteUserById(userIdToDelete);
-      expect(result.error).toEqual(exception);
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `Exception during Supabase Auth Admin deleteUser call for ${userIdToDelete}`
-        ),
-        exception
-      );
+      const result = await getSessionAction();
+      expect(result).toBeNull();
+      expect(logger.error).toHaveBeenCalledWith('Get session error:', sessionError);
     });
   });
 });

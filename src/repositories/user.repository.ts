@@ -1,53 +1,82 @@
-import { IAuthService } from '@/services/auth.service'
-import { ILessonRepository } from '@/lib/interfaces/all-interfaces'
-import logger from '@/utils/logger'
-import { LessonModel, LessonStep, UserProfileModel } from '@/models/AppAllModels.model'
-import prisma from '@/lib/prisma'
-import { getAuthServiceBasedOnEnvironment } from '@/services/supabase-auth.service'
-import { SubscriptionStatus } from '@prisma/client'
+import { ILessonRepository } from '@/lib/interfaces/all-interfaces';
+import logger from '@/utils/logger';
+import {
+  LessonModel,
+  LessonStep,
+  UserProfileModel,
+} from '@/models/AppAllModels.model';
+import prisma from '@/lib/prisma';
+import { SubscriptionStatus } from '@prisma/client';
+import { createSupabaseServerClient } from '@/utils/supabase/server';
+import { cookies } from 'next/headers';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface IUserRepository {
-  getUserProfile(userId: string): Promise<UserProfileModel | null>
-  createUserProfile(profile: Partial<UserProfileModel>): Promise<UserProfileModel>
-  updateUserProfile(userId: string, profile: Partial<UserProfileModel>): Promise<UserProfileModel>
-  deleteUserProfile(userId: string): Promise<void>
+  getUserProfile(userId: string): Promise<UserProfileModel | null>;
+  createUserProfile(
+    profile: Partial<UserProfileModel>
+  ): Promise<UserProfileModel>;
+  updateUserProfile(
+    userId: string,
+    profile: Partial<UserProfileModel>
+  ): Promise<UserProfileModel>;
+  deleteUserProfile(userId: string): Promise<void>;
 }
 
 export class UserRepository implements IUserRepository {
-  private authService: IAuthService
-  private adminAuthService: IAuthService | null = null;
+  private supabase: SupabaseClient | null = null;
 
-  constructor(authService: IAuthService) {
-    this.authService = authService
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      this.adminAuthService = getAuthServiceBasedOnEnvironment(); // Pass flag for admin
+  constructor() {
+    // For server-side usage, create Supabase client
+    if (typeof window === 'undefined') {
+      // Initialize supabase synchronously but mark it as potentially null
+      this.supabase = null;
+      // Create a helper method to get the client when needed
+      this.getSupabaseClient = async () => {
+        if (!this.supabase) {
+          this.supabase = await createSupabaseServerClient();
+        }
+        return this.supabase;
+      };
     }
+    // For client-side usage, use the passed authService
+  
   }
 
+  private getSupabaseClient?: () => Promise<SupabaseClient>;
+
   async getSession() {
-    const session = await this.authService.getSession()
-    if (!session?.user?.id) {
-      throw new Error('Unauthorized')
+    // Server-side session handling
+    if (typeof window === 'undefined' && this.getSupabaseClient) {
+      const supabase = await this.getSupabaseClient();
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+      if (error || !session?.user?.id) {
+        throw new Error('Unauthorized');
+      }
+      return session;
     }
-    logger.info('session in user repository', session)
-    return session
+   
+    throw new Error('No auth service available');
   }
 
   async getUserProfile(userId: string): Promise<UserProfileModel | null> {
     try {
       // First ensure the user is authorized to access this profile
-      const session = await this.getSession()
+      const session = await this.getSession();
       if (session.user.id !== userId) {
-        throw new Error('Unauthorized to access this profile')
+        throw new Error('Unauthorized to access this profile');
       }
 
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        include: { onboarding: true }
-      })
+        include: { onboarding: true },
+      });
 
       if (!user) {
-        return null
+        return null;
       }
 
       return {
@@ -61,47 +90,54 @@ export class UserRepository implements IUserRepository {
         learningPurpose: user.onboarding?.learningPurpose || undefined,
         onboardingCompleted: user.onboarding?.completed || false,
         createdAt: user.createdAt,
-        initialAssessmentCompleted: user.onboarding?.initialAssessmentCompleted || false,
+        initialAssessmentCompleted:
+          user.onboarding?.initialAssessmentCompleted || false,
         subscriptionStatus: user.subscriptionStatus,
         subscriptionEndDate: user.subscriptionEndDate || null,
-        updatedAt: user.updatedAt
-      }
+        updatedAt: user.updatedAt,
+      };
     } catch (error) {
-      logger.error('Error fetching user profile:', error)
-      throw error
+      logger.error('Error fetching user profile:', error);
+      throw error;
     }
   }
 
-  async createUserProfile(profile: Partial<UserProfileModel>): Promise<UserProfileModel> {
+  async createUserProfile(
+    profile: Partial<UserProfileModel>
+  ): Promise<UserProfileModel> {
     try {
       // Verify session first - optional since this might be called during registration
       // when session isn't fully established yet
-      const session = await this.getSession()
-      logger.info('session', session)
+      const session = await this.getSession();
+      logger.info('session', session);
       if (session.user.id !== profile.userId) {
-        throw new Error('Unauthorized to create this profile')
+        throw new Error('Unauthorized to create this profile');
       }
 
-      const { userId, email } = profile
+      const { userId, email } = profile;
 
       logger.info('creating user in repo', profile);
 
       if (!userId || !email) {
-        throw new Error('Missing required fields: userId and email are required')
+        throw new Error(
+          'Missing required fields: userId and email are required'
+        );
       }
 
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
-        where: { id: userId }
-      })
+        where: { id: userId },
+      });
 
       if (existingUser) {
         // If user exists but we're trying to create a profile, return the existing user profile
-        const existingProfile = await this.getUserProfile(userId)
+        const existingProfile = await this.getUserProfile(userId);
         if (existingProfile) {
-          return existingProfile
+          return existingProfile;
         }
-        throw new Error('User already exists but profile could not be retrieved')
+        throw new Error(
+          'User already exists but profile could not be retrieved'
+        );
       }
 
       // Create the user with minimal information
@@ -117,13 +153,13 @@ export class UserRepository implements IUserRepository {
               steps: {},
               completed: false,
               // All other fields will be null/undefined until onboarding
-            }
-          }
+            },
+          },
         },
         include: {
-          onboarding: true
-        }
-      })
+          onboarding: true,
+        },
+      });
 
       // Return a valid UserProfileModel with defaults for missing fields
       return {
@@ -142,32 +178,40 @@ export class UserRepository implements IUserRepository {
         updatedAt: user.updatedAt || new Date(),
         subscriptionStatus: user.subscriptionStatus, // Include default status
         subscriptionEndDate: user.subscriptionEndDate, // Include default end date
-
-      }
+      };
     } catch (error) {
-      logger.error('Error creating user profile:', error)
-      throw error
+      logger.error('Error creating user profile:', error);
+      throw error;
     }
   }
 
-  async updateUserProfile(userId: string, profile: Partial<UserProfileModel>): Promise<UserProfileModel> {
+  async updateUserProfile(
+    userId: string,
+    profile: Partial<UserProfileModel>
+  ): Promise<UserProfileModel> {
     try {
       // First ensure the user is authorized to update this profile
-      const session = await this.getSession()
+      const session = await this.getSession();
       if (session.user.id !== userId) {
-        throw new Error('Unauthorized to update this profile')
+        throw new Error('Unauthorized to update this profile');
       }
 
       // Extract onboarding specific fields
-      const onboardingData: any = {}
+      const onboardingData: any = {};
 
-      if ('nativeLanguage' in profile) onboardingData.nativeLanguage = profile.nativeLanguage
-      if ('targetLanguage' in profile) onboardingData.targetLanguage = profile.targetLanguage
-      if ('proficiencyLevel' in profile) onboardingData.proficiencyLevel = profile.proficiencyLevel
-      if ('learningPurpose' in profile) onboardingData.learningPurpose = profile.learningPurpose
-      if ('onboardingCompleted' in profile) onboardingData.completed = profile.onboardingCompleted
+      if ('nativeLanguage' in profile)
+        onboardingData.nativeLanguage = profile.nativeLanguage;
+      if ('targetLanguage' in profile)
+        onboardingData.targetLanguage = profile.targetLanguage;
+      if ('proficiencyLevel' in profile)
+        onboardingData.proficiencyLevel = profile.proficiencyLevel;
+      if ('learningPurpose' in profile)
+        onboardingData.learningPurpose = profile.learningPurpose;
+      if ('onboardingCompleted' in profile)
+        onboardingData.completed = profile.onboardingCompleted;
       if ('initialAssessmentCompleted' in profile)
-        onboardingData.initialAssessmentCompleted = profile.initialAssessmentCompleted
+        onboardingData.initialAssessmentCompleted =
+          profile.initialAssessmentCompleted;
 
       // Update the user and their onboarding data
       const user = await prisma.user.update({
@@ -178,16 +222,16 @@ export class UserRepository implements IUserRepository {
             upsert: {
               create: {
                 ...onboardingData,
-                steps: {}
+                steps: {},
               },
-              update: onboardingData
-            }
-          }
+              update: onboardingData,
+            },
+          },
         },
         include: {
-          onboarding: true
-        }
-      })
+          onboarding: true,
+        },
+      });
 
       return {
         id: user.id,
@@ -199,73 +243,98 @@ export class UserRepository implements IUserRepository {
         // proficiencyLevel: user.onboarding?.proficiencyLevel || null,
         // learningPurpose: user.onboarding?.learningPurpose || null,
         onboardingCompleted: user.onboarding?.completed || false,
-        initialAssessmentCompleted: user.onboarding?.initialAssessmentCompleted || false,
+        initialAssessmentCompleted:
+          user.onboarding?.initialAssessmentCompleted || false,
         subscriptionStatus: user.subscriptionStatus,
         subscriptionEndDate: user.subscriptionEndDate || null,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      }
+        updatedAt: user.updatedAt,
+      };
     } catch (error) {
-      logger.error('Error updating user profile:', error)
-      throw error
+      logger.error('Error updating user profile:', error);
+      throw error;
     }
   }
 
-
-
   async deleteUserProfile(userId: string): Promise<void> {
-    // Get an instance of the Auth service (potentially configured with admin rights)
-    // This ensures we use the same logic (mock or real) as the rest of the app
-    // and allows the factory function to provide an admin client if needed server-side.
-    const adminAuthService = getAuthServiceBasedOnEnvironment();
-
     try {
-      // CRITICAL: Verify authorization again within the repository method
+      // Verify authorization
       const session = await this.getSession();
       if (session.user.id !== userId) {
-        logger.error(`Unauthorized attempt to delete user profile in repository. Session user: ${session.user.id}, Target user: ${userId}`);
+        logger.error(
+          `Unauthorized delete attempt. Session user: ${session.user.id}, Target: ${userId}`
+        );
         throw new Error('Unauthorized: You can only delete your own profile.');
       }
 
-      logger.warn(`Initiating deletion process for user profile and associated data for userId: ${userId}`);
+      logger.warn(`Starting deletion for user: ${userId}`);
 
-      // Step 1: Delete the user record from the database.
-      logger.info(`Attempting to delete user data from DB for userId: ${userId}`);
-      await prisma.user.delete({
-        where: { id: userId },
-      });
-      logger.info(`Successfully deleted user data from DB for userId: ${userId}`);
+      // Step 1: Delete from database
+      logger.info(`Deleting user data from DB: ${userId}`);
+      await prisma.user.delete({ where: { id: userId } });
+      logger.info(`DB deletion complete: ${userId}`);
 
-      // Step 2: Delete the user from the authentication provider (Supabase Auth)
-      logger.info(`Attempting to delete user from Auth Provider for userId: ${userId}`);
-      const { error: authError } = await adminAuthService.deleteUserById(userId);
+      // Step 2: Delete auth user (server-side only)
+      if (typeof window === 'undefined' && this.getSupabaseClient) {
+        const supabase = await this.getSupabaseClient();
 
-      if (authError) {
-        logger.error(`Failed to delete user from Auth Provider (Supabase Auth): ${authError.message || authError}`, { userId });
-      } else {
-        logger.info(`Successfully deleted user from Auth Provider for userId: ${userId}`);
+        // Use admin API for user deletion
+        const { error: authError } = await supabase.auth.admin.deleteUser(
+          userId
+        );
+
+        if (authError) {
+          logger.error(`Auth deletion failed: ${authError.message}`, {
+            userId,
+          });
+          throw new Error('Failed to delete auth user');
+        }
+        logger.info(`Auth user deleted: ${userId}`);
       }
 
-      logger.warn(`Completed deletion process for userId: ${userId}`);
-
+      logger.warn(`Deletion completed for: ${userId}`);
     } catch (error: any) {
-      logger.error(`Error during user profile deletion for userId: ${userId}`, { code: error.code, message: error.message, stack: error.stack });
+      logger.error(`Error during user profile deletion for userId: ${userId}`, {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+      });
 
       // Handle specific Prisma errors
-      if (error.code === 'P2025') { // Record to delete not found
-        logger.warn(`User profile not found in DB for deletion (userId: ${userId}). Might have been already deleted.`);
+      if (error.code === 'P2025') {
+        // Record to delete not found
+        logger.warn(
+          `User profile not found in DB for deletion (userId: ${userId}). Might have been already deleted.`
+        );
         // Consider this a success case as the user is gone from DB.
         // Still attempt Auth deletion just in case.
         try {
-          logger.info(`Attempting Auth Provider deletion for potentially orphaned user: ${userId}`);
-          const { error: authError } = await adminAuthService.deleteUserById(userId);
-          if (authError) {
-            logger.error(`Failed to delete potentially orphaned user ${userId} from Auth Provider: ${authError.message || authError}`);
-          } else {
-            logger.info(`Successfully deleted potentially orphaned user ${userId} from Auth Provider.`);
+          logger.info(
+            `Attempting Auth Provider deletion for potentially orphaned user: ${userId}`
+          );
+          if (typeof window === 'undefined' && this.getSupabaseClient) {
+            const supabase = await this.getSupabaseClient();
+            const { error: authError } = await supabase.auth.admin.deleteUser(
+              userId
+            );
+
+            if (authError) {
+              logger.error(
+                `Failed to delete potentially orphaned user ${userId} from Auth Provider: ${
+                  authError.message || authError
+                }`
+              );
+            } else {
+              logger.info(
+                `Successfully deleted potentially orphaned user ${userId} from Auth Provider.`
+              );
+            }
           }
         } catch (authCatchError: any) {
-          logger.error(`Exception during Auth Provider deletion for potentially orphaned user ${userId}:`, authCatchError);
+          logger.error(
+            `Exception during Auth Provider deletion for potentially orphaned user ${userId}:`,
+            authCatchError
+          );
         }
         return; // Exit successfully
       }
