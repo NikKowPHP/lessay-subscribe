@@ -53,7 +53,12 @@ export default class LessonService {
   }
 
   async getLessons(): Promise<LessonModel[]> {
-    return this.lessonRepository.getLessons();
+    const lessons = await this.lessonRepository.getLessons();
+    if (!lessons || lessons.length === 0) {
+      logger.info('No lessons found, generating initial lessons');
+      return await this.generateInitialLessons();
+    }
+    return lessons;
   }
 
   async getLessonById(lessonId: string): Promise<LessonModel | null> {
