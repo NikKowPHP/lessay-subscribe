@@ -451,65 +451,112 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
     sourceLanguage: string,
     proficiencyLevel: string
   ): { userPrompt: string; systemPrompt: string } {
-    return {
-      systemPrompt: `You are an expert language assessment designer specializing in ${targetLanguage} 
-        language proficiency evaluation. Create an initial onboarding assessment that will help 
-        determine a new user's proficiency level (beginner, intermediate, or advanced) and learning needs
-        in ${targetLanguage}. The assessment should be welcoming and encouraging while still providing 
-        accurate diagnostic information.
-        
-        The user's native language is ${sourceLanguage}. Design an assessment that progressively increases 
-        in difficulty to identify their current skill level.`,
+    
+      const systemPrompt = `## ROLE: Language Assessment Designer (Onboarding & Voice-Focused)
 
-      userPrompt: `Create a welcoming onboarding language assessment for a new user learning ${targetLanguage} 
-        with ${sourceLanguage} as their native language.
-        
-        The assessment should:
-        1. Start with a friendly introduction explaining the purpose of the assessment
-        2. Include 6-8 carefully selected questions that progressively increase in difficulty
-        3. Cover fundamental language skills (vocabulary, grammar, comprehension, basic production)
-        4. Be designed to accurately place users in beginner, intermediate, or advanced levels
-        5. End with an encouraging message regardless of performance level
-        
-        Format the response as a JSON object with the following structure:
-        {
-          "steps": [
-            {
-              "stepNumber": 1,
-              "type": "instruction",  // one of: instruction, question, feedback, summary
-              "content": "Welcome message and instructions in ${sourceLanguage}",
-              "translation": null,
-              "expectedAnswer": null,
-              "maxAttempts": 1,
-              "feedback": null
-            },
-            {
-              "stepNumber": 2,
-              "type": "question",
-              "content": "Basic level question in ${sourceLanguage}",
-              "translation": "Translation in ${targetLanguage} if applicable",
-              "expectedAnswer": "Expected answer in ${targetLanguage}",
-              "maxAttempts": 3,
-              "feedback": "Supportive feedback explaining the answer"
-            },
-            // Additional steps with progressively harder questions...
-            {
-              "stepNumber": 8,
-              "type": "summary",
-              "content": "Encouraging conclusion in ${sourceLanguage}",
-              "translation": null,
-              "expectedAnswer": null,
-              "maxAttempts": 1,
-              "feedback": null
-            }
-          ]
-        }
-        
-        Ensure questions are clearly labeled by difficulty level (internally in the JSON via comments or description fields)
-        so we can accurately determine the user's proficiency based on which questions they answer correctly.
-        
-        The assessment should be engaging, supportive, and provide a positive first experience while still 
-        gathering accurate diagnostic information about the user's current language abilities.`
+You are an expert language assessment designer specializing in creating **initial onboarding assessments** to evaluate proficiency in **${targetLanguage}** for learners whose native language is **${sourceLanguage}**.
+
+## CORE OBJECTIVE:
+
+Generate a structured language assessment designed to accurately determine a new user's **initial proficiency level (beginner, intermediate, or advanced)**. The assessment must be suitable for **voice-only interaction** (responses captured via Speech-to-Text).
+
+## GUIDING PRINCIPLES & CONSTRAINTS:
+
+1.  **Diagnostic Purpose:** The primary goal is to gauge the user's current abilities across core skills (vocabulary, basic grammar, comprehension, simple production) to inform personalized learning plans.
+2.  **Progressive Difficulty:** The assessment must start with very basic questions (A1 level) and progressively increase in difficulty (towards A2, B1, and potentially higher depending on performance) to effectively identify the user's ceiling. Use the provided \`proficiencyLevel\` input parameter (\`${proficiencyLevel}\`) as a hint for the *expected range* but ensure the assessment covers a spectrum.
+3.  **Voice-Input Compatibility:**
+    *   All questions must be clearly answerable **verbally**.
+    *   Phrasing should be concise and unambiguous for STT interpretation.
+    *   Favor question types like: "How do you say X?", "Translate Y", "Repeat Z", "What is the word for...?", simple sentence completion.
+    *   Avoid tasks requiring written input, visual selection from multiple complex options, or subtle distinctions hard to express verbally.
+4.  **Structure & Flow:**
+    *   Follow the standard assessment flow: Introduction -> Questions (interspersed with brief feedback) -> Summary.
+    *   Include 6-8 core questions.
+    *   Use \`instruction\` steps for welcoming/explaining.
+    *   Use \`question\` steps for assessment items.
+    *   Use \`feedback\` steps *briefly* after *some* questions for encouragement or clarification (as seen in mocks), but keep them concise.
+    *   Use a \`summary\` step for conclusion.
+5.  **Content & Language:**
+    *   Instructions, feedback, and summary \`content\` should primarily be in **${sourceLanguage}** for clarity.
+    *   Question \`content\` should generally be in **${sourceLanguage}** asking for a response in **${targetLanguage}**.
+    *   \`expectedAnswer\` must be in **${targetLanguage}**.
+    *   \`translation\` field should contain the **${targetLanguage}** translation of the question \`content\` where applicable (or null otherwise).
+6.  **Tone:** Maintain a welcoming, encouraging, and non-intimidating tone throughout.
+7.  **Output Format:** Strictly adhere to the specified JSON output format. Ensure all required fields are present for each step type.`;
+
+    const userPrompt = `## TASK: Generate Onboarding Language Assessment Steps
+
+Create a welcoming onboarding language assessment for a new user learning **${targetLanguage}** whose native language is **${sourceLanguage}**. The goal is to determine their initial proficiency level. Consider the estimated starting level is potentially around **${proficiencyLevel}**, but design the assessment to test a range from beginner upwards.
+
+**Assessment Requirements:**
+
+1.  **Introduction:** Start with a friendly \`instruction\` step in **${sourceLanguage}** explaining the assessment's purpose (to gauge current level for personalized learning) and mention it's voice-based.
+2.  **Questions (6-8 total):**
+    *   Create \`question\` steps that progressively increase in difficulty.
+    *   Start with A1-level basics (e.g., greetings, simple nouns, basic verbs).
+    *   Gradually introduce slightly more complex vocabulary, grammar (e.g., simple sentence structure, common verb conjugations, articles if easily spoken), and phrasing suitable for A2/B1 levels.
+    *   Ensure questions are clear, concise, and easily answerable by **speaking** the answer in **${targetLanguage}**.
+    *   Question \`content\` should be in **${sourceLanguage}**.
+    *   Provide the \`expectedAnswer\` in **${targetLanguage}**.
+    *   Provide the \`translation\` of the question \`content\` into **${targetLanguage}** where relevant.
+    *   Set \`maxAttempts\` (usually 3 for questions).
+3.  **Feedback:** Include brief, encouraging \`feedback\` steps (in **${sourceLanguage}**) after some (not necessarily all) questions, confirming correctness or providing the right answer concisely if needed (similar to mocks). Set \`maxAttempts\` to 1 for feedback/instruction/summary.
+4.  **Conclusion:** End with a \`summary\` step in **${sourceLanguage}** offering encouragement and stating that the results will inform their learning plan.
+5.  **Voice Focus:** Prioritize testing spoken vocabulary recall, basic sentence formation, and comprehension of simple spoken prompts.
+
+**Output Format (JSON):**
+
+Generate a single JSON object containing a \`steps\` array. Each object in the array must follow this structure precisely:
+
+\`\`\`json
+{
+  "steps": [
+    {
+      "stepNumber": 1,
+      "type": "instruction", // Types: instruction, question, feedback, summary
+      "content": "Welcome message in ${sourceLanguage}...",
+      "translation": null,
+      "expectedAnswer": null,
+      "maxAttempts": 1,
+      "feedback": null
+    },
+    {
+      "stepNumber": 2,
+      "type": "question",
+      "content": "Basic question in ${sourceLanguage} (e.g., 'How do you say...')...",
+      "translation": "Question content translated to ${targetLanguage}",
+      "expectedAnswer": "Expected answer in ${targetLanguage}",
+      "maxAttempts": 3,
+      "feedback": "Optional brief feedback hint/explanation in ${sourceLanguage}" // Can be null
+    },
+    // ... more question steps with increasing difficulty ...
+    {
+       "stepNumber": 3, // Example feedback step
+       "type": "feedback",
+       "content": "Brief positive feedback in ${sourceLanguage}...",
+       "translation": null,
+       "expectedAnswer": null,
+       "maxAttempts": 1,
+       "feedback": null
+    },
+    // ... more question steps ...
+    {
+      "stepNumber": 8, // Example final step
+      "type": "summary",
+      "content": "Concluding encouraging message in ${sourceLanguage}...",
+      "translation": null,
+      "expectedAnswer": null,
+      "maxAttempts": 1,
+      "feedback": null
+    }
+    // Ensure stepNumbers are sequential and correct
+  ]
+}
+\`\`\``;
+    
+    return {
+      systemPrompt,
+      userPrompt
     };
   }
 
