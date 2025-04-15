@@ -96,12 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data, error: actionError } = await loginAction(email, password) // Rename error variable
         if (actionError) {
-          // Use the error from the action result
           setError(actionError.message);
-          // Throw the specific error object for tests or further handling if needed
-          throw actionError;
         }
-        // Check mount status again before setting state
         if (isMounted.current) {
           setUser(data.user);
           setSession(data.session);
@@ -109,17 +105,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             router.push('/app/lessons');
           }
         }
-      } catch (caughtError: any) { // Catch any error type
-          // Check mount status before setting error state
+      } catch (caughtError: any) {
           if (isMounted.current) {
-              // Set error based on the caught error's message if available
               const message = caughtError?.message ? caughtError.message : 'Failed to login';
               setError(message);
           }
-          // Re-throw the original error so promise rejects as expected
-          throw caughtError;
       } finally {
-        // Check mount status before final state update
         if (isMounted.current) {
           setLoading(false);
         }
@@ -134,7 +125,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data, error: actionError } = await registerAction(email, password)
         if (actionError) {
           setError(actionError.message);
-          throw actionError;
         }
         if (isMounted.current) {
           setUser(data.user);
@@ -148,7 +138,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const message = caughtError?.message ? caughtError.message : 'Registration failed';
               setError(message);
           }
-          throw caughtError;
       } finally {
         if (isMounted.current) {
           setLoading(false);
@@ -165,7 +154,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { error: actionError } = await loginWithGoogleAction()
         if (actionError) {
           setError(actionError.message);
-          throw actionError;
         }
         // No need to set user/session here as it will be handled by the auth state change
       } catch (caughtError: any) {
@@ -173,10 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const message = caughtError?.message ? caughtError.message : 'Google login failed';
               setError(message);
           }
-          throw caughtError;
       } finally {
-        // Google login might involve redirects, setting loading might be tricky,
-        // but let's keep it for consistency if the action itself completes/errors quickly.
         if (isMounted.current) {
           setLoading(false);
         }
@@ -185,7 +170,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
 
     const logout = async () => {
-      // No need to set loading for logout usually
       if (!isMounted.current) return;
       setError(null)
       try {
@@ -208,7 +192,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   
     const clearError = () => {
-        // Check mount status before setting state
         if (isMounted.current) {
           setError(null);
         }

@@ -213,23 +213,17 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('Loaded'));
 
     await act(async () => {
-        // Click login button - use try/catch because the action might throw
-        try {
-            await screen.getByRole('button', { name: 'Login' }).click();
-        } catch (e) {
-            // Expected if the action throws, which it does in the provider
-            expect(e).toBe(mockAuthError);
-        }
+      screen.getByRole('button', { name: 'Login' }).click();
     });
-
 
     await waitFor(() => {
-      expect(AuthActions.loginAction).toHaveBeenCalledWith('test@test.com', 'password');
-      expect(screen.getByTestId('user')).toHaveTextContent('No User');
-      expect(screen.getByTestId('session')).toHaveTextContent('No Session');
       expect(screen.getByTestId('error')).toHaveTextContent(`Error: ${mockAuthError.message}`);
-      expect(mockRouterPush).not.toHaveBeenCalled();
     });
+    expect(AuthActions.loginAction).toHaveBeenCalledWith('test@test.com', 'password');
+    expect(screen.getByTestId('user')).toHaveTextContent('No User');
+    expect(screen.getByTestId('session')).toHaveTextContent('No Session');
+    expect(mockRouterPush).not.toHaveBeenCalled();
+
   });
 
   it('should handle successful registration', async () => {
@@ -261,7 +255,8 @@ describe('AuthProvider', () => {
     });
   });
 
-   it('should handle failed registration', async () => {
+  it('should handle failed registration', async () => {
+    // Arrange: Mock the action to return an error
     const registerError: AuthError = { name: 'AuthApiError', message: 'User already exists', status: 409 };
     (AuthActions.registerAction as jest.Mock).mockResolvedValue({
         data: { user: null, session: null },
@@ -276,22 +271,23 @@ describe('AuthProvider', () => {
 
     await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('Loaded'));
 
+    // Act: Trigger the register action
     await act(async () => {
-        try {
-            await screen.getByRole('button', { name: 'Register' }).click();
-        } catch (e) {
-             expect(e).toBe(registerError);
-        }
+      screen.getByRole('button', { name: 'Register' }).click();
     });
 
+    // Assert: Wait for the error message state update
     await waitFor(() => {
-      expect(AuthActions.registerAction).toHaveBeenCalledWith('new@test.com', 'password');
-      expect(screen.getByTestId('user')).toHaveTextContent('No User');
-      expect(screen.getByTestId('session')).toHaveTextContent('No Session');
       expect(screen.getByTestId('error')).toHaveTextContent(`Error: ${registerError.message}`);
-      expect(mockRouterPush).not.toHaveBeenCalled();
     });
+
+    // Assert: Check other state aspects
+    expect(AuthActions.registerAction).toHaveBeenCalledWith('new@test.com', 'password');
+    expect(screen.getByTestId('user')).toHaveTextContent('No User');
+    expect(screen.getByTestId('session')).toHaveTextContent('No Session');
+    expect(mockRouterPush).not.toHaveBeenCalled();
   });
+
 
 
   it('should handle successful logout', async () => {
@@ -375,9 +371,10 @@ describe('AuthProvider', () => {
     });
   });
 
-   it('should handle error from loginWithGoogle action', async () => {
-      const googleError: AuthError = { name: 'AuthApiError', message: 'Google Auth Failed', status: 500 };
-     (AuthActions.loginWithGoogleAction as jest.Mock).mockResolvedValue({ error: googleError });
+  it('should handle error from loginWithGoogle action', async () => {
+    // Arrange: Mock the action to return an error
+    const googleError: AuthError = { name: 'AuthApiError', message: 'Google Auth Failed', status: 500 };
+    (AuthActions.loginWithGoogleAction as jest.Mock).mockResolvedValue({ error: googleError });
 
     render(
       <AuthProvider>
@@ -387,18 +384,20 @@ describe('AuthProvider', () => {
 
     await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('Loaded'));
 
+    // Act: Trigger the google login action
     await act(async () => {
-        try {
-            await screen.getByRole('button', { name: 'Login Google' }).click();
-        } catch(e) {
-            expect(e).toBe(googleError);
-        }
+      screen.getByRole('button', { name: 'Login Google' }).click();
     });
 
+    // Assert: Wait for the error message state update
     await waitFor(() => {
-        expect(AuthActions.loginWithGoogleAction).toHaveBeenCalledTimes(1);
         expect(screen.getByTestId('error')).toHaveTextContent(`Error: ${googleError.message}`);
     });
+
+    // Assert: Check other state aspects
+    expect(AuthActions.loginWithGoogleAction).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('user')).toHaveTextContent('No User'); // State shouldn't change here
+    expect(screen.getByTestId('session')).toHaveTextContent('No Session');
   });
 
   it('should clear error when clearError is called', async () => {
