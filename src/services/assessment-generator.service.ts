@@ -249,7 +249,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
 
         for (const step of steps) {
           // generate step content in native language
-          voice = this.ttsService.getVoice(sourceLanguage);
+          voice = this.ttsService.getVoice(sourceLanguage, 'basic');
           logger.info('voice for source language content', voice);
 
           const audioBuffer = await retryOperation(() =>
@@ -273,7 +273,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
 
           // generate expected answer in target language
           if (step.expectedAnswer) {
-            const voice = this.ttsService.getVoice(language);
+            const voice = this.ttsService.getVoice(language, 'basic');
             const audioBase64 = await retryOperation(() =>
               this.ttsService.synthesizeSpeech(
                 step.expectedAnswer!,
