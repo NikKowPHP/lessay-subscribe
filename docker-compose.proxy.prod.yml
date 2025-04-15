@@ -16,6 +16,8 @@ services:
       - DATABASE_URL=postgresql://postgres.tdzryocudlllmufiiaki:KentHD720pgans2vlad@aws-0-us-west-1.pooler.supabase.com:5432/postgres
       - HTTP_PROXY=http://172.16.2.254:3128
       - HTTPS_PROXY=http://172.16.2.254:3128
+      - NO_PROXY=localhost,127.0.0.1,.docker.internal
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
     # depends_on:
     #   - db
     volumes:
