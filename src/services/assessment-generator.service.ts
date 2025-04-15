@@ -359,24 +359,39 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   }
   
   // Helper method to create a File from audio buffer
-  private createAudioFile(audioBuffer: string | ArrayBuffer, filename: string): File {
+  private createAudioFile(
+    audioBuffer: string | Buffer | ArrayBuffer, // Updated to also accept Buffer
+    filename: string
+  ): File {
     let blob: Blob;
-
-    logger.info('audioBuffer', audioBuffer.slice(0, 100));
-    
+  
+    // If the audioBuffer is a Node.js Buffer, convert it to an ArrayBuffer before proceeding.
+    if (typeof audioBuffer !== 'string' && Buffer.isBuffer(audioBuffer)) {
+      audioBuffer = audioBuffer.buffer.slice(
+        audioBuffer.byteOffset,
+        audioBuffer.byteOffset + audioBuffer.byteLength
+      ) as ArrayBuffer;
+    }
+  
+    logger.info(
+      'audioBuffer',
+      typeof audioBuffer === 'string'
+        ? audioBuffer.slice(0, 100)
+        : 'ArrayBuffer received'
+    );
+  
     if (typeof audioBuffer === 'string') {
       // If it's a base64 string, convert it to a Blob using Buffer
-      const base64Data = audioBuffer.includes(',') 
-        ? audioBuffer.split(',')[1]  // Extract from data URL
-        : audioBuffer;       
-        
+      const base64Data = audioBuffer.includes(',')
+        ? audioBuffer.split(',')[1] // Extract from data URL if necessary
+        : audioBuffer;
       const buffer = Buffer.from(base64Data, 'base64');
       blob = new Blob([buffer], { type: 'audio/mp3' });
     } else {
       // If it's already an ArrayBuffer
       blob = new Blob([audioBuffer], { type: 'audio/mp3' });
     }
-    
+  
     return new File([blob], filename, { type: 'audio/mp3' });
   }
 

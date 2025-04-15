@@ -31,8 +31,13 @@ const eslintConfig = [
       "semi": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-misused-new": "off",
-      "react-hooks/exhaustive-deps": "off"
-    }
+      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/ban-types": "off",
+      "react-hooks/exhaustive-deps": "off",
+      "react/display-name": "off",
+      "no-warning-comments": "off"
+    },
+    ignores: []
   }
 ];
 

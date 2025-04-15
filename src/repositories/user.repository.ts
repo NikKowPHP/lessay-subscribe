@@ -34,7 +34,7 @@ export class UserRepository implements IUserRepository {
       // Create a helper method to get the client when needed
       this.getSupabaseClient = async () => {
         if (!this.supabase) {
-          this.supabase = await createSupabaseServerClient();
+          this.supabase = await createSupabaseServerClient() as SupabaseClient | null;
         }
         return this.supabase;
       };
@@ -43,12 +43,15 @@ export class UserRepository implements IUserRepository {
   
   }
 
-  private getSupabaseClient?: () => Promise<SupabaseClient>;
+  private getSupabaseClient?: () => Promise<SupabaseClient | null>;
 
   async getSession() {
     // Server-side session handling
     if (typeof window === 'undefined' && this.getSupabaseClient) {
       const supabase = await this.getSupabaseClient();
+      if (!supabase) {
+        throw new Error('No auth service available')
+      }
       const {
         data: { session },
         error,
@@ -277,7 +280,9 @@ export class UserRepository implements IUserRepository {
       // Step 2: Delete auth user (server-side only)
       if (typeof window === 'undefined' && this.getSupabaseClient) {
         const supabase = await this.getSupabaseClient();
-
+        if (!supabase) {
+          throw new Error('No auth service available')
+        }
         // Use admin API for user deletion
         const { error: authError } = await supabase.auth.admin.deleteUser(
           userId
@@ -314,6 +319,9 @@ export class UserRepository implements IUserRepository {
           );
           if (typeof window === 'undefined' && this.getSupabaseClient) {
             const supabase = await this.getSupabaseClient();
+            if (!supabase) {
+              throw new Error('No auth service available')
+            }
             const { error: authError } = await supabase.auth.admin.deleteUser(
               userId
             );

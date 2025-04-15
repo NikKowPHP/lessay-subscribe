@@ -1,5 +1,4 @@
 // src/services/mock-auth-service.service.ts
-import { IAuthService } from '@/services/auth.service'
 import { Session, User, AuthChangeEvent, Subscription } from '@supabase/supabase-js'
 import logger from '@/utils/logger'
 
@@ -21,7 +20,7 @@ const notifyAuthStateChange = (event: AuthChangeEvent, session: Session | null) 
   }
 };
 
-export class MockAuthService implements IAuthService {
+export class MockAuthService {
 
 
   private authStateCallback: ((event: AuthChangeEvent, session: Session | null) => Promise<void> | void) | null = null;

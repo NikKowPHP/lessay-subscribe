@@ -14,18 +14,21 @@ export class LessonRepository implements ILessonRepository {
       this.supabase = null
       this.getSupabaseClient = async () => {
         if (!this.supabase) {
-          this.supabase = await createSupabaseServerClient()
+          this.supabase = await createSupabaseServerClient() as SupabaseClient | null
         }
         return this.supabase
       }
     }
   }
 
-  private getSupabaseClient?: () => Promise<SupabaseClient>
+  private getSupabaseClient?: () => Promise<SupabaseClient | null>
 
   async getSession() {
     if (typeof window === 'undefined' && this.getSupabaseClient) {
       const supabase = await this.getSupabaseClient()
+      if (!supabase) {
+        throw new Error('No auth service available')
+      }
       const {
         data: { session },
         error,

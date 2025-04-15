@@ -1,6 +1,5 @@
-// import { AssessmentLesson, AssessmentStepType } from "@prisma/client";
 
-import { AssessmentLesson, AssessmentStepType } from "@prisma/client";
+import {  AssessmentStepType } from "@prisma/client";
 import { AssessmentLesson as AssessmentLessonModel } from "@/models/AppAllModels.model";
 import logger from "@/utils/logger";
 
