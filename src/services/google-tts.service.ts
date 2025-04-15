@@ -5,6 +5,7 @@ import { GoogleAuth, GoogleAuthOptions } from 'google-auth-library';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import mockAudioJsonReply from '@/__mocks__/google-audio-json-reply.mock.json'
 import { mapLanguageToGoogleHDVoice } from '../utils/google-hd-voices.util';
+import { mapLanguageToGoogleBasicVoice } from '@/utils/google-basic-voices.util';
 
 export class GoogleTTS implements ITTS {
   private auth: GoogleAuth;
@@ -319,12 +320,11 @@ export class GoogleTTS implements ITTS {
     return 'en-US';
   }
 
-  public getVoice(language: string): string {
+  public getVoice(language: string, quality: 'basic' | 'hd'): string {
     logger.info(`Getting voice for language: ${language}`);
 
     // Map of languages to their best available Google TTS voices
-    const voice = mapLanguageToGoogleHDVoice(language);
-    // const voice = mapLanguageToGoogleBasicVoice(language);
+    const voice = quality === 'hd' ? mapLanguageToGoogleHDVoice(language) : mapLanguageToGoogleBasicVoice(language);
 
     logger.info(`Voice for language ${language}: ${voice}`);
 

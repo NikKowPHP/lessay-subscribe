@@ -10,15 +10,18 @@ import AssessmentGeneratorService from '@/services/assessment-generator.service'
 import { GoogleTTS } from '@/services/google-tts.service';
 import LessonGeneratorService from '@/services/lesson-generator.service';
 import { AssessmentLesson } from '@/models/AppAllModels.model';
-
-
+import { uploadFile } from '@/utils/vercel_blob-upload';
 function createOnboardingService() {
   const repository = new OnboardingRepository();
   const lessonRepository = new LessonRepository();
   return new OnboardingService(
     repository,
-    new LessonService(lessonRepository, new LessonGeneratorService(new AIService(), new GoogleTTS()), repository),
-    new AssessmentGeneratorService(new AIService(), new GoogleTTS())
+    new LessonService(
+      lessonRepository,
+      new LessonGeneratorService(new AIService(), new GoogleTTS(), uploadFile),
+      repository
+    ),
+    new AssessmentGeneratorService(new AIService(), new GoogleTTS(), uploadFile)
   );
 }
 
@@ -39,11 +42,13 @@ export async function updateOnboardingAction(step: string, formData: any) {
     throw new Error('Step is required');
   }
   const onboardingService = createOnboardingService();
-  const updatedOnboarding = await onboardingService.updateOnboarding(step, formData);
+  const updatedOnboarding = await onboardingService.updateOnboarding(
+    step,
+    formData
+  );
   logger.log('updated onboarding:', updatedOnboarding);
   return updatedOnboarding;
 }
-
 
 export async function markOnboardingCompleteAndGenerateInitialLessonsAction() {
   logger.info('marking onboarding complete and generating initial lessons');
@@ -69,8 +74,6 @@ export async function getStatusAction() {
 }
 
 export async function getAssessmentLessonAction() {
-
-
   const onboardingService = createOnboardingService();
 
   const lesson = await onboardingService.getAssessmentLesson();
@@ -108,14 +111,19 @@ export async function recordAssessmentStepAttemptAction(
   );
 }
 
-export async function updateOnboardingLessonAction(lessonId: string, lessonData: Partial<AssessmentLesson>) {
+export async function updateOnboardingLessonAction(
+  lessonId: string,
+  lessonData: Partial<AssessmentLesson>
+) {
   if (!lessonId) {
-    throw new Error('Lesson ID is required')
+    throw new Error('Lesson ID is required');
   }
-  const onboardingService = createOnboardingService()
-  return await onboardingService.updateOnboardingAssessmentLesson(lessonId, lessonData)
+  const onboardingService = createOnboardingService();
+  return await onboardingService.updateOnboardingAssessmentLesson(
+    lessonId,
+    lessonData
+  );
 }
-
 
 export async function processAssessmentLessonRecordingAction(
   sessionRecording: Blob,
@@ -124,7 +132,12 @@ export async function processAssessmentLessonRecordingAction(
   recordingSize: number
 ) {
   try {
-    validateAssessmentRecording(sessionRecording, recordingTime, recordingSize, lesson);
+    validateAssessmentRecording(
+      sessionRecording,
+      recordingTime,
+      recordingSize,
+      lesson
+    );
     const onboardingService = createOnboardingService();
     return await onboardingService.processAssessmentLessonRecording(
       sessionRecording,
@@ -133,7 +146,7 @@ export async function processAssessmentLessonRecordingAction(
       recordingSize
     );
   } catch (error) {
-    throw new Error("Error processing assessment recording: " + error);
+    throw new Error('Error processing assessment recording: ' + error);
   }
 }
 
@@ -144,15 +157,15 @@ function validateAssessmentRecording(
   lesson: AssessmentLesson
 ) {
   if (!sessionRecording) {
-    throw new Error("No session recording provided");
+    throw new Error('No session recording provided');
   }
   if (!lesson) {
-    throw new Error("No assessment lesson provided");
+    throw new Error('No assessment lesson provided');
   }
   if (!recordingTime) {
-    throw new Error("No recording time provided");
+    throw new Error('No recording time provided');
   }
   if (!recordingSize) {
-    throw new Error("No recording size provided");
+    throw new Error('No recording size provided');
   }
 }

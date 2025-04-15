@@ -48,18 +48,19 @@ class LessonGeneratorService implements ILessonGeneratorService {
   private useAudioGeneratorMock: boolean;
   private useAudioUploadMock: boolean;
   private ttsService: ITTS;
-  private uploadFunction: (file: File, pathPrefix: string) => Promise<string>;
+  private uploadFunction: (file: Buffer, filename: string, contentType: string) => Promise<string>;
 
   constructor(
     aiService: IAIService,
     ttsService: ITTS,
-    uploadFunction?: (file: File, pathPrefix: string) => Promise<string>
+    uploadFunction: (file: Buffer, filename: string, contentType: string) => Promise<string>
   ) {
     this.aiService = aiService;
     this.ttsService = ttsService;
-    this.uploadFunction = uploadFunction || ((file, _) => Promise.resolve(URL.createObjectURL(file)));
-    // this.useMock = process.env.NEXT_PUBLIC_MOCK_LESSON_GENERATOR === 'true';
-    this.useMock = false;
+    this.uploadFunction = uploadFunction;
+    
+    this.useMock = process.env.NEXT_PUBLIC_MOCK_LESSON_GENERATOR === 'true';
+    // this.useMock = false;
     this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR === 'true';
     this.useAudioUploadMock = process.env.NEXT_PUBLIC_USE_AUDIO_UPLOAD_MOCK === 'true';
     logger.info('LessonGeneratorService initialized', { 
@@ -211,17 +212,32 @@ class LessonGeneratorService implements ILessonGeneratorService {
       if (this.useAudioGeneratorMock) {
         logger.info('Using mock audio generator');
         for (const step of steps) {
-          const audio = await MockLessonGeneratorService.generateAudioForStep(
+          const audioBase64 = await MockLessonGeneratorService.generateAudioForStep(
             step.content,
             language
           );
-          step.contentAudioUrl = audio;
+          const audioBuffer = Buffer.from(audioBase64, 'base64');
+          
+          if (this.useAudioUploadMock) {
+            const audioFile = this.createAudioFile(audioBuffer, `content_step_${step.stepNumber}.mp3`);
+            step.contentAudioUrl = await this.saveAudioLocally(audioFile, 'lessay/lessonStep/audio');
+          } else {
+            step.contentAudioUrl = await this.uploadFunction(audioBuffer, `content_step_${step.stepNumber}.mp3`, 'audio/mp3');
+          }
+
           if (step.expectedAnswer) {
-            const audio = await MockLessonGeneratorService.generateAudioForStep(
+            const answerAudioBase64 = await MockLessonGeneratorService.generateAudioForStep(
               step.expectedAnswer!,
               language
             );
-            step.expectedAnswerAudioUrl = audio;
+            const answerAudioBuffer = Buffer.from(answerAudioBase64, 'base64');
+            
+            if (this.useAudioUploadMock) {
+              const audioFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
+              step.expectedAnswerAudioUrl = await this.saveAudioLocally(audioFile, 'lessay/lessonStep/audio');
+            } else {
+              step.expectedAnswerAudioUrl = await this.uploadFunction(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`, 'audio/mp3');
+            }
           }
         }
         logger.info('Mock audio generated', { steps });
@@ -229,23 +245,33 @@ class LessonGeneratorService implements ILessonGeneratorService {
         // Real implementation
         for (const step of steps) {
           // Generate content audio in source language
-          const contentVoice = this.ttsService.getVoice(sourceLanguage);
-          const contentAudioBuffer = await retryOperation(() =>
+          const contentVoice = this.ttsService.getVoice(sourceLanguage, 'basic');
+          const contentAudioBase64 = await retryOperation(() =>
             this.ttsService.synthesizeSpeech(step.content, sourceLanguage, contentVoice)
           );
+          const contentAudioBuffer = Buffer.from(contentAudioBase64, 'base64');
           
-          const contentFile = this.createAudioFile(contentAudioBuffer, `content_step_${step.stepNumber}.mp3`);
-          step.contentAudioUrl = await this.handleAudioOutput(contentFile, 'lessay/lessonStep/audio');
+          if (this.useAudioUploadMock) {
+            const contentFile = this.createAudioFile(contentAudioBuffer, `content_step_${step.stepNumber}.mp3`);
+            step.contentAudioUrl = await this.saveAudioLocally(contentFile, 'lessay/lessonStep/audio');
+          } else {
+            step.contentAudioUrl = await this.uploadFunction(contentAudioBuffer, `content_step_${step.stepNumber}.mp3`, 'audio/mp3');
+          }
 
           // Generate expected answer audio in target language if exists
           if (step.expectedAnswer) {
-            const answerVoice = this.ttsService.getVoice(language);
-            const answerAudioBuffer = await retryOperation(() =>
+            const answerVoice = this.ttsService.getVoice(language, 'basic');
+            const answerAudioBase64 = await retryOperation(() =>
               this.ttsService.synthesizeSpeech(step.expectedAnswer!, language, answerVoice)
             );
+            const answerAudioBuffer = Buffer.from(answerAudioBase64, 'base64');
             
-            const answerFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
-            step.expectedAnswerAudioUrl = await this.handleAudioOutput(answerFile, 'lessay/lessonStep/audio');
+            if (this.useAudioUploadMock) {
+              const answerFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
+              step.expectedAnswerAudioUrl = await this.saveAudioLocally(answerFile, 'lessay/lessonStep/audio');
+            } else {
+              step.expectedAnswerAudioUrl = await this.uploadFunction(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`, 'audio/mp3');
+            }
           }
         }
       }
@@ -256,11 +282,6 @@ class LessonGeneratorService implements ILessonGeneratorService {
     }
   }
 
-  private async handleAudioOutput(file: File, pathPrefix: string): Promise<string> {
-    return this.useAudioUploadMock 
-      ? await this.saveAudioLocally(file, pathPrefix)
-      : await this.uploadFunction(file, pathPrefix);
-  }
 
   private async saveAudioLocally(file: File, pathPrefix: string): Promise<string> {
     try {

@@ -10,14 +10,14 @@ import logger from '@/utils/logger';
 import LessonGeneratorService from '@/services/lesson-generator.service';
 import AIService from '@/services/ai.service';
 import { GoogleTTS } from '@/services/google-tts.service';
-import { createSupabaseServerClient } from '@/utils/supabase/server';
+import { uploadFile } from '@/utils/vercel_blob-upload';
 
 // TODO: Convert to container
 function createLessonService() {
   const repository = new LessonRepository();
   return new LessonService(
     repository,
-    new LessonGeneratorService(new AIService(), new GoogleTTS()),
+    new LessonGeneratorService(new AIService(), new GoogleTTS(), uploadFile),
     new OnboardingRepository()
   );
 }

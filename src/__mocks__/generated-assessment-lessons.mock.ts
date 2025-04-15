@@ -10,7 +10,8 @@ export const MockAssessmentGeneratorService = {
     language: string = "English"
   ) {
     logger.info(`Generating audio for step and language: ${content} ${language}`);
-    return "/audio-test.mp3";
+    // Return a mock base64 audio string that can be converted to Buffer
+    return "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; // Very short silent audio in base64
   },
   generateAssessmentLesson: async function(
     sourceLanguage: string = "English",

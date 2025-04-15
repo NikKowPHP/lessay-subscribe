@@ -50,22 +50,24 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   private useAudioGeneratorMock: boolean;
   private useAudioUploadMock: boolean;
   private ttsService: ITTS;
-  private uploadFunction: (file: File, pathPrefix: string) => Promise<string>;
+  private uploadFunction: (file: Buffer, filename: string, contentType: string) => Promise<string>;
 
   constructor(
     aiService: IAIService,
     ttsService: ITTS,
-    uploadFunction?: (file: File, pathPrefix: string) => Promise<string>
+    uploadFunction: (file: Buffer, filename: string, contentType: string) => Promise<string>
   ) {
     this.aiService = aiService;
     this.useMock = process.env.NEXT_PUBLIC_MOCK_ASSESSMENT_GENERATOR ===
     'true';
     this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR ===
     'true';
+    
     this.useAudioUploadMock = process.env.NEXT_PUBLIC_USE_AUDIO_UPLOAD_MOCK ===
     'true';
+    // this.useAudioUploadMock = false;
     this.ttsService = ttsService;
-    this.uploadFunction = uploadFunction || ((file, _) => Promise.resolve(URL.createObjectURL(file)));
+    this.uploadFunction = uploadFunction;
     
     logger.info('AssessmentGeneratorService initialized', { 
       useMock: this.useMock, 
@@ -227,19 +229,35 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
         logger.info('Using mock audio generator because useAudioGeneratorMock is true', this.useAudioGeneratorMock);
 
         for (const step of steps) {
-          const audio =
+          const audioBase64 =
             await MockAssessmentGeneratorService.generateAudioForStep(
               step.content,
               language
             );
-          step.contentAudioUrl = audio;
+          // Convert base64 string to Buffer
+          const audioBuffer = Buffer.from(audioBase64, 'base64');
+          
+          if (this.useAudioUploadMock) {
+            const audioFile = this.createAudioFile(audioBuffer, `content_step_${step.stepNumber}.mp3`);
+            step.contentAudioUrl = await this.saveAudioLocally(audioFile, 'lessay/assessmentStep/audio');
+          } else {
+            step.contentAudioUrl = await this.uploadAudioFile(audioBuffer, 'lessay/assessmentStep/audio');
+          }
+          
           if (step.expectedAnswer) {
-            const audio =
+            const answerAudioBase64 =
               await MockAssessmentGeneratorService.generateAudioForStep(
                 step.expectedAnswer!,
                 language
               );
-            step.expectedAnswerAudioUrl = audio;
+            const answerAudioBuffer = Buffer.from(answerAudioBase64, 'base64');
+            
+            if (this.useAudioUploadMock) {
+              const audioFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
+              step.expectedAnswerAudioUrl = await this.saveAudioLocally(audioFile, 'lessay/assessmentStep/audio');
+            } else {
+              step.expectedAnswerAudioUrl = await this.uploadAudioFile(answerAudioBuffer, 'lessay/assessmentStep/audio');
+            }
           }
         }
         logger.info('Mock assessment generated', { steps });
@@ -252,20 +270,21 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
           voice = this.ttsService.getVoice(sourceLanguage, 'basic');
           logger.info('voice for source language content', voice);
 
-          const audioBuffer = await retryOperation(() =>
+          const audioBase64 = await retryOperation(() =>
             this.ttsService.synthesizeSpeech(step.content, sourceLanguage, voice)
           );
           
-          // Create a File object from the audio buffer
-          const contentAudioFile = this.createAudioFile(audioBuffer, `content_step_${step.stepNumber}.mp3`);
+          // Convert base64 string to Buffer
+          const audioBuffer = Buffer.from(audioBase64, 'base64');
           
           let contentAudioUrl: string;
           
           // Check if we should save locally or upload to Vercel Blob
           if (this.useAudioUploadMock) {
-            contentAudioUrl = await this.saveAudioLocally(contentAudioFile, 'lessay/assessmentStep/audio');
+            const audioFile = this.createAudioFile(audioBuffer, `content_step_${step.stepNumber}.mp3`);
+            contentAudioUrl = await this.saveAudioLocally(audioFile, 'lessay/assessmentStep/audio');
           } else {
-            contentAudioUrl = await this.uploadFunction(contentAudioFile, 'lessay/assessmentStep/audio');
+            contentAudioUrl = await this.uploadAudioFile(audioBuffer, 'lessay/assessmentStep/audio');
           }
           
           logger.info('audio for content saved/uploaded', contentAudioUrl);
@@ -274,7 +293,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
           // generate expected answer in target language
           if (step.expectedAnswer) {
             const voice = this.ttsService.getVoice(language, 'basic');
-            const audioBase64 = await retryOperation(() =>
+            const answerAudioBase64 = await retryOperation(() =>
               this.ttsService.synthesizeSpeech(
                 step.expectedAnswer!,
                 language,
@@ -282,16 +301,17 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
               )
             );
             
-            // Create a File object from the answer audio buffer
-            const answerAudioFile = this.createAudioFile(audioBase64, `answer_step_${step.stepNumber}.mp3`);
+            // Convert base64 string to Buffer
+            const answerAudioBuffer = Buffer.from(answerAudioBase64, 'base64');
             
             let answerAudioUrl: string;
             
             // Check if we should save locally or upload to Vercel Blob
             if (this.useAudioUploadMock) {
-              answerAudioUrl = await this.saveAudioLocally(answerAudioFile, 'lessay/assessmentStep/audio');
+              const audioFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
+              answerAudioUrl = await this.saveAudioLocally(audioFile, 'lessay/assessmentStep/audio');
             } else {
-              answerAudioUrl = await this.uploadFunction(answerAudioFile, 'lessay/assessmentStep/audio');
+              answerAudioUrl = await this.uploadAudioFile(answerAudioBuffer, 'lessay/assessmentStep/audio');
             }
             
             logger.info('audio for expectedAnswer saved/uploaded', answerAudioUrl);
@@ -520,6 +540,17 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
         Be supportive and encouraging in your assessment, focusing on the user's potential for growth
         while still providing an accurate proficiency assessment.`
     };
+  }
+
+  private async uploadAudioFile(audioBuffer: Buffer, pathPrefix: string): Promise<string> {
+    if (this.useAudioUploadMock) {
+      return `mock://${pathPrefix}/${Date.now()}.mp3`;
+    }
+    if (!this.uploadFunction) {
+      throw new Error('Upload function not provided');
+    }
+    const filename = `${pathPrefix}/${Date.now()}.mp3`;
+    return this.uploadFunction(audioBuffer, filename, 'audio/mpeg');
   }
 }
 
