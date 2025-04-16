@@ -1,3 +1,5 @@
+// File: /src/components/onboarding/AssessmentStep.tsx
+
 import React, { useEffect, useState } from 'react';
 import { useOnboarding } from '@/context/onboarding-context';
 import {
@@ -9,40 +11,38 @@ import {
 } from '@/models/AppAllModels.model';
 import { toast } from 'react-hot-toast';
 import LessonChat from '@/components/lessons/lessonChat';
-import router from 'next/router';
+// import router from 'next/router'; // Not used
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 
 interface AssessmentStepProps {
-  areMetricsGenerated: boolean;
-  loading: boolean;
+  // REMOVED: areMetricsGenerated: boolean;
+  loading: boolean; // General loading state (e.g., initial lesson load)
   targetLanguage: string;
   lesson: AssessmentLesson | null;
-  onAssessmentComplete: () => void;
+  onAssessmentComplete: () => void; // Renamed for clarity
   onGoToLessonsButtonClick: () => void;
   processAssessmentLessonRecording: (sessionRecording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number) => Promise<AssessmentLesson>;
 }
 
 export default function AssessmentStep({
-  areMetricsGenerated,
-  loading,
+  // REMOVED: areMetricsGenerated,
+  loading: initialLoading, // Rename prop to avoid conflict with internal loading state
   targetLanguage,
   lesson,
   onAssessmentComplete,
   onGoToLessonsButtonClick,
   processAssessmentLessonRecording,
 }: AssessmentStepProps) {
-  const { recordAssessmentStepAttempt } =
-    useOnboarding();
-  const [isCompleting, setIsCompleting] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const { recordAssessmentStepAttempt } = useOnboarding();
+  const [isCompleting, setIsCompleting] = useState(false); // Loading state for the completion process itself
   const [sessionRecording, setSessionRecording] =
     useState<RecordingBlob | null>(null);
-  // Handle step completion - align with lesson page approach
-    useState<AudioMetrics | null>(null);
   const [lessonAudioMetricsLoading, setLessonAudioMetricsLoading] =
     useState<boolean>(false);
+  const [showResults, setShowResults] = useState(false); // State to control results view visibility
 
+  // Handle step completion - align with lesson page approach
   const handleStepComplete = async (
     step: LessonStep | AssessmentStepModel,
     userResponse: string
@@ -57,143 +57,165 @@ export default function AssessmentStep({
         step.id,
         userResponse
       );
-      // Update local state if needed
-      // (This matches how the lesson page updates local lesson state)
     } catch (error) {
       toast.error('Failed to record assessment response');
+      logger.error('Error recording assessment step attempt:', error);
       throw error;
     }
   };
 
-  // Handle assessment completion
+  // Handle assessment completion trigger from LessonChat
   const handleComplete = async (recording: RecordingBlob | null) => {
+    if (!lesson) {
+      toast.error('Cannot complete: Lesson not loaded.');
+      return;
+    }
+    if (isCompleting) return; // Prevent double clicks
+
     setIsCompleting(true);
     try {
-      if (!lesson) {
-        throw new Error('Lesson is not loaded');
+      // Set recording state *before* calling onAssessmentComplete
+      // This ensures the useEffect watching sessionRecording triggers reliably
+      if (recording) {
+        setSessionRecording(recording);
       }
-      setSessionRecording(recording);
 
-      // const result = await completeAssessmentLesson(lesson.id, 'Assessment completed');
-      onAssessmentComplete();
-      // After completion, show results instead of immediately navigating
+      // Trigger the first stage: text-based metrics generation
+      await onAssessmentComplete();
+
+      // The parent component (page.tsx) will update the 'lesson' prop.
+      // The useEffect below will handle audio processing if recording exists.
+      // setShowResults will be handled by the effect watching lesson.metrics
+
     } catch (error) {
       toast.error('Something went wrong completing your assessment');
-    } finally {
-      setIsCompleting(false);
+      logger.error('Error in handleComplete:', error);
+      setIsCompleting(false); // Reset loading state on error
     }
+    // Let the useEffect handle resetting isCompleting after audio processing
   };
 
+  // Effect to show results view once text-based metrics are available
   useEffect(() => {
-    if (lesson && lesson.metrics && isAssessmentMetrics(lesson.metrics)) {
+    // Show results view if lesson is marked completed and has the initial metrics
+    if (lesson?.completed && lesson.metrics && isAssessmentMetrics(lesson.metrics)) {
       setShowResults(true);
+    } else {
+      // Hide results view if lesson state regresses or is not yet complete/analyzed
+      setShowResults(false);
     }
-  }, [lesson?.metrics]);
+  }, [lesson?.completed, lesson?.metrics]); // Depend on specific fields
 
+  // Effect to process audio recording when it becomes available *and* lesson exists
   useEffect(() => {
     const processPronunciation = async () => {
-
-      logger.info('sessionRecording', sessionRecording);
-      logger.info('lesson', lesson);
-      if (sessionRecording && lesson) {
-        if (!sessionRecording.lastModified || !sessionRecording.size) {
-          return;
+      // Only process if we have a recording, a lesson, and audio metrics aren't already loaded/being loaded
+      if (sessionRecording && lesson && !lesson.audioMetrics && !lessonAudioMetricsLoading) {
+        // Basic validation for the recording blob
+        if (!sessionRecording.size) {
+           logger.warn('Skipping audio processing: Recording size is missing or zero.');
+           setSessionRecording(null); // Clear invalid recording
+           setIsCompleting(false); // Ensure completion state is reset
+           return;
         }
+
         setLessonAudioMetricsLoading(true);
+        setIsCompleting(true); // Keep overall completion state active during audio processing
         try {
-          const recordingTime = sessionRecording.recordingTime || 10000;
+          // Use a default/estimated time if not available, but log a warning
+          const recordingTime = sessionRecording.recordingTime || 0; // Use 0 or a sensible default
+          if (recordingTime === 0) {
+             logger.warn('Recording time not available from blob, using 0.');
+          }
           const recordingSize = sessionRecording.size;
 
-          logger.info('processing pronunciation', { recordingTime, recordingSize });
+          logger.info('Processing pronunciation analysis...', { recordingTime, recordingSize });
 
-          const lessonWithAudioMetrics = await processAssessmentLessonRecording(
+          // Call the processing function passed from the parent
+          await processAssessmentLessonRecording(
             sessionRecording,
             lesson,
             recordingTime,
             recordingSize
           );
-          logger.info('lessonWithAudioMetrics', lessonWithAudioMetrics);
-          if (!lessonWithAudioMetrics.audioMetrics) {
-            throw new Error('No audio metrics found');
-          }
-          
+          // Parent component (page.tsx) updates the 'lesson' prop, which will trigger re-render
+
+          logger.info('Pronunciation analysis request completed.');
+
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
-          toast.error('Failed to process pronunciation');
+          toast.error('Failed to process pronunciation analysis.');
+          // Handle error state if needed
         } finally {
           setLessonAudioMetricsLoading(false);
+          setIsCompleting(false); // Mark completion process finished (success or fail)
+          setSessionRecording(null); // Clear recording state after processing attempt
         }
+      } else if (!sessionRecording && isCompleting && !lessonAudioMetricsLoading) {
+         // If handleComplete finished but there was no recording, ensure loading state is reset
+         setIsCompleting(false);
       }
     };
     processPronunciation();
-  }, [sessionRecording]);
+  }, [sessionRecording, lesson, processAssessmentLessonRecording, lessonAudioMetricsLoading, isCompleting]); // Add dependencies
 
   // Navigate to lessons after viewing results
   const handleFinishAndGoToLessons = () => {
-    // markOnboardingAsCompleteAndGenerateLessons();
-    // onComplete();
     onGoToLessonsButtonClick();
   };
 
-  // Check if the assessment was already completed previously
-  // useEffect(() => {
-  //   console.log('lesson', lesson);
-  //   if (lesson && lesson.completed) {
-  //     setShowResults(true);
-  //   }
-  // }, [lesson]);
 
-  if (!lesson) {
+  // --- Conditional Rendering Logic ---
+
+  // 1. Initial Loading State (Lesson prop is null or initialLoading is true)
+  if (initialLoading || !lesson) {
     return (
       <div className="flex justify-center items-center py-12">
+        {/* Consistent Loading Spinner */}
         <div className="animate-spin mr-3 h-5 w-5 text-accent-6">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         </div>
         <span className="text-neutral-9">Loading assessment...</span>
       </div>
     );
   }
-  if (!areMetricsGenerated && lesson.completed) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="bg-neutral-1 border border-neutral-4 rounded-lg overflow-hidden shadow-sm">
-          <div className="bg-accent-6 text-neutral-1 p-5">
-            <h2 className="text-xl font-semibold text-center">
-              Analysing your responses...
-            </h2>
-          </div>
-        </div>
-      </div>
-    );
+
+  // 2. Assessment Completed, Waiting for Initial (Text) Results
+  // Show this if lesson is marked completed, but the results view isn't ready yet (metrics missing)
+  if (lesson.completed && !showResults) {
+     return (
+       <div className="space-y-6 animate-fade-in p-6 text-center">
+         <div className="bg-neutral-1 border border-neutral-4 rounded-lg overflow-hidden shadow-sm p-5">
+           <div className="flex justify-center items-center mb-3">
+             <div className="animate-spin mr-3 h-5 w-5 text-accent-6">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+               </svg>
+             </div>
+             <h2 className="text-xl font-semibold text-neutral-9">
+               Analyzing your responses...
+             </h2>
+           </div>
+           <p className="text-neutral-7">Please wait while we process your assessment results.</p>
+         </div>
+       </div>
+     );
   }
 
-  // Results view after assessment is completed
-  if (showResults && areMetricsGenerated) {
+
+  // 3. Results View (Shown when lesson is completed and initial metrics are available)
+  if (showResults) {
     const metrics =
       lesson.metrics && isAssessmentMetrics(lesson.metrics)
         ? lesson.metrics
         : null;
 
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6 animate-fade-in p-4 md:p-6"> {/* Added padding */}
         <div className="bg-neutral-1 border border-neutral-4 rounded-lg overflow-hidden shadow-sm">
           <div className="bg-accent-6 text-neutral-1 p-5">
             <h2 className="text-xl font-semibold text-center">
@@ -211,29 +233,40 @@ export default function AssessmentStep({
               </p>
             </div>
 
-            {/* Scores */}
+            {/* Scores (from text-based analysis) */}
             {metrics && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Overall Score */}
                 <div className="bg-neutral-2 p-4 rounded-lg border border-neutral-4 text-center">
                   <p className="text-sm text-neutral-7">Overall Score</p>
                   <p className="text-2xl font-bold text-accent-8">
                     {metrics.overallScore || 0}%
                   </p>
                 </div>
-                <div className="bg-neutral-2 p-4 rounded-lg border border-neutral-4 text-center">
+                 {/* Accuracy */}
+                 <div className="bg-neutral-2 p-4 rounded-lg border border-neutral-4 text-center">
                   <p className="text-sm text-neutral-7">Accuracy</p>
                   <p className="text-2xl font-bold text-accent-8">
                     {metrics.accuracy || 0}%
                   </p>
                 </div>
+                {/* Grammar */}
                 <div className="bg-neutral-2 p-4 rounded-lg border border-neutral-4 text-center">
                   <p className="text-sm text-neutral-7">Grammar</p>
                   <p className="text-2xl font-bold text-accent-8">
                     {metrics.grammarScore || 0}%
                   </p>
                 </div>
+                {/* Vocabulary (assuming it's part of metrics) */}
                 <div className="bg-neutral-2 p-4 rounded-lg border border-neutral-4 text-center">
-                  <p className="text-sm text-neutral-7">Pronunciation</p>
+                  <p className="text-sm text-neutral-7">Vocabulary</p>
+                  <p className="text-2xl font-bold text-accent-8">
+                    {metrics.vocabularyScore || 0}%
+                  </p>
+                </div>
+                 {/* Pronunciation (Placeholder from text metrics if available) */}
+                 <div className="bg-neutral-2 p-4 rounded-lg border border-neutral-4 text-center">
+                  <p className="text-sm text-neutral-7">Pronunciation (Initial)</p>
                   <p className="text-2xl font-bold text-accent-8">
                     {metrics.pronunciationScore || 0}%
                   </p>
@@ -241,26 +274,28 @@ export default function AssessmentStep({
               </div>
             )}
 
+            {/* Loading indicator for Audio Analysis */}
             {lessonAudioMetricsLoading && (
-              <div className="flex justify-center items-center py-12">
+              <div className="flex justify-center items-center py-6">
                 <div className="animate-spin mr-3 h-5 w-5 text-accent-6">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </div>
-                <span className="text-neutral-9">Loading pronunciation analysis...</span>
+                <span className="text-neutral-9">Analyzing pronunciation and fluency...</span>
               </div>
             )}
 
-            {/* Pronunciation Results */}
-            {lesson.audioMetrics && (
-              <div className="p-4 bg-neutral-2 rounded-lg border border-neutral-4">
-                <h3 className="font-medium text-lg mb-3">Pronunciation Analysis</h3>
-                
+            {/* Pronunciation Results (Displayed only when audioMetrics are available) */}
+            {!lessonAudioMetricsLoading && lesson.audioMetrics && (
+              <div className="p-4 bg-neutral-2 rounded-lg border border-neutral-4 animate-fade-in">
+                <h3 className="font-medium text-lg mb-3">Detailed Pronunciation & Fluency Analysis</h3>
+
                 {/* Pronunciation Overview */}
                 <div className="mb-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  {/* ... (rest of the audioMetrics display logic remains the same) ... */}
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                     <div className="bg-neutral-1 p-3 rounded border border-neutral-3 text-center">
                       <p className="text-sm text-neutral-7">Pronunciation</p>
                       <p className="text-xl font-bold text-accent-8">
@@ -287,15 +322,15 @@ export default function AssessmentStep({
                     </div>
                   </div>
                 </div>
-                
-                {/* Detailed Pronunciation */}
+
+                 {/* Detailed Pronunciation */}
                 {lesson.audioMetrics.pronunciationAssessment && (
                   <div className="mb-4">
-                    <h4 className="text-md font-medium text-accent-8 mb-2">Pronunciation Details</h4>
-                    
+                    {/* ... existing detailed pronunciation display ... */}
+                     <h4 className="text-md font-medium text-accent-8 mb-2">Pronunciation Details</h4>
                     {/* Native Language Influence */}
                     <div className="mb-3">
-                      <p className="text-sm font-medium">Native Language Influence: 
+                      <p className="text-sm font-medium">Native Language Influence:
                         <span className="ml-1 font-normal">
                           {lesson.audioMetrics.pronunciationAssessment.native_language_influence.level}
                         </span>
@@ -311,8 +346,7 @@ export default function AssessmentStep({
                         </div>
                       )}
                     </div>
-                    
-                    {/* Problematic Sounds */}
+                     {/* Problematic Sounds */}
                     {lesson.audioMetrics.pronunciationAssessment.problematic_sounds.length > 0 && (
                       <div className="mb-3">
                         <p className="text-sm font-medium">Sounds to Practice:</p>
@@ -325,8 +359,7 @@ export default function AssessmentStep({
                         </div>
                       </div>
                     )}
-                    
-                    {/* Pronunciation Strengths */}
+                     {/* Pronunciation Strengths */}
                     {lesson.audioMetrics.pronunciationAssessment.strengths.length > 0 && (
                       <div className="mb-3">
                         <p className="text-sm font-medium text-success">Strengths:</p>
@@ -337,8 +370,7 @@ export default function AssessmentStep({
                         </ul>
                       </div>
                     )}
-                    
-                    {/* Areas for Improvement */}
+                     {/* Areas for Improvement */}
                     {lesson.audioMetrics.pronunciationAssessment.areas_for_improvement.length > 0 && (
                       <div>
                         <p className="text-sm font-medium text-warning">Areas to Improve:</p>
@@ -351,13 +383,13 @@ export default function AssessmentStep({
                     )}
                   </div>
                 )}
-                
-                {/* Fluency Assessment */}
+
+                 {/* Fluency Assessment */}
                 {lesson.audioMetrics.fluencyAssessment && (
-                  <div className="mb-4 border-t border-neutral-3 pt-3 mt-4">
-                    <h4 className="text-md font-medium text-accent-8 mb-2">Fluency Analysis</h4>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                   <div className="mb-4 border-t border-neutral-3 pt-3 mt-4">
+                    {/* ... existing fluency display ... */}
+                     <h4 className="text-md font-medium text-accent-8 mb-2">Fluency Analysis</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                       <div className="bg-neutral-1 p-3 rounded border border-neutral-3">
                         <p className="text-sm text-neutral-7">Speech Rate</p>
                         <p className="text-md">
@@ -365,7 +397,6 @@ export default function AssessmentStep({
                           <span className="ml-2 text-sm">({lesson.audioMetrics.fluencyAssessment.speech_rate.evaluation})</span>
                         </p>
                       </div>
-                      
                       <div className="bg-neutral-1 p-3 rounded border border-neutral-3">
                         <p className="text-sm text-neutral-7">Hesitation</p>
                         <p className="text-md">
@@ -373,7 +404,6 @@ export default function AssessmentStep({
                           <span className="ml-2 text-sm">({lesson.audioMetrics.fluencyAssessment.hesitation_patterns.average_pause_duration.toFixed(1)}s avg pause)</span>
                         </p>
                       </div>
-                      
                       <div className="bg-neutral-1 p-3 rounded border border-neutral-3">
                         <p className="text-sm text-neutral-7">Naturalness</p>
                         <p className="text-md font-medium">
@@ -386,81 +416,53 @@ export default function AssessmentStep({
               </div>
             )}
 
-            {/* Strengths & Weaknesses */}
+            {/* Strengths & Weaknesses (from text-based analysis) */}
             {metrics && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 bg-neutral-2 rounded-lg border border-neutral-4">
+                {/* ... (Strengths display remains the same) ... */}
+                 <div className="p-4 bg-neutral-2 rounded-lg border border-neutral-4">
                   <h3 className="font-medium text-success flex items-center mb-3">
-                    <svg
-                      className="w-5 h-5 mr-2"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     Strengths
                   </h3>
                   <ul className="space-y-2">
                     {metrics.strengths && metrics.strengths.length > 0 ? (
                       metrics.strengths.map((strength, index) => (
-                        <li
-                          key={index}
-                          className="text-neutral-9 flex items-start"
-                        >
-                          <span className="text-success mr-2">•</span>{' '}
-                          {strength}
+                        <li key={index} className="text-neutral-9 flex items-start">
+                          <span className="text-success mr-2">•</span> {strength}
                         </li>
                       ))
                     ) : (
-                      <li className="text-neutral-7">
-                        No specific strengths identified
-                      </li>
+                      <li className="text-neutral-7">No specific strengths identified yet.</li>
                     )}
                   </ul>
                 </div>
-                <div className="p-4 bg-neutral-2 rounded-lg border border-neutral-4">
+                {/* ... (Weaknesses display remains the same) ... */}
+                 <div className="p-4 bg-neutral-2 rounded-lg border border-neutral-4">
                   <h3 className="font-medium text-warning flex items-center mb-3">
-                    <svg
-                      className="w-5 h-5 mr-2"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                     Areas for Improvement
                   </h3>
                   <ul className="space-y-2">
                     {metrics.weaknesses && metrics.weaknesses.length > 0 ? (
                       metrics.weaknesses.map((weakness, index) => (
-                        <li
-                          key={index}
-                          className="text-neutral-9 flex items-start"
-                        >
-                          <span className="text-warning mr-2">•</span>{' '}
-                          {weakness}
+                        <li key={index} className="text-neutral-9 flex items-start">
+                          <span className="text-warning mr-2">•</span> {weakness}
                         </li>
                       ))
                     ) : (
-                      <li className="text-neutral-7">
-                        No specific weaknesses identified
-                      </li>
+                      <li className="text-neutral-7">No specific areas identified yet.</li>
                     )}
                   </ul>
                 </div>
               </div>
             )}
 
-            {/* Proposed Topics */}
+            {/* Proposed Topics (from text-based analysis) */}
             {lesson.proposedTopics && lesson.proposedTopics.length > 0 && (
               <div className="p-4 bg-neutral-2 rounded-lg border border-neutral-4">
                 <h3 className="font-medium text-lg mb-3">
@@ -483,34 +485,24 @@ export default function AssessmentStep({
             <div className="text-center pt-4">
               <button
                 onClick={handleFinishAndGoToLessons}
-                disabled={loading || isCompleting}
+                // Disable button while *any* processing is happening (initial completion or audio)
+                disabled={initialLoading || isCompleting || lessonAudioMetricsLoading}
                 className="py-3 px-6 bg-accent-6 text-neutral-1 rounded-md transition-colors hover:bg-accent-7
                           focus:outline-none focus:ring-2 focus:ring-accent-8 focus:ring-offset-2 disabled:opacity-50
                           text-sm font-medium"
               >
-                {loading || isCompleting ? (
-                  <span className="flex items-center">
+                {(isCompleting || lessonAudioMetricsLoading) ? (
+                  <span className="flex items-center justify-center"> {/* Centered spinner */}
                     <svg
                       className="animate-spin -ml-1 mr-2 h-4 w-4 text-neutral-1"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
                     >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Processing...
+                    Processing Results...
                   </span>
                 ) : (
                   'Go to Lessons'
@@ -523,13 +515,14 @@ export default function AssessmentStep({
     );
   }
 
+  // 4. Default: Render the LessonChat component for the assessment interaction
   return (
     <div className="animate-fade-in h-screen flex flex-col">
       <LessonChat
         lesson={lesson}
-        onComplete={handleComplete}
+        onComplete={handleComplete} // Use the internal handler
         onStepComplete={handleStepComplete}
-        loading={loading || isCompleting}
+        loading={initialLoading || isCompleting} // Reflect overall loading state
         targetLanguage={targetLanguage}
         isAssessment={true}
       />

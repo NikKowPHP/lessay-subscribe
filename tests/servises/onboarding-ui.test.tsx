@@ -6,9 +6,10 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 
 import AssessmentStep from '@/components/onboarding/AssessmentStep';
-import { AssessmentLesson, AssessmentMetrics, AudioMetrics, isAssessmentMetrics } from '@/models/AppAllModels.model';
+import { AssessmentLesson,  AudioMetrics, isAssessmentMetrics } from '@/models/AppAllModels.model';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { toast } from 'react-hot-toast';
+import logger from '@/utils/logger';
 
 // --- Mocks ---
 
@@ -27,13 +28,11 @@ jest.mock('@/components/lessons/lessonChat', () => {
       <div data-testid="lesson-chat">
         <button onClick={() => onStepComplete(lesson.steps[0], 'User step response')}>Complete Step</button>
         <button onClick={() => {
-            const mockBlob = Object.assign(
-              new Blob(['mockaudio'], { type: 'audio/webm' }), 
-              {
+            const mockBlob = {
+                ...new Blob(['mockaudio'], { type: 'audio/webm' }),
                 size: 1234,
                 recordingTime: 5678
-              }
-            ) as RecordingBlob;
+            } as RecordingBlob;
             onComplete(mockBlob);
         }}>
           Complete Lesson Chat
@@ -54,8 +53,15 @@ jest.mock('@/utils/logger', () => ({
 
 // Mock toast
 jest.mock('react-hot-toast', () => ({
-  success: jest.fn(),
   error: jest.fn(),
+  success: jest.fn(),
+  loading: jest.fn(),
+  custom: jest.fn(),
+  dismiss: jest.fn(),
+  remove: jest.fn(),
+  promise: jest.fn(),
+  useToaster: jest.fn(),
+  useStore: jest.fn(),
 }));
 
 // --- Test Data ---
@@ -77,7 +83,7 @@ const mockBaseLesson: AssessmentLesson = {
   sessionRecordingUrl: null,
 };
 
-const mockTextMetrics: AssessmentMetrics = {
+const mockTextMetrics = {
   accuracy: 80,
   pronunciationScore: 70,
   grammarScore: 85,
@@ -162,28 +168,39 @@ describe('AssessmentStep Component', () => {
     expect(screen.getByText(`Lesson ID: ${mockBaseLesson.id}`)).toBeInTheDocument();
   });
 
+ 
   it('calls recordAssessmentStepAttempt when step is completed in LessonChat', async () => {
-     render(
-      <AssessmentStep
-        loading={false}
-        targetLanguage="German"
-        lesson={mockBaseLesson}
-        onAssessmentComplete={mockOnAssessmentComplete}
-        onGoToLessonsButtonClick={mockOnGoToLessonsButtonClick}
-        processAssessmentLessonRecording={mockProcessAssessmentLessonRecording}
-      />
-    );
+    render(
+     <AssessmentStep
+       loading={false}
+       targetLanguage="German"
+       lesson={mockBaseLesson}
+       onAssessmentComplete={mockOnAssessmentComplete}
+       onGoToLessonsButtonClick={mockOnGoToLessonsButtonClick}
+       processAssessmentLessonRecording={mockProcessAssessmentLessonRecording}
+     />
+   );
 
-    await act(async () => {
-        userEvent.click(screen.getByRole('button', { name: 'Complete Step' }));
-    });
+   // Use act for the user event dispatch
+   await act(async () => {
+       userEvent.click(screen.getByRole('button', { name: 'Complete Step' }));
+   });
 
-    expect(mockRecordAssessmentStepAttempt).toHaveBeenCalledWith(
-        mockBaseLesson.id,
-        mockBaseLesson.steps[0].id,
-        'User step response'
-    );
-  });
+   // Use waitFor to allow the async handleStepComplete function to execute
+   // and call the awaited recordAssessmentStepAttempt mock.
+   await waitFor(() => {
+       expect(mockRecordAssessmentStepAttempt).toHaveBeenCalledWith(
+           mockBaseLesson.id,
+           mockBaseLesson.steps[0].id,
+           'User step response'
+       );
+   });
+
+   // Optional: You might also want to check the number of calls specifically
+   await waitFor(() => {
+       expect(mockRecordAssessmentStepAttempt).toHaveBeenCalledTimes(1);
+   });
+ });
 
 
   it('calls onAssessmentComplete and triggers audio processing on LessonChat completion', async () => {
@@ -324,13 +341,11 @@ describe('AssessmentStep Component', () => {
             // This simulates the useEffect in AssessmentStep triggering the call
             // In a real scenario, this would be triggered by sessionRecording state change
             if (currentLesson === mockLessonWithTextMetrics) { // Only trigger if we are in the text-only state
-                 const mockBlob = Object.assign(
-                   new Blob(['mockaudio'], { type: 'audio/webm' }), 
-                   {
+                 const mockBlob = {
+                     ...new Blob(['mockaudio'], { type: 'audio/webm' }),
                      size: 1234,
                      recordingTime: 5678
-                   }
-                 ) as RecordingBlob;
+                 } as RecordingBlob;
                  handleProcessRecording(
                   mockBlob, 
                   currentLesson, 
@@ -435,13 +450,11 @@ describe('AssessmentStep Component', () => {
         };
 
         React.useEffect(() => {
-             const mockBlob = Object.assign(
-               new Blob(['mockaudio'], { type: 'audio/webm' }), 
-               {
+             const mockBlob = {
+                 ...new Blob(['mockaudio'], { type: 'audio/webm' }),
                  size: 1234,
                  recordingTime: 5678
-               }
-             ) as RecordingBlob;
+             } as RecordingBlob;
              handleProcessRecording(mockBlob, currentLesson!, mockBlob.recordingTime!, mockBlob.size!);
         }, []);
 
@@ -482,61 +495,111 @@ describe('AssessmentStep Component', () => {
 
   it('handles error during audio processing', async () => {
     const errorMsg = 'Audio processing failed!';
+    // Ensure the mock rejects for this specific test
     mockProcessAssessmentLessonRecording.mockRejectedValue(new Error(errorMsg));
 
-    // Use the wrapper to control the flow
+    // Use a wrapper component to manage state and trigger the effect
     const TestWrapperError = () => {
+        // Start with the lesson state where text metrics are available,
+        // simulating the scenario where audio processing would start.
         const [currentLesson, setCurrentLesson] = React.useState<AssessmentLesson | null>(mockLessonWithTextMetrics);
+        // State to simulate the recording blob being set
+        const [recordingForEffect, setRecordingForEffect] = React.useState<RecordingBlob | null>(null);
 
-        const handleProcessRecording = async (rec: RecordingBlob, less: AssessmentLesson, time: number, size: number) => {
+        // This is the prop function passed to AssessmentStep
+        const handleProcessRecordingProp = async (rec: RecordingBlob, less: AssessmentLesson, time: number, size: number): Promise<AssessmentLesson> => {
+            // This prop calls the *mocked* function which will reject
             try {
-                return await mockProcessAssessmentLessonRecording(rec, less, time, size);
+                // We await the rejection here
+                await mockProcessAssessmentLessonRecording(rec, less, time, size);
+                // This part should not be reached if it rejects
+                return less;
             } catch (e) {
-                // Error is caught, toast should be shown (mocked)
-                toast.error('Failed to process pronunciation analysis.');
-                return less; // Return the original lesson on error
+                // The actual component's useEffect handles the error and calls toast.error
+                // We re-throw here to simulate the promise rejection propagating
+                // if the component didn't catch it, but AssessmentStep *does* catch it.
+                // So, the toast call happens within AssessmentStep's effect.
+                // We don't call toast.error directly in the test wrapper's prop.
+                logger.error("Error caught in test wrapper prop (re-throwing)", e);
+                throw e;
             }
         };
 
-         React.useEffect(() => {
-             const mockBlob = Object.assign(
-               new Blob(['mockaudio'], { type: 'audio/webm' }), 
-               {
-                 size: 1234,
-                 recordingTime: 5678
-               }
-             ) as RecordingBlob;
-             handleProcessRecording(mockBlob, currentLesson!, mockBlob.recordingTime!, mockBlob.size);
+        // Simulate the recording being set, which triggers the useEffect in AssessmentStep
+        React.useEffect(() => {
+            const mockBlob = {
+                ...new Blob(['mockaudio'], { type: 'audio/webm' }),
+                size: 1234,
+                recordingTime: 5678
+            } as RecordingBlob;
+            // Set the recording state to trigger the effect inside AssessmentStep
+            setRecordingForEffect(mockBlob);
         }, []);
 
+        // Simulate the AssessmentStep's internal state for sessionRecording
+        // This isn't perfect, but helps trigger the effect within AssessmentStep
+        // A better way might be to simulate the handleComplete function setting state.
+        // Let's rely on the useEffect in AssessmentStep watching the 'lesson' prop
+        // and the internal sessionRecording state which gets set in handleComplete.
+        // We need to simulate the handleComplete call first.
+
+        // --- Revised Approach: Simulate handleComplete setting the recording ---
+        const assessmentStepRef = React.useRef<any>(); // To access internal state if needed (not ideal)
+
+        const handleCompleteAndSetRecording = async () => {
+            const mockBlob = {
+                ...new Blob(['mockaudio'], { type: 'audio/webm' }),
+                size: 1234,
+                recordingTime: 5678
+            } as RecordingBlob;
+            // Simulate AssessmentStep's handleComplete setting the recording state
+            // This will trigger the useEffect inside AssessmentStep
+            // We pass the rejecting prop `handleProcessRecordingProp`
+            setRecordingForEffect(mockBlob); // This state change triggers the effect in AssessmentStep
+        };
+
+
         return (
-            <AssessmentStep
+            <>
+              {/* Button to simulate the completion action that sets the recording */}
+              <button onClick={handleCompleteAndSetRecording}>Trigger Audio Processing</button>
+              <AssessmentStep
+                ref={assessmentStepRef} // Assign ref if needed
                 loading={false}
                 targetLanguage="German"
-                lesson={currentLesson}
-                onAssessmentComplete={mockOnAssessmentComplete}
+                lesson={currentLesson} // Start with text metrics
+                onAssessmentComplete={mockOnAssessmentComplete} // Mocked, called within handleComplete
                 onGoToLessonsButtonClick={mockOnGoToLessonsButtonClick}
-                processAssessmentLessonRecording={handleProcessRecording}
-            />
+                processAssessmentLessonRecording={handleProcessRecordingProp} // Pass the rejecting prop
+              />
+            </>
         );
     };
 
     render(<TestWrapperError />);
 
-    // Wait for the processing attempt
-    await waitFor(() => {
-        expect(mockProcessAssessmentLessonRecording).toHaveBeenCalled();
+    // Simulate the user completing the lesson chat, which calls handleComplete internally
+    // In our test setup, we click the "Trigger Audio Processing" button which simulates setting the recording state
+    await act(async () => {
+        userEvent.click(screen.getByRole('button', { name: 'Trigger Audio Processing' }));
     });
 
-    // Check that toast error was called
-    expect(toast.error).toHaveBeenCalledWith('Failed to process pronunciation analysis.');
-    // Check that the audio loading indicator is gone
-    expect(screen.queryByText('Analyzing pronunciation and fluency...')).not.toBeInTheDocument();
-    // Check that the detailed audio metrics section is NOT rendered
-    expect(screen.queryByText('Detailed Pronunciation & Fluency Analysis')).not.toBeInTheDocument();
-     // Button should be enabled again after error
-    expect(screen.getByRole('button', { name: 'Go to Lessons' })).toBeEnabled();
+    // Wait for the toast error message to appear.
+    // This confirms that the useEffect in AssessmentStep ran, called the rejecting
+    // processAssessmentLessonRecording prop, caught the error, and called toast.error.
+    await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('Failed to process pronunciation analysis.');
+    });
 
+    // Check that the audio loading indicator is gone (it might flash briefly or not appear)
+    expect(screen.queryByText('Analyzing pronunciation and fluency...')).not.toBeInTheDocument();
+    // Check that the detailed audio metrics section is NOT rendered because processing failed
+    expect(screen.queryByText('Detailed Pronunciation & Fluency Analysis')).not.toBeInTheDocument();
+    // Button should be enabled again after the error handling completes
+    expect(screen.getByRole('button', { name: 'Go to Lessons' })).toBeEnabled();
+    // Ensure the original mock was called
+    expect(mockProcessAssessmentLessonRecording).toHaveBeenCalledTimes(1);
   });
+
 
 });

@@ -21,3 +21,7 @@
   - [X] Verify topic prioritization logic
   - [X] Test language configuration fallbacks
   - [X] Handle empty lesson generation from AI **service**
+
+
+### fix the double assessment results calls
+- [ ] fix the double assessment results calls

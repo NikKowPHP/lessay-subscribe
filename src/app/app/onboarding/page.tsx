@@ -1,3 +1,4 @@
+// File: /src/app/app/onboarding/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -45,8 +46,7 @@ export default function OnboardingPage() {
   const [assessmentLesson, setAssessmentLesson] =
     useState<AssessmentLesson | null>(null);
   const [assessmentLoading, setAssessmentLoading] = useState<boolean>(false);
-  const [areMetricsGenerated, setAreMetricsGenerated] =
-    useState<boolean>(false);
+  // REMOVED: const [areMetricsGenerated, setAreMetricsGenerated] = useState<boolean>(false);
 
   // Rehydrate state from onboarding session
   useEffect(() => {
@@ -92,7 +92,7 @@ export default function OnboardingPage() {
     };
 
     fetchOnboardingData();
-  }, []);
+  }, []); // Removed getOnboarding from dependency array if it causes loops, ensure it's stable or called appropriately
 
   // Check if onboarding is complete
   useEffect(() => {
@@ -107,15 +107,16 @@ export default function OnboardingPage() {
     if (currentStep === 'assessment' && !assessmentLesson) {
       generateAssessmentLesson();
     }
+    // This effect correctly waits for both metrics before triggering lesson generation
     if (
       assessmentLesson &&
       assessmentLesson.completed &&
-      assessmentLesson.metrics && assessmentLesson.audioMetrics // only after audio metrics are generated
+      assessmentLesson.metrics && assessmentLesson.audioMetrics
     ) {
       logger.info('generating the initial lessons');
       markOnboardingAsCompleteAndGenerateLessons();
     }
-  }, [assessmentLesson, currentStep]);
+  }, [assessmentLesson, currentStep]); // Removed markOnboardingAsCompleteAndGenerateLessons from deps if unstable
 
   const handleNextStep = async (step: string, data?: any) => {
     // Merge new data with existing form data immediately
@@ -162,23 +163,26 @@ export default function OnboardingPage() {
     }
   };
 
-  // complete assessment lesson and generate initial lessons
+  // complete assessment lesson (generates text-based metrics)
   const handleOnAssessmentComplete = async () => {
     if (!assessmentLesson) {
       throw new Error('Assessment lesson not found');
     }
     try {
-      setAreMetricsGenerated(false);
+      // REMOVED: setAreMetricsGenerated(false);
       const LessonWithMetrics = await completeAssessmentLesson(
         assessmentLesson?.id,
         'Assessment completed'
       );
+      // Update state with the first set of results
       setAssessmentLesson((prev) => ({ ...prev, ...LessonWithMetrics }));
-      logger.info('LessonWithMetrics', LessonWithMetrics);
+      logger.info('LessonWithMetrics (Text-based)', LessonWithMetrics);
     } catch (error) {
       logger.error('Error completing assessment lesson:', error);
+      // Optionally reset state or show error
     } finally {
-      setAreMetricsGenerated(true);
+      // REMOVED: setAreMetricsGenerated(true);
+      // No need to set a flag here, the UI will react to assessmentLesson update
     }
   };
 
@@ -187,12 +191,20 @@ export default function OnboardingPage() {
     goToLessonsWithOnboardingComplete();
   };
 
+  // Process audio recording (generates audioMetrics)
   const onProcessAssessmentLessonRecording = async (sessionRecording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number) => {
     logger.info('processing assessment lesson recording', { sessionRecording, lesson, recordingTime, recordingSize });
-    const LessonWithMetrics = await processAssessmentLessonRecording(sessionRecording, lesson, recordingTime, recordingSize);
-    setAssessmentLesson((prev) => ({ ...prev, ...LessonWithMetrics }));
-    logger.info('LessonWithMetrics', LessonWithMetrics);
-    return LessonWithMetrics;
+    try {
+      const LessonWithAudioMetrics = await processAssessmentLessonRecording(sessionRecording, lesson, recordingTime, recordingSize);
+      // Update state again, now including audioMetrics
+      setAssessmentLesson((prev) => ({ ...prev, ...LessonWithAudioMetrics }));
+      logger.info('LessonWithAudioMetrics (Audio included)', LessonWithAudioMetrics);
+      return LessonWithAudioMetrics;
+    } catch (error) {
+       logger.error('Error processing assessment recording on page:', error);
+       // Handle error appropriately in UI if needed
+       throw error; // Re-throw if AssessmentStep needs to handle it
+    }
   };
 
   const renderStep = () => {
@@ -224,7 +236,7 @@ export default function OnboardingPage() {
         return (
           <ProficiencyStep
             onNext={(data) => handleNextStep('proficiency', data)}
-            onAssessmentGeneration={generateAssessmentLesson}
+            onAssessmentGeneration={generateAssessmentLesson} // This might be redundant if assessment step auto-loads
             formData={formData}
             loading={loading}
           />
@@ -232,12 +244,12 @@ export default function OnboardingPage() {
       case 'assessment':
         return (
           <AssessmentStep
-          onAssessmentComplete={() => handleOnAssessmentComplete()}
-            loading={assessmentLoading}
+            onAssessmentComplete={handleOnAssessmentComplete} // Renamed for clarity
+            loading={assessmentLoading || loading} // Combine loading states if needed
             targetLanguage={formData.targetLanguage}
             lesson={assessmentLesson}
-            onGoToLessonsButtonClick={() => handleGoToLessonsButtonClick()}
-            areMetricsGenerated={areMetricsGenerated}
+            onGoToLessonsButtonClick={handleGoToLessonsButtonClick}
+            // REMOVED: areMetricsGenerated={areMetricsGenerated}
             processAssessmentLessonRecording={onProcessAssessmentLessonRecording}
           />
         );
