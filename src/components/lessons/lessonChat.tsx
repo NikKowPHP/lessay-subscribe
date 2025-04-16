@@ -422,7 +422,7 @@ export default function LessonChat({
           const recordingWithMetadata = new Blob([audioBlob], {
             type: mimeType,
           }) as RecordingBlob;
-          
+
           // Add metadata properties
           recordingWithMetadata.lastModified = Date.now();
           recordingWithMetadata.recordingTime = recordingDuration;
@@ -431,7 +431,7 @@ export default function LessonChat({
           logger.info('Recording completed with metadata', {
             size: recordingSize,
             duration: recordingDuration,
-            lastModified: recordingWithMetadata.lastModified
+            lastModified: recordingWithMetadata.lastModified,
           });
 
           // Set the full session recording, which will trigger the useEffect
@@ -602,11 +602,14 @@ export default function LessonChat({
       }
 
       // Check if this was a forced correct due to max attempts
-      if (updatedStep.attempts >= updatedStep.maxAttempts && updatedStep.correct) {
+      if (
+        updatedStep.attempts >= updatedStep.maxAttempts &&
+        updatedStep.correct
+      ) {
         logger.info('Step completed via max attempts override');
-        const audioUrlToAdd = updatedStep.expectedAnswerAudioUrl; 
-        if (audioUrlToAdd) { 
-          setAudioQueue(prev => [...prev, audioUrlToAdd]); 
+        const audioUrlToAdd = updatedStep.expectedAnswerAudioUrl;
+        if (audioUrlToAdd) {
+          setAudioQueue((prev) => [...prev, audioUrlToAdd]);
         }
       }
 
@@ -640,7 +643,10 @@ export default function LessonChat({
           logger.info('Lesson ready to complete');
           setChatHistory((prev) => [
             ...prev,
-            { type: 'response', content: updatedStep.userResponse || userInput },
+            {
+              type: 'response',
+              content: updatedStep.userResponse || userInput,
+            },
             {
               type: 'prompt',
               content:
@@ -763,7 +769,6 @@ export default function LessonChat({
 
   // Add a new function to handle lesson completion
   const handleCompleteLesson = () => {
-    
     // Reset the ready state
     setLessonReadyToComplete(false);
   };
@@ -775,7 +780,7 @@ export default function LessonChat({
         recordingSize: fullSessionRecording.size,
         recordingTime: (fullSessionRecording as any).recordingTime,
       });
-      
+
       // Call onComplete with the recording
       onComplete(fullSessionRecording);
     }
@@ -803,12 +808,20 @@ export default function LessonChat({
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-neutral-3 h-1.5">
+        <div
+          className="w-full bg-neutral-3 h-1.5"
+          role="progressbar" // Add role
+          aria-valuemin={0} // Add aria-valuemin
+          aria-valuemax={lesson.steps.length} // Add aria-valuemax
+          aria-valuenow={currentStepIndex + 1} // Add aria-valuenow
+          aria-label="Lesson Progress"
+        >
           <div
             className="bg-accent-6 h-1.5 transition-all duration-300"
             style={{
               width: `${((currentStepIndex + 1) / lesson.steps.length) * 100}%`,
             }}
+            data-testid="progress-bar-indicator" 
           ></div>
         </div>
 
