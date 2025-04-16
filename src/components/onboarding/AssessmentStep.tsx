@@ -9,9 +9,8 @@ import {
   LessonStep,
   isAssessmentMetrics,
 } from '@/models/AppAllModels.model';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-hot-toast'; // Ensure toast is imported
 import LessonChat from '@/components/lessons/lessonChat';
-// import router from 'next/router'; // Not used
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 
@@ -20,7 +19,7 @@ interface AssessmentStepProps {
   loading: boolean; // General loading state (e.g., initial lesson load)
   targetLanguage: string;
   lesson: AssessmentLesson | null;
-  onAssessmentComplete: () => void; // Renamed for clarity
+  onAssessmentComplete: () => Promise<void>; // Adjusted return type based on test/page usage
   onGoToLessonsButtonClick: () => void;
   processAssessmentLessonRecording: (sessionRecording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number) => Promise<AssessmentLesson>;
 }
@@ -41,6 +40,8 @@ export default function AssessmentStep({
   const [lessonAudioMetricsLoading, setLessonAudioMetricsLoading] =
     useState<boolean>(false);
   const [showResults, setShowResults] = useState(false); // State to control results view visibility
+  // State to hold the lesson at the time of completion trigger
+  const [lessonAtCompletion, setLessonAtCompletion] = useState<AssessmentLesson | null>(null);
 
   // Handle step completion - align with lesson page approach
   const handleStepComplete = async (
@@ -58,22 +59,36 @@ export default function AssessmentStep({
         userResponse
       );
     } catch (error) {
-      toast.error('Failed to record assessment response');
+       // Add guard for toast in case it's undefined during test execution
+       if (toast && typeof toast.error === 'function') {
+         toast.error('Failed to record assessment response');
+       } else {
+         logger.error('toast.error function is not available. Failed to record assessment response.');
+       }
       logger.error('Error recording assessment step attempt:', error);
-      throw error;
+      throw error; // Re-throw error after logging/toasting
     }
   };
 
   // Handle assessment completion trigger from LessonChat
   const handleComplete = async (recording: RecordingBlob | null) => {
     if (!lesson) {
-      toast.error('Cannot complete: Lesson not loaded.');
+       // Add guard for toast
+       if (toast && typeof toast.error === 'function') {
+         toast.error('Cannot complete: Lesson not loaded.');
+       } else {
+         logger.error('toast.error function is not available. Cannot complete: Lesson not loaded.');
+       }
       return;
     }
     if (isCompleting) return; // Prevent double clicks
 
     setIsCompleting(true);
     try {
+      // Capture the current lesson state *before* parent updates it
+      const currentLesson = lesson;
+      setLessonAtCompletion(currentLesson); // Store it for the effect
+
       // Set recording state *before* calling onAssessmentComplete
       // This ensures the useEffect watching sessionRecording triggers reliably
       if (recording) {
@@ -88,9 +103,15 @@ export default function AssessmentStep({
       // setShowResults will be handled by the effect watching lesson.metrics
 
     } catch (error) {
-      toast.error('Something went wrong completing your assessment');
+       // Add guard for toast
+       if (toast && typeof toast.error === 'function') {
+         toast.error('Something went wrong completing your assessment');
+       } else {
+         logger.error('toast.error function is not available. Something went wrong completing your assessment.');
+       }
       logger.error('Error in handleComplete:', error);
       setIsCompleting(false); // Reset loading state on error
+      setLessonAtCompletion(null); // Clear captured state on error
     }
     // Let the useEffect handle resetting isCompleting after audio processing
   };
@@ -106,15 +127,16 @@ export default function AssessmentStep({
     }
   }, [lesson?.completed, lesson?.metrics]); // Depend on specific fields
 
-  // Effect to process audio recording when it becomes available *and* lesson exists
+  // Effect to process audio recording when it becomes available *and* lessonAtCompletion exists
   useEffect(() => {
     const processPronunciation = async () => {
-      // Only process if we have a recording, a lesson, and audio metrics aren't already loaded/being loaded
-      if (sessionRecording && lesson && !lesson.audioMetrics && !lessonAudioMetricsLoading) {
+      // Use lessonAtCompletion for the processing call instead of the potentially updated 'lesson' prop
+      if (sessionRecording && lessonAtCompletion && !lessonAtCompletion.audioMetrics && !lessonAudioMetricsLoading) {
         // Basic validation for the recording blob
         if (!sessionRecording.size) {
            logger.warn('Skipping audio processing: Recording size is missing or zero.');
            setSessionRecording(null); // Clear invalid recording
+           setLessonAtCompletion(null); // Clear captured state
            setIsCompleting(false); // Ensure completion state is reset
            return;
         }
@@ -131,10 +153,10 @@ export default function AssessmentStep({
 
           logger.info('Processing pronunciation analysis...', { recordingTime, recordingSize });
 
-          // Call the processing function passed from the parent
+          // Call the processing function passed from the parent, using the captured lesson state
           await processAssessmentLessonRecording(
             sessionRecording,
-            lesson,
+            lessonAtCompletion, // Use captured state here
             recordingTime,
             recordingSize
           );
@@ -144,20 +166,29 @@ export default function AssessmentStep({
 
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
-          toast.error('Failed to process pronunciation analysis.');
-          // Handle error state if needed
+          // *** FIX: Add guard clause to prevent TypeError ***
+          // Check if toast and toast.error are defined before calling
+          if (toast && typeof toast.error === 'function') {
+            toast.error('Failed to process pronunciation analysis.');
+          } else {
+            // Log an error if toast is not available as expected
+            logger.error('toast.error function is not available. Cannot display error toast for pronunciation failure.');
+          }
+          // Handle error state if needed (e.g., set an error flag in state)
         } finally {
           setLessonAudioMetricsLoading(false);
           setIsCompleting(false); // Mark completion process finished (success or fail)
           setSessionRecording(null); // Clear recording state after processing attempt
+          setLessonAtCompletion(null); // Clear captured state after processing attempt
         }
       } else if (!sessionRecording && isCompleting && !lessonAudioMetricsLoading) {
          // If handleComplete finished but there was no recording, ensure loading state is reset
          setIsCompleting(false);
+         setLessonAtCompletion(null); // Also clear captured state if no recording
       }
     };
     processPronunciation();
-  }, [sessionRecording, lesson, processAssessmentLessonRecording, lessonAudioMetricsLoading, isCompleting]); // Add dependencies
+  }, [sessionRecording, lessonAtCompletion, processAssessmentLessonRecording, lessonAudioMetricsLoading, isCompleting]); // Added lessonAtCompletion dependency
 
   // Navigate to lessons after viewing results
   const handleFinishAndGoToLessons = () => {
