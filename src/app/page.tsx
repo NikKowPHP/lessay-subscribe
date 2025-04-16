@@ -103,16 +103,6 @@ export default function Home() {
               </p>
             </div>
 
-            {/* <YouTubeVodeo videoId="vNMmQsKgOgs" pageLoaded={true} /> */}
-            <div className="w-full h-96">
-              {process.env.NODE_ENV === 'development' && (
-                <div className="w-full h-96 bg-gray-200 rounded-xl"></div>
-              )}
-              {videoId && process.env.NODE_ENV === 'production' && (
-                <YouTubeVideoWrapper videoId={videoId} />
-              )}
-            </div>
-
             <div
               id="waitlist"
               className="sticky top-8 w-full max-w-4xl bg-white/80 dark:bg-black/80 backdrop-blur-sm p-6 rounded-xl border border-black/[.08] dark:border-white/[.145]"
