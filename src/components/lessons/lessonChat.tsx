@@ -601,6 +601,15 @@ export default function LessonChat({
         return;
       }
 
+      // Check if this was a forced correct due to max attempts
+      if (updatedStep.attempts >= updatedStep.maxAttempts && updatedStep.correct) {
+        logger.info('Step completed via max attempts override');
+        const audioUrlToAdd = updatedStep.expectedAnswerAudioUrl; 
+        if (audioUrlToAdd) { 
+          setAudioQueue(prev => [...prev, audioUrlToAdd]); 
+        }
+      }
+
       // Use step.stepNumber instead of index for reliability
       const nextStep = lesson.steps.find(
         (s) => s.stepNumber === step.stepNumber + 1
@@ -612,7 +621,7 @@ export default function LessonChat({
         // Add next prompt immediately
         setChatHistory((prev) => [
           ...prev,
-          { type: 'response', content: userInput },
+          { type: 'response', content: updatedStep.userResponse || userInput },
           { type: 'prompt', content: nextStep.content },
         ]);
 
@@ -631,7 +640,7 @@ export default function LessonChat({
           logger.info('Lesson ready to complete');
           setChatHistory((prev) => [
             ...prev,
-            { type: 'response', content: userInput },
+            { type: 'response', content: updatedStep.userResponse || userInput },
             {
               type: 'prompt',
               content:

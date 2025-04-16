@@ -231,7 +231,7 @@ export default class OnboardingService {
           lessonId,
           stepId,
           {
-            userResponse: step.expectedAnswer || '',
+            userResponse: step.userResponse || '',
             correct: true, // to proceed on the frontend
           }
         );
