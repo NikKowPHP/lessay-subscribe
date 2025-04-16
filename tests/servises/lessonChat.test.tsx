@@ -196,7 +196,8 @@ if (!navigator.mediaDevices) {
 Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
   writable: true, // Make it writable if needed, though just setting value is often enough
   configurable: true, // Allow redefining later if necessary
-  value: jest.fn().mockResolvedValue({ // The mock function
+  value: jest.fn().mockResolvedValue({
+    // The mock function
     getTracks: () => [{ stop: jest.fn() }], // Mock stream with tracks
   }),
 });
@@ -504,9 +505,9 @@ describe('LessonChat Component', () => {
     // Check if buttons are disabled or show loading indicator
     // Note: ChatInput component might handle the disabling, check its implementation if this fails
     // Assuming ChatInput passes the loading prop down to its buttons:
-    expect(
-      screen.getByRole('button', { name: 'Start Listening' })
-    ).toHaveClass('cursor-not-allowed');
+    expect(screen.getByRole('button', { name: 'Start Listening' })).toHaveClass(
+      'cursor-not-allowed'
+    );
     expect(
       screen.getByRole('button', { name: 'Skip & Continue' })
     ).toBeDisabled();
@@ -556,13 +557,13 @@ describe('LessonChat Component', () => {
       />
     );
     const micButton = screen.getByRole('button', { name: 'Start Listening' });
-  // Initialize mock instances if not already done
-  if (!mockRecognitionInstance) {
-    mockSpeechRecognition();
-  }
-  if (!mockMediaRecorderInstance) {
-    mockMediaRecorder();
-  }
+    // Initialize mock instances if not already done
+    if (!mockRecognitionInstance) {
+      mockSpeechRecognition();
+    }
+    if (!mockMediaRecorderInstance) {
+      mockMediaRecorder();
+    }
 
     // --- Start Listening ---
     console.log('[TEST LOG] Clicking Start Listening...');
@@ -578,12 +579,11 @@ describe('LessonChat Component', () => {
 
     console.log('[TEST LOG] Waiting for UI to update (Pause Listening)...');
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Pause Listening/i })).toBeInTheDocument();
-    }); 
-
-  } ); 
-
-
+      expect(
+        screen.getByRole('button', { name: /Pause Listening/i })
+      ).toBeInTheDocument();
+    });
+  });
 
   it('updates input field on speech recognition result', async () => {
     render(
@@ -619,7 +619,12 @@ describe('LessonChat Component', () => {
     const lessonAtStep2: LessonModel = {
       ...mockLesson,
       steps: [
-        { ...mockStep1, userResponse: 'Ack', correct: true, expectedAnswer: 'Hello' },
+        {
+          ...mockStep1,
+          userResponse: 'Ack',
+          correct: true,
+          expectedAnswer: 'Hello',
+        },
         mockStep2,
         mockStep3,
       ],
@@ -636,16 +641,14 @@ describe('LessonChat Component', () => {
     const input = screen.getByRole('textbox'); // Find by role
     const skipButton = screen.getByRole('button', { name: 'Skip & Continue' });
 
-  
-
     // Assert button is enabled *after* typing
     expect(skipButton).not.toBeDisabled();
-   
+
     await act(async () => {
       userEvent.click(skipButton);
     });
 
-    // expected response 
+    // expected response
     // handle submit step called with skip
     await waitFor(
       () => {
@@ -692,8 +695,6 @@ describe('LessonChat Component', () => {
     const input = screen.getByRole('textbox'); // Find by role
     const skipButton = screen.getByRole('button', { name: 'Skip & Continue' });
 
-    // Submit step 2
-    await userEvent.type(input, 'Hello');
     await act(async () => {
       userEvent.click(skipButton);
     });
@@ -714,16 +715,16 @@ describe('LessonChat Component', () => {
       ...mockLesson,
       steps: [
         { ...mockStep1, userResponse: 'Ack', correct: true },
-        mockStep2,
+        mockStep2, // Current step is practice
         mockStep3,
       ],
     };
     // Mock onStepComplete to return incorrect for step 2
     mockOnStepComplete.mockResolvedValueOnce({
       ...mockStep2,
-      userResponse: 'Wrong',
-      correct: false,
-      attempts: 1,
+      userResponse: 'Wrong', // The incorrect response submitted
+      correct: false, // Mark as incorrect
+      attempts: 1, // Increment attempts
     });
 
     render(
@@ -735,27 +736,53 @@ describe('LessonChat Component', () => {
         targetLanguage="English"
       />
     );
-    const input = screen.getByRole('textbox'); // Find by role
-    const skipButton = screen.getByRole('button', { name: 'Skip & Continue' });
+    const input = screen.getByRole('textbox'); // Find the input/textarea by role
+    const micButton = screen.getByRole('button', { name: 'Start Listening' });
 
-    await userEvent.type(input, 'Wrong');
     await act(async () => {
-      userEvent.click(skipButton);
+      userEvent.click(micButton);
     });
 
+    await waitFor(() =>
+      expect(mockRecognitionInstance.start).toHaveBeenCalled()
+    );
+    act(() => {
+      mockRecognitionInstance._simulateResult('Wrong');
+    });
+
+    expect(input).toHaveValue('Wrong');
+
+    act(() => {
+      // Advance time just past the silence threshold (defined as 1000ms in LessonChat)
+      jest.advanceTimersByTime(1100);
+    });
+
+    // 5. Wait for onStepComplete to be called with the incorrect response
     await waitFor(() => {
       expect(mockOnStepComplete).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'step-2' }),
-        'Wrong'
+        expect.objectContaining({ id: 'step-2' }), // Check the correct step is passed
+        'Wrong' // Check the submitted response
       );
     });
+    // 7. Check that step 2 prompt IS still visible (or re-rendered)
+    // Need to wait slightly as the component might re-render after submission
+    await waitFor(() => {
+      expect(screen.getByText(mockStep2.content)).toBeInTheDocument();
+    });
 
-    // Check that step 3 prompt is NOT visible
+    console.log('input value on incorrect submission', input);
+    // 6. Check that step 3 prompt is NOT visible (didn't advance)
     expect(screen.queryByText(mockStep3.content)).not.toBeInTheDocument();
-    // Check that step 2 prompt IS still visible (or re-rendered)
-    expect(screen.getByText(mockStep2.content)).toBeInTheDocument();
-    // Input should be cleared even on incorrect
-    expect(input).toHaveValue('');
+
+    // 7. Check that step 2 prompt IS still visible (or re-rendered)
+    // Need to wait slightly as the component might re-render after submission
+
+    // 8. Input should be cleared even on incorrect submission.
+    // Add a specific waitFor for this assertion, as the setUserResponse('')
+    // happens after the onStepComplete promise resolves.
+    await waitFor(() => {
+      expect(input).toHaveValue('');
+    });
   });
 
   it('auto-advances instruction/summary/feedback steps', async () => {
@@ -839,14 +866,17 @@ describe('LessonChat Component', () => {
     await act(async () => {
       userEvent.click(micButton);
     });
-    await waitFor(() => expect(mockMediaRecorderInstance.start).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mockMediaRecorderInstance.start).toHaveBeenCalled()
+    );
 
     const stopButton = screen.getByRole('button', { name: /Listening|Pause/i });
     await act(async () => {
       userEvent.click(stopButton);
     });
-    await waitFor(() => expect(mockMediaRecorderInstance.pause).toHaveBeenCalled());
-
+    await waitFor(() =>
+      expect(mockMediaRecorderInstance.pause).toHaveBeenCalled()
+    );
 
     // Simulate audio ending for step 3 (summary step)
     act(() => {

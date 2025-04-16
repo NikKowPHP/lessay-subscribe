@@ -37,6 +37,7 @@ const ChatInput = React.memo(function ChatInput({
             value={userResponse}
             onChange={handleTextChange}
             className="w-full h-full min-h-[60px] bg-transparent resize-none focus:outline-none"
+            data-testid="text-input" 
             placeholder={isListening ? 'Listening...' : 'Ready to listen'}
           />
         ) : (
