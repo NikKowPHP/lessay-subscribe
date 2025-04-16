@@ -10,6 +10,8 @@ import {
   AssessmentLesson,
   AudioMetrics,
   isAssessmentMetrics,
+  LessonStep, // Import LessonStep if used in handleStepComplete type
+  AssessmentStep as AssessmentStepModel, // Alias to avoid naming conflict
 } from '@/models/AppAllModels.model';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { toast } from 'react-hot-toast';
@@ -37,17 +39,13 @@ jest.mock('@/components/lessons/lessonChat', () => {
       </button>
       <button
         onClick={() => {
-          // 1. Create the actual Blob
+          // Create the actual Blob
           const baseBlob = new Blob(['mockaudio'], { type: 'audio/webm' });
-
-          // 2. Create the RecordingBlob object by assigning the custom property
-          //    to the actual Blob instance.
+          // Create the RecordingBlob object
           const mockRecordingBlob = Object.assign(baseBlob, {
             recordingTime: 5678,
-            // 'size' is an inherent property of baseBlob, no need to assign it here
           }) as RecordingBlob;
-
-          // Pass the actual Blob instance (with the added property)
+          // Pass the RecordingBlob instance
           onComplete(mockRecordingBlob);
         }}
       >
@@ -76,6 +74,7 @@ jest.mock('react-hot-toast', () => ({
   dismiss: jest.fn(),
   remove: jest.fn(),
   promise: jest.fn(),
+  // Keep mocks for hooks if your component uses them directly, otherwise optional
   useToaster: jest.fn(),
   useStore: jest.fn(),
 }));
@@ -112,6 +111,7 @@ const mockBaseLesson: AssessmentLesson = {
       translation: null,
       userResponse: null,
       userResponseHistory: null,
+      lastAttemptAt: null, // Added missing property
     },
   ],
   createdAt: new Date(),
@@ -135,10 +135,12 @@ const mockLessonWithTextMetrics: AssessmentLesson = {
   metrics: mockTextMetrics,
   summary: 'Good start.',
   proposedTopics: ['Topic 1'],
+  // Ensure steps array is copied correctly
+  steps: mockBaseLesson.steps.map(step => ({ ...step })),
 };
 
 const mockAudioMetricsData: AudioMetrics = {
-  /* Fill with mock data */ id: 'audio-m-1',
+  id: 'audio-m-1',
   pronunciationScore: 90,
   fluencyScore: 65,
   grammarScore: 85,
@@ -196,11 +198,16 @@ const mockAudioMetricsData: AudioMetrics = {
   recordingDuration: 5678,
   createdAt: new Date(),
   updatedAt: new Date(),
+  // Add potentially missing relationship IDs if needed by component logic, though likely null here
+  lessonId: null,
+  assessmentLessonId: mockBaseLesson.id, // Link to assessment
 };
 
 const mockLessonWithAllMetrics: AssessmentLesson = {
   ...mockLessonWithTextMetrics,
   audioMetrics: mockAudioMetricsData,
+  // Ensure steps array is copied correctly
+  steps: mockLessonWithTextMetrics.steps.map(step => ({ ...step })),
 };
 
 // --- Test Suite ---
@@ -214,14 +221,8 @@ describe('AssessmentStep Component', () => {
     jest.clearAllMocks();
     mockOnAssessmentComplete = jest.fn();
     mockOnGoToLessonsButtonClick = jest.fn();
-    // Mock the processing function to simulate delay and return the final lesson state
-    mockProcessAssessmentLessonRecording = jest.fn(
-      async (recording, lesson, time, size) => {
-        // Simulate async operation
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        return mockLessonWithAllMetrics; // Return the lesson with audio metrics added
-      }
-    );
+    // Mock the processing function - specific implementations per test
+    mockProcessAssessmentLessonRecording = jest.fn();
   });
 
   it('renders initial loading state', () => {
@@ -256,6 +257,14 @@ describe('AssessmentStep Component', () => {
   });
 
   it('calls recordAssessmentStepAttempt when step is completed in LessonChat', async () => {
+    // Mock the return value for the step attempt if needed by subsequent logic
+    mockRecordAssessmentStepAttempt.mockResolvedValue({
+        ...mockBaseLesson.steps[0],
+        attempts: 1,
+        userResponse: 'User step response',
+        lastAttemptAt: new Date(),
+    });
+
     render(
       <AssessmentStep
         loading={false}
@@ -267,13 +276,10 @@ describe('AssessmentStep Component', () => {
       />
     );
 
-    // Use act for the user event dispatch
     await act(async () => {
       userEvent.click(screen.getByRole('button', { name: 'Complete Step' }));
     });
 
-    // Use waitFor to allow the async handleStepComplete function to execute
-    // and call the awaited recordAssessmentStepAttempt mock.
     await waitFor(() => {
       expect(mockRecordAssessmentStepAttempt).toHaveBeenCalledWith(
         mockBaseLesson.id,
@@ -282,13 +288,15 @@ describe('AssessmentStep Component', () => {
       );
     });
 
-    // Optional: You might also want to check the number of calls specifically
     await waitFor(() => {
       expect(mockRecordAssessmentStepAttempt).toHaveBeenCalledTimes(1);
     });
   });
 
   it('calls onAssessmentComplete and triggers audio processing on LessonChat completion', async () => {
+     // Mock the processing function to simulate delay and return the final lesson state
+     mockProcessAssessmentLessonRecording.mockResolvedValue(mockLessonWithAllMetrics);
+
     render(
       <AssessmentStep
         loading={false}
@@ -301,7 +309,6 @@ describe('AssessmentStep Component', () => {
     );
 
     // Act: Simulate the user clicking the button within the mocked LessonChat
-    // This triggers AssessmentStep's handleComplete function
     await act(async () => {
       userEvent.click(
         screen.getByRole('button', { name: 'Complete Lesson Chat' })
@@ -309,12 +316,14 @@ describe('AssessmentStep Component', () => {
     });
 
      // Assert Stage 1: Wait specifically for onAssessmentComplete to be called
+     // This happens first within handleComplete
      await waitFor(() => {
       expect(mockOnAssessmentComplete).toHaveBeenCalledTimes(1);
-  });
+     });
 
-  // Assert Stage 2: Wait for the audio processing function to be called
-  await waitFor(() => {
+     // Assert Stage 2: Wait for the audio processing function to be called
+     // This happens in the useEffect triggered by sessionRecording state change
+     await waitFor(() => {
       expect(mockProcessAssessmentLessonRecording).toHaveBeenCalledTimes(1);
 
       // Get the actual size of the blob created in the mock
@@ -322,18 +331,20 @@ describe('AssessmentStep Component', () => {
 
       expect(mockProcessAssessmentLessonRecording).toHaveBeenCalledWith(
           expect.any(Blob), // Expect an actual Blob instance
-          mockBaseLesson,
+          mockBaseLesson, // The lesson state *when the effect runs* (before parent updates it)
           5678, // recordingTime from mock blob assignment
           expectedBlobSize // Expect the *actual* size of the mock blob
       );
-  });
+     });
   });
 
   it('renders "Analyzing responses..." when lesson is complete but metrics are not yet available', () => {
     const lessonJustCompleted = {
       ...mockBaseLesson,
       completed: true,
-      metrics: null,
+      metrics: null, // No text metrics yet
+      // Ensure steps array is copied correctly
+      steps: mockBaseLesson.steps.map(step => ({ ...step })),
     };
     render(
       <AssessmentStep
@@ -345,10 +356,14 @@ describe('AssessmentStep Component', () => {
         processAssessmentLessonRecording={mockProcessAssessmentLessonRecording}
       />
     );
+    // The component uses showResults state, which depends on lesson.completed AND lesson.metrics
+    // Since metrics are null, showResults should be false, leading to the "Analyzing..." view
     expect(screen.getByText('Analyzing your responses...')).toBeInTheDocument();
     expect(
       screen.getByText('Please wait while we process your assessment results.')
     ).toBeInTheDocument();
+    // Ensure results view isn't shown
+    expect(screen.queryByText('Assessment Results')).not.toBeInTheDocument();
   });
 
   it('renders results view with text metrics when available', () => {
@@ -363,6 +378,7 @@ describe('AssessmentStep Component', () => {
       />
     );
 
+    // Check for results view elements
     expect(screen.getByText('Assessment Results')).toBeInTheDocument();
     expect(screen.getByText('Summary')).toBeInTheDocument();
     expect(
@@ -370,12 +386,26 @@ describe('AssessmentStep Component', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Overall Score')).toBeInTheDocument();
     expect(
-      screen.getByText(`${mockTextMetrics.overallScore}%`)
+      screen.getByText(`${mockTextMetrics.overallScore}%`) // Check percentage rendering
     ).toBeInTheDocument();
     expect(screen.getByText('Accuracy')).toBeInTheDocument();
     expect(
       screen.getByText(`${mockTextMetrics.accuracy}%`)
     ).toBeInTheDocument();
+     // Check other scores displayed
+     expect(screen.getByText('Grammar')).toBeInTheDocument();
+     expect(
+       screen.getByText(`${mockTextMetrics.grammarScore}%`)
+     ).toBeInTheDocument();
+     expect(screen.getByText('Vocabulary')).toBeInTheDocument();
+     expect(
+       screen.getByText(`${mockTextMetrics.vocabularyScore}%`)
+     ).toBeInTheDocument();
+     expect(screen.getByText('Pronunciation (Initial)')).toBeInTheDocument();
+     expect(
+       screen.getByText(`${mockTextMetrics.pronunciationScore}%`)
+     ).toBeInTheDocument();
+
     expect(screen.getByText('Strengths')).toBeInTheDocument();
     expect(screen.getByText(mockTextMetrics.strengths![0])).toBeInTheDocument();
     expect(screen.getByText('Areas for Improvement')).toBeInTheDocument();
@@ -403,23 +433,23 @@ describe('AssessmentStep Component', () => {
       const audioProcessingPromise = new Promise<AssessmentLesson>((resolve) => {
         resolveAudioProcessing = resolve;
       });
-      // Mock the implementation to return the controllable promise
       mockProcessAssessmentLessonRecording.mockImplementation(() => {
         logger.info('Mock processAssessmentLessonRecording called, returning promise...');
         return audioProcessingPromise;
       });
-  
+
       // 2. Setup state and mocks to simulate parent behavior
       let currentLessonState: AssessmentLesson | null = mockBaseLesson; // Start with base lesson
-  
+
       // This mock simulates the parent calling completeAssessmentLessonAction,
       // getting text metrics back, and updating the lesson prop via rerender.
       const mockParentOnAssessmentComplete = jest.fn(async () => {
         logger.info('mockParentOnAssessmentComplete called. Updating lesson state to text metrics...');
-        currentLessonState = mockLessonWithTextMetrics;
+        // IMPORTANT: Ensure the new state is a distinct object for React reconciliation
+        currentLessonState = { ...mockLessonWithTextMetrics };
         rerenderComponent(); // Trigger rerender with the new lesson state
       });
-  
+
       // Helper component to manage rerenders easily
       const TestComponent = () => (
         <AssessmentStep
@@ -431,11 +461,11 @@ describe('AssessmentStep Component', () => {
           processAssessmentLessonRecording={mockProcessAssessmentLessonRecording} // Use the controllable mock
         />
       );
-  
+
       // Initial render with the base lesson (shows LessonChat)
       const { rerender } = render(<TestComponent />);
       const rerenderComponent = () => rerender(<TestComponent />); // Function to rerender with current state
-  
+
       // 3. Simulate LessonChat completion
       expect(screen.getByTestId('lesson-chat')).toBeInTheDocument();
       await act(async () => {
@@ -446,7 +476,7 @@ describe('AssessmentStep Component', () => {
         // - Calls mockParentOnAssessmentComplete
         // mockParentOnAssessmentComplete then updates currentLessonState and calls rerenderComponent
       });
-  
+
       // 4. Wait for the results view (with text metrics) to appear after rerender
       // The audio processing useEffect should also have been triggered by now.
       await waitFor(() => {
@@ -455,7 +485,7 @@ describe('AssessmentStep Component', () => {
         expect(screen.queryByTestId('lesson-chat')).not.toBeInTheDocument();
         logger.info('Results view with text metrics rendered.');
       });
-  
+
       // 5. Assert the audio loading indicator is now visible
       // This confirms the useEffect set lessonAudioMetricsLoading = true
       await waitFor(() => {
@@ -464,7 +494,7 @@ describe('AssessmentStep Component', () => {
       });
       // Ensure detailed audio section isn't visible yet
       expect(screen.queryByText('Detailed Pronunciation & Fluency Analysis')).not.toBeInTheDocument();
-  
+
       // 6. Simulate audio processing finishing by resolving the mock promise
       // AND simulate the parent updating the lesson prop with the *final* result
       await act(async () => {
@@ -474,10 +504,11 @@ describe('AssessmentStep Component', () => {
         // Allow the promise resolution to propagate
         await Promise.resolve();
         // Simulate the parent component receiving the result and updating the lesson prop
-        currentLessonState = mockLessonWithAllMetrics;
+        // IMPORTANT: Ensure the new state is a distinct object
+        currentLessonState = { ...mockLessonWithAllMetrics };
         rerenderComponent();
       });
-  
+
       // 7. Assert the final state: loading gone, audio metrics visible
       await waitFor(() => {
         // Loading indicator should disappear
@@ -485,13 +516,13 @@ describe('AssessmentStep Component', () => {
         // Detailed audio section should now be visible
         expect(screen.getByText('Detailed Pronunciation & Fluency Analysis')).toBeInTheDocument();
         // Check for specific audio data
-        expect(screen.getByText(`${mockAudioMetricsData.pronunciationScore}%`)).toBeInTheDocument();
+        expect(screen.getByText(`${mockAudioMetricsData.pronunciationScore}%`)).toBeInTheDocument(); // Check percentage rendering
         expect(screen.getByText(mockAudioMetricsData.proficiencyLevel)).toBeInTheDocument();
         // Check that text metrics are still there
-        expect(screen.getByText(`${mockTextMetrics.overallScore}%`)).toBeInTheDocument();
+        expect(screen.getByText(`${mockTextMetrics.overallScore}%`)).toBeInTheDocument(); // Check percentage rendering
         logger.info('Final state verified: Loading gone, audio metrics displayed.');
       });
-  
+
        // 8. Verify mocks were called as expected
        expect(mockParentOnAssessmentComplete).toHaveBeenCalledTimes(1);
        expect(mockProcessAssessmentLessonRecording).toHaveBeenCalledTimes(1);
@@ -499,7 +530,9 @@ describe('AssessmentStep Component', () => {
        const expectedBlobSize = new Blob(['mockaudio']).size; // Size of the blob created in LessonChat mock
        expect(mockProcessAssessmentLessonRecording).toHaveBeenCalledWith(
           expect.any(Blob),
-          mockLessonWithTextMetrics, // It's called when the lesson has text metrics
+          // IMPORTANT: The effect runs *before* the parent rerenders with text metrics,
+          // so it's called with the state *at that moment*, which is mockBaseLesson.
+          mockBaseLesson,
           5678, // recordingTime from mock blob assignment in LessonChat mock
           expectedBlobSize
        );
@@ -520,20 +553,26 @@ describe('AssessmentStep Component', () => {
     const goToLessonsButton = screen.getByRole('button', {
       name: 'Go to Lessons',
     });
-    expect(goToLessonsButton).toBeEnabled(); // Should be enabled in final state
+    // Ensure the button is present and enabled in this state
+    expect(goToLessonsButton).toBeInTheDocument();
+    expect(goToLessonsButton).toBeEnabled();
 
     await act(async () => {
       userEvent.click(goToLessonsButton);
     });
 
-    expect(mockOnGoToLessonsButtonClick).toHaveBeenCalledTimes(1);
+    // Use waitFor to ensure the assertion runs after the click event is fully processed
+    await waitFor(() => {
+      expect(mockOnGoToLessonsButtonClick).toHaveBeenCalledTimes(1);
+    });
   });
 
+  // Combined test for disabled button states
   it('disables "Go to Lessons" button while loading/processing', async () => {
-    // 1. Test during initial loading
+    // --- Part 1: Test during initial loading ---
     const { rerender } = render(
       <AssessmentStep
-        loading={true} // Initial loading prop
+        loading={true} // Initial loading prop is true
         targetLanguage="German"
         lesson={null}
         onAssessmentComplete={mockOnAssessmentComplete}
@@ -541,209 +580,131 @@ describe('AssessmentStep Component', () => {
         processAssessmentLessonRecording={mockProcessAssessmentLessonRecording}
       />
     );
-    // Button shouldn't even be rendered in this state
+    // Button shouldn't even be rendered in the initial loading state (shows "Loading assessment...")
+    expect(screen.getByText('Loading assessment...')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Lessons/i })
     ).not.toBeInTheDocument();
 
-    // 2. Test during audio processing (using the wrapper approach)
-    const TestWrapperAudioLoading = () => {
-      const [currentLesson, setCurrentLesson] =
-        React.useState<AssessmentLesson | null>(mockLessonWithTextMetrics);
-      const [isAudioProcessing, setIsAudioProcessing] = React.useState(false);
+    // --- Part 2: Test during audio processing ---
 
-      const handleProcessRecording = async (
-        rec: RecordingBlob,
-        less: AssessmentLesson,
-        time: number,
-        size: number
-      ) => {
-        setIsAudioProcessing(true); // Simulate loading start
-        // Don't resolve immediately to keep loading state
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        // In a real test, you might resolve later or not at all to check the disabled state
-        // setCurrentLesson(mockLessonWithAllMetrics);
-        setIsAudioProcessing(false);
-        return mockLessonWithAllMetrics;
-      };
+    // 2a. Setup controllable mock for audio processing
+    let resolveAudioProcessing: (value: AssessmentLesson) => void;
+    const audioProcessingPromise = new Promise<AssessmentLesson>((resolve) => {
+      resolveAudioProcessing = resolve; // Don't resolve yet
+    });
+    mockProcessAssessmentLessonRecording.mockImplementation(() => audioProcessingPromise);
 
-      React.useEffect(() => {
-        const mockBlob = {
-          ...new Blob(['mockaudio'], { type: 'audio/webm' }),
-          size: 1234,
-          recordingTime: 5678,
-        } as RecordingBlob;
-        handleProcessRecording(
-          mockBlob,
-          currentLesson!,
-          mockBlob.recordingTime!,
-          mockBlob.size!
-        );
-      }, []);
-
-      return (
-        <AssessmentStep
-          loading={false} // Initial loading is false
-          targetLanguage="German"
-          lesson={currentLesson}
-          onAssessmentComplete={mockOnAssessmentComplete}
-          onGoToLessonsButtonClick={mockOnGoToLessonsButtonClick}
-          processAssessmentLessonRecording={handleProcessRecording}
-        />
-      );
-    };
-
-    render(<TestWrapperAudioLoading />);
-
-    // Wait for the results view to render and audio processing to start
-    await waitFor(() => {
-      expect(
-        screen.getByText('Analyzing pronunciation and fluency...')
-      ).toBeInTheDocument();
+    // 2b. Setup state and mocks for parent behavior simulation
+    let currentLessonState: AssessmentLesson | null = mockBaseLesson;
+    const mockParentOnAssessmentComplete = jest.fn(async () => {
+      currentLessonState = { ...mockLessonWithTextMetrics }; // Update with text metrics
+      rerenderComponent(); // Rerender
     });
 
-    // Check if the button is rendered but disabled
-    const goToLessonsButton = screen.getByRole('button', {
-      name: /Processing Results...|Go to Lessons/i,
-    }); // Match loading or final text
-    expect(goToLessonsButton).toBeInTheDocument();
-    expect(goToLessonsButton).toBeDisabled();
-
-    // Optional: Wait for processing to finish and check if enabled again
-    await waitFor(
-      () => {
-        expect(
-          screen.queryByText('Analyzing pronunciation and fluency...')
-        ).not.toBeInTheDocument();
-        // Need to ensure the state update happens in the wrapper for this part
-      },
-      { timeout: 500 }
+    const TestComponent = () => (
+      <AssessmentStep
+        loading={false} // Initial loading is false now
+        targetLanguage="German"
+        lesson={currentLessonState}
+        onAssessmentComplete={mockParentOnAssessmentComplete}
+        onGoToLessonsButtonClick={mockOnGoToLessonsButtonClick}
+        processAssessmentLessonRecording={mockProcessAssessmentLessonRecording}
+      />
     );
-    // If state updated correctly, button should be enabled after loading
-    // expect(screen.getByRole('button', { name: 'Go to Lessons' })).toBeEnabled();
+
+    // Initial render with base lesson (shows LessonChat)
+    const rerenderComponent = () => rerender(<TestComponent />);
+    rerender(<TestComponent />); // Initial render
+
+    // 2c. Simulate LessonChat completion (triggers handleComplete -> onAssessmentComplete -> rerender -> useEffect)
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: 'Complete Lesson Chat' }));
+    });
+
+    // 2d. Wait for results view and audio loading indicator ("Analyzing...")
+    await waitFor(() => {
+      expect(screen.getByText('Assessment Results')).toBeInTheDocument();
+      expect(screen.getByText('Analyzing pronunciation and fluency...')).toBeInTheDocument();
+    });
+
+    // 2e. Assert button is rendered but disabled WHILE "Analyzing..." is shown
+    // The button text changes to "Processing Results..." during this phase
+    const goToLessonsButtonProcessing = screen.getByRole('button', { name: /Processing Results.../i });
+    expect(goToLessonsButtonProcessing).toBeInTheDocument();
+    expect(goToLessonsButtonProcessing).toBeDisabled();
+
+    // --- Part 3: (Optional but good) Cleanup and check enabled state ---
+    await act(async () => {
+       resolveAudioProcessing(mockLessonWithAllMetrics); // Resolve the promise
+       await Promise.resolve(); // Allow promise microtasks to run
+       currentLessonState = { ...mockLessonWithAllMetrics }; // Simulate parent updating state
+       rerenderComponent(); // Rerender with final state
+    });
+
+    // Wait for loading to finish and assert button is enabled with final text
+    await waitFor(() => {
+       expect(screen.queryByText('Analyzing pronunciation and fluency...')).not.toBeInTheDocument();
+       const goToLessonsButtonFinal = screen.getByRole('button', { name: 'Go to Lessons' });
+       expect(goToLessonsButtonFinal).toBeInTheDocument();
+       expect(goToLessonsButtonFinal).toBeEnabled();
+    });
   });
 
   it('handles error during audio processing', async () => {
+    // 1. Mock processing to reject
     const errorMsg = 'Audio processing failed!';
-    // Ensure the mock rejects for this specific test
     mockProcessAssessmentLessonRecording.mockRejectedValue(new Error(errorMsg));
 
-    // Use a wrapper component to manage state and trigger the effect
-    const TestWrapperError = () => {
-      // Start with the lesson state where text metrics are available,
-      // simulating the scenario where audio processing would start.
-      const [currentLesson, setCurrentLesson] =
-        React.useState<AssessmentLesson | null>(mockLessonWithTextMetrics);
-      // State to simulate the recording blob being set
-      const [recordingForEffect, setRecordingForEffect] =
-        React.useState<RecordingBlob | null>(null);
-
-      // This is the prop function passed to AssessmentStep
-      const handleProcessRecordingProp = async (
-        rec: RecordingBlob,
-        less: AssessmentLesson,
-        time: number,
-        size: number
-      ): Promise<AssessmentLesson> => {
-        // This prop calls the *mocked* function which will reject
-        try {
-          // We await the rejection here
-          await mockProcessAssessmentLessonRecording(rec, less, time, size);
-          // This part should not be reached if it rejects
-          return less;
-        } catch (e) {
-          // The actual component's useEffect handles the error and calls toast.error
-          // We re-throw here to simulate the promise rejection propagating
-          // if the component didn't catch it, but AssessmentStep *does* catch it.
-          // So, the toast call happens within AssessmentStep's effect.
-          // We don't call toast.error directly in the test wrapper's prop.
-          logger.error('Error caught in test wrapper prop (re-throwing)', e);
-          throw e;
-        }
-      };
-
-      // Simulate the recording being set, which triggers the useEffect in AssessmentStep
-      React.useEffect(() => {
-        const mockBlob = {
-          ...new Blob(['mockaudio'], { type: 'audio/webm' }),
-          size: 1234,
-          recordingTime: 5678,
-        } as RecordingBlob;
-        // Set the recording state to trigger the effect inside AssessmentStep
-        setRecordingForEffect(mockBlob);
-      }, []);
-
-      // Simulate the AssessmentStep's internal state for sessionRecording
-      // This isn't perfect, but helps trigger the effect within AssessmentStep
-      // A better way might be to simulate the handleComplete function setting state.
-      // Let's rely on the useEffect in AssessmentStep watching the 'lesson' prop
-      // and the internal sessionRecording state which gets set in handleComplete.
-      // We need to simulate the handleComplete call first.
-
-      // --- Revised Approach: Simulate handleComplete setting the recording ---
-      const assessmentStepRef = React.useRef<any>(); // To access internal state if needed (not ideal)
-
-      const handleCompleteAndSetRecording = async () => {
-        const mockBlob = {
-          ...new Blob(['mockaudio'], { type: 'audio/webm' }),
-          size: 1234,
-          recordingTime: 5678,
-        } as RecordingBlob;
-        // Simulate AssessmentStep's handleComplete setting the recording state
-        // This will trigger the useEffect inside AssessmentStep
-        // We pass the rejecting prop `handleProcessRecordingProp`
-        setRecordingForEffect(mockBlob); // This state change triggers the effect in AssessmentStep
-      };
-
-      return (
-        <>
-          {/* Button to simulate the completion action that sets the recording */}
-          <button onClick={handleCompleteAndSetRecording}>
-            Trigger Audio Processing
-          </button>
-          <AssessmentStep
-            ref={assessmentStepRef} // Assign ref if needed
-            loading={false}
-            targetLanguage="German"
-            lesson={currentLesson} // Start with text metrics
-            onAssessmentComplete={mockOnAssessmentComplete} // Mocked, called within handleComplete
-            onGoToLessonsButtonClick={mockOnGoToLessonsButtonClick}
-            processAssessmentLessonRecording={handleProcessRecordingProp} // Pass the rejecting prop
-          />
-        </>
-      );
-    };
-
-    render(<TestWrapperError />);
-
-    // Simulate the user completing the lesson chat, which calls handleComplete internally
-    // In our test setup, we click the "Trigger Audio Processing" button which simulates setting the recording state
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Trigger Audio Processing' })
-      );
+    // 2. Setup state and mocks for parent behavior
+    let currentLessonState: AssessmentLesson | null = mockBaseLesson;
+    const mockParentOnAssessmentComplete = jest.fn(async () => {
+      currentLessonState = { ...mockLessonWithTextMetrics }; // Update with text metrics
+      rerenderComponent(); // Rerender
     });
 
-    // Wait for the toast error message to appear.
-    // This confirms that the useEffect in AssessmentStep ran, called the rejecting
-    // processAssessmentLessonRecording prop, caught the error, and called toast.error.
+    const TestComponent = () => (
+      <AssessmentStep
+        loading={false}
+        targetLanguage="German"
+        lesson={currentLessonState}
+        onAssessmentComplete={mockParentOnAssessmentComplete}
+        onGoToLessonsButtonClick={mockOnGoToLessonsButtonClick}
+        processAssessmentLessonRecording={mockProcessAssessmentLessonRecording} // Rejecting mock
+      />
+    );
+
+    const { rerender } = render(<TestComponent />);
+    const rerenderComponent = () => rerender(<TestComponent />);
+
+    // 3. Simulate LessonChat completion (triggers internal state changes and effects)
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: 'Complete Lesson Chat' }));
+    });
+
+    // 4. Wait for results view (text metrics) to appear
+    await waitFor(() => {
+      expect(screen.getByText('Assessment Results')).toBeInTheDocument();
+    });
+
+    // 5. Wait for the error toast to be called
+    // The internal useEffect runs, calls the rejecting mock, catches the error, and calls toast.error
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
         'Failed to process pronunciation analysis.'
       );
     });
 
-    // Check that the audio loading indicator is gone (it might flash briefly or not appear)
-    expect(
-      screen.queryByText('Analyzing pronunciation and fluency...')
-    ).not.toBeInTheDocument();
-    // Check that the detailed audio metrics section is NOT rendered because processing failed
-    expect(
-      screen.queryByText('Detailed Pronunciation & Fluency Analysis')
-    ).not.toBeInTheDocument();
-    // Button should be enabled again after the error handling completes
-    expect(screen.getByRole('button', { name: 'Go to Lessons' })).toBeEnabled();
-    // Ensure the original mock was called
+    // 6. Assert final state after error
+    // Loading indicator should not be present (or should disappear quickly)
+    expect(screen.queryByText('Analyzing pronunciation and fluency...')).not.toBeInTheDocument();
+    // Detailed audio section should NOT be rendered
+    expect(screen.queryByText('Detailed Pronunciation & Fluency Analysis')).not.toBeInTheDocument();
+    // Button should be enabled again after error handling completes
+    const goToLessonsButton = screen.getByRole('button', { name: 'Go to Lessons' });
+    expect(goToLessonsButton).toBeInTheDocument();
+    expect(goToLessonsButton).toBeEnabled();
+    // Ensure the rejecting mock was called
     expect(mockProcessAssessmentLessonRecording).toHaveBeenCalledTimes(1);
   });
 });
