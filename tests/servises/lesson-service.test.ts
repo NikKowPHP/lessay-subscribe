@@ -715,6 +715,28 @@ const mockAssessment: AssessmentLesson = {
       expect(result[0]).toEqual(mockCreatedLesson); // Check structure of created lesson
     });
 
+
+     // --- Verify topic prioritization logic ---
+     it('should prioritize assessment topics over learning purpose topics', async () => {
+      // Assessment topics: ['Travel Vocabulary', 'Basic Grammar'] score 2
+      // Learning purpose ('travel'): ['Airport Navigation', 'Hotel Booking', 'Restaurant Ordering'] score 1
+      // Beginner basics: ['Greetings', 'Introductions', 'Basic Phrases'] score 1.5
+      // Expected order: Travel Vocabulary, Basic Grammar, (one of the basics)
+      await lessonService.generateInitialLessons();
+
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledTimes(3);
+      const calls = mockLessonGeneratorService.generateLesson.mock.calls;
+      const calledTopics = calls.map((call) => call[0]); // Get the first argument (topic) of each call
+
+      expect(calledTopics).toContain('travel-vocabulary');
+      expect(calledTopics).toContain('basic-grammar');
+      expect(
+        calledTopics.some((topic) =>
+          ['greetings', 'introductions', 'basic-phrases'].includes(topic)
+        )
+      ).toBe(true);
+    });
+
   
   });
 
