@@ -14,7 +14,7 @@ export default {
   },
   // Updated transformIgnorePatterns to include "node-fetch" in the exception
   transformIgnorePatterns: [
-    '/node_modules/(?!(posthog-js|node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/)'
+    '/node_modules/(?!(posthog-js|node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill|lucide-react)/)'
   ],
   // This tells Jest to treat these extensions as ESM files
   globals: {

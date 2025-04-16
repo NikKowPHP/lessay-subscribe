@@ -816,7 +816,7 @@ export default function LessonChat({
         <div ref={chatMessagesRef} className="flex-1 overflow-y-auto min-h-0">
           <ChatMessages messages={chatHistory} />
           <audio ref={audioRef} />
-          <audio ref={recordingAudioRef} src={recordingAudioURL || ''} />
+          <audio ref={recordingAudioRef} src={recordingAudioURL || undefined} />
         </div>
 
         <ChatInput
