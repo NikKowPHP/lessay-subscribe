@@ -619,7 +619,7 @@ describe('LessonChat Component', () => {
     const lessonAtStep2: LessonModel = {
       ...mockLesson,
       steps: [
-        { ...mockStep1, userResponse: 'Ack', correct: true },
+        { ...mockStep1, userResponse: 'Ack', correct: true, expectedAnswer: 'Hello' },
         mockStep2,
         mockStep3,
       ],
@@ -636,22 +636,27 @@ describe('LessonChat Component', () => {
     const input = screen.getByRole('textbox'); // Find by role
     const skipButton = screen.getByRole('button', { name: 'Skip & Continue' });
 
-    // Type response and submit
-    await userEvent.type(input, 'Hello');
-    expect(skipButton).toBeEnabled(); // Button should be enabled now
+  
 
+    // Assert button is enabled *after* typing
+    expect(skipButton).not.toBeDisabled();
+   
     await act(async () => {
       userEvent.click(skipButton);
     });
 
+    // expected response 
+    // handle submit step called with skip
     await waitFor(
       () => {
+        // Check that onStepComplete was called with the current step (step-2)
+        // and the specific response 'skip'
         expect(mockOnStepComplete).toHaveBeenCalledWith(
           expect.objectContaining({ id: 'step-2' }), // The current step (step 2)
-          'Hello' // The user response
+          'skip' // The user response when skipping
         );
       },
-      { timeout: 10000 }
+      { timeout: 10000 } // Increased timeout just in case
     );
   });
 

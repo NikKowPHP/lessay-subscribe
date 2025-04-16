@@ -762,6 +762,11 @@ export default function LessonChat({
     };
   }, []);
 
+  const handleSkip = () => {
+    const currentStep = lesson.steps[currentStepIndex] as LessonStep;
+    handleSubmitStep(currentStep, 'skip');
+  };
+
   // Update the handleUpdateResponse function to pass to ChatInput
   const handleUpdateResponse = (text: string) => {
     setUserResponse(text);
@@ -839,8 +844,9 @@ export default function LessonChat({
           onToggleListening={toggleListening}
           onSubmit={handleSubmit}
           disableSubmit={!userResponse || loading}
+          disableSkip={ loading}
           onUpdateResponse={handleUpdateResponse}
-          
+          onSkip={handleSkip}
         />
 
         {/* Mock buttons */}

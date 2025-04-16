@@ -261,7 +261,10 @@ export default class OnboardingService {
           if (step.expectedAnswer) {
             logger.info('step.expectedAnswer', step.expectedAnswer);
             logger.info('userResponse', userResponse);
-
+            if(userResponse.toLowerCase().includes('skip')){
+              correct = true;
+              break;
+            }
             // Normalize user response by removing punctuation and special characters
             const normalizedUserResponse = userResponse
               .trim()

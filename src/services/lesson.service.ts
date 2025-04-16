@@ -622,6 +622,10 @@ export default class LessonService {
           logger.info('step.expectedAnswer', step.expectedAnswer);
           logger.info('userResponse', userResponse);
 
+          if(userResponse.toLowerCase().includes('skip')){
+            correct = true;
+            break;
+          }
           // Normalize user response by removing punctuation and special characters
           const normalizedUserResponse = userResponse
             .trim()
@@ -678,10 +682,12 @@ export default class LessonService {
       default:
         correct = false;
     }
-    return this.lessonRepository.recordStepAttempt(lessonId, stepId, {
+    const updatedStep = await this.lessonRepository.recordStepAttempt(lessonId, stepId, {
       userResponse,
       correct,
     });
+    logger.info('updatedStep', { updatedStep });
+    return { ...updatedStep, userResponse: step.expectedAnswer || '' };
   }
 
   async getStepHistory(
