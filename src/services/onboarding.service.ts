@@ -231,7 +231,7 @@ export default class OnboardingService {
           lessonId,
           stepId,
           {
-            userResponse: step.userResponse || '',
+            userResponse: step.expectedAnswer || '',
             correct: true, // to proceed on the frontend
           }
         );
@@ -340,7 +340,11 @@ export default class OnboardingService {
       );
       logger.info('updatedStep', { updatedStep });
 
-      return updatedStep;
+      // return updated step with user response as expected answer
+      return {
+        ...updatedStep,
+        userResponse: step.expectedAnswer || '',
+      };
     } catch (error) {
       logger.error('Error recording step attempt:', error);
       throw error;

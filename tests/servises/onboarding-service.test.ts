@@ -1,4 +1,3 @@
-
 import { mockDeep, MockProxy, mockReset } from 'jest-mock-extended';
 import OnboardingService from '@/services/onboarding.service';
 import LessonService from '@/services/lesson.service';
@@ -6,7 +5,12 @@ import { IAssessmentGeneratorService } from '@/services/assessment-generator.ser
 import RecordingService from '@/services/recording.service';
 import LearningProgressService from '@/services/learning-progress.service';
 import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
-import { AssessmentLesson, AssessmentStep, OnboardingModel, AudioMetrics } from '@/models/AppAllModels.model';
+import {
+  AssessmentLesson,
+  AssessmentStep,
+  OnboardingModel,
+  AudioMetrics,
+} from '@/models/AppAllModels.model';
 import { ProficiencyLevel, AssessmentStepType } from '@prisma/client';
 import logger from '@/utils/logger';
 import { assessmentMockData2 } from '@/__mocks__/assessment-data.mock'; // Import mock data
@@ -45,7 +49,9 @@ describe('OnboardingService', () => {
   let mockLessonService: MockProxy<LessonService>;
   let mockAssessmentGeneratorService: MockProxy<IAssessmentGeneratorService>;
   let MockRecordingService: jest.MockedClass<typeof RecordingService>;
-  let MockLearningProgressService: jest.MockedClass<typeof LearningProgressService>;
+  let MockLearningProgressService: jest.MockedClass<
+    typeof LearningProgressService
+  >;
 
   // --- Mock Data ---
   const userId = 'test-user-id';
@@ -79,12 +85,16 @@ describe('OnboardingService', () => {
   const mockCompleteAssessmentLesson: AssessmentLesson = {
     ...mockAssessmentLesson,
     completed: true,
-    metrics: { accuracy: 85, overallScore: 80, strengths: ['vocab'], weaknesses: ['grammar'] },
+    metrics: {
+      accuracy: 85,
+      overallScore: 80,
+      strengths: ['vocab'],
+      weaknesses: ['grammar'],
+    },
     summary: 'Good job!',
     proposedTopics: ['Travel', 'Food'],
     audioMetrics: null, // Add mock audio metrics if testing processAssessmentLessonRecording
   };
-
 
   const mockAssessmentStep: AssessmentStep = {
     id: stepId,
@@ -114,13 +124,18 @@ describe('OnboardingService', () => {
     // --- Mock Internally Instantiated Services ---
     // Clear mocks and setup instances for RecordingService
     jest.clearAllMocks(); // Clear mocks for internally instantiated services too
-    MockRecordingService = RecordingService as jest.MockedClass<typeof RecordingService>;
-    MockLearningProgressService = LearningProgressService as jest.MockedClass<typeof LearningProgressService>;
+    MockRecordingService = RecordingService as jest.MockedClass<
+      typeof RecordingService
+    >;
+    MockLearningProgressService = LearningProgressService as jest.MockedClass<
+      typeof LearningProgressService
+    >;
 
     // Mock the methods of the instances that will be created
     MockRecordingService.prototype.uploadFile = jest.fn();
     MockRecordingService.prototype.submitLessonRecordingSession = jest.fn();
-    MockLearningProgressService.prototype.updateProgressAfterAssessment = jest.fn();
+    MockLearningProgressService.prototype.updateProgressAfterAssessment =
+      jest.fn();
     // Add mocks for other LearningProgressService methods if called by OnboardingService
 
     // Instantiate the service with mocked dependencies
@@ -156,9 +171,13 @@ describe('OnboardingService', () => {
 
   describe('createOnboarding', () => {
     it('should call repository createOnboarding and return the result', async () => {
-      mockOnboardingRepository.createOnboarding.mockResolvedValue(mockOnboarding);
+      mockOnboardingRepository.createOnboarding.mockResolvedValue(
+        mockOnboarding
+      );
       const result = await onboardingService.createOnboarding();
-      expect(mockOnboardingRepository.createOnboarding).toHaveBeenCalledTimes(1);
+      expect(mockOnboardingRepository.createOnboarding).toHaveBeenCalledTimes(
+        1
+      );
       expect(result).toEqual(mockOnboarding);
     });
   });
@@ -168,11 +187,16 @@ describe('OnboardingService', () => {
       const step = 'language_select';
       const formData = { nativeLanguage: 'French' };
       const updatedOnboarding = { ...mockOnboarding, nativeLanguage: 'French' };
-      mockOnboardingRepository.updateOnboarding.mockResolvedValue(updatedOnboarding);
+      mockOnboardingRepository.updateOnboarding.mockResolvedValue(
+        updatedOnboarding
+      );
 
       const result = await onboardingService.updateOnboarding(step, formData);
 
-      expect(mockOnboardingRepository.updateOnboarding).toHaveBeenCalledWith(step, formData);
+      expect(mockOnboardingRepository.updateOnboarding).toHaveBeenCalledWith(
+        step,
+        formData
+      );
       expect(result).toEqual(updatedOnboarding);
     });
   });
@@ -180,12 +204,17 @@ describe('OnboardingService', () => {
   describe('markOnboardingAsCompleteAndGenerateLessons', () => {
     it('should complete onboarding and trigger initial lesson generation', async () => {
       const completedOnboarding = { ...mockOnboarding, completed: true };
-      mockOnboardingRepository.completeOnboarding.mockResolvedValue(completedOnboarding);
+      mockOnboardingRepository.completeOnboarding.mockResolvedValue(
+        completedOnboarding
+      );
       mockLessonService.generateInitialLessons.mockResolvedValue([]); // Assuming returns array of lessons
 
-      const result = await onboardingService.markOnboardingAsCompleteAndGenerateLessons();
+      const result =
+        await onboardingService.markOnboardingAsCompleteAndGenerateLessons();
 
-      expect(mockOnboardingRepository.completeOnboarding).toHaveBeenCalledTimes(1);
+      expect(mockOnboardingRepository.completeOnboarding).toHaveBeenCalledTimes(
+        1
+      );
       expect(mockLessonService.generateInitialLessons).toHaveBeenCalledTimes(1);
       expect(result).toEqual(completedOnboarding);
     });
@@ -195,7 +224,9 @@ describe('OnboardingService', () => {
     it('should call repository deleteOnboarding', async () => {
       mockOnboardingRepository.deleteOnboarding.mockResolvedValue();
       await onboardingService.deleteOnboarding();
-      expect(mockOnboardingRepository.deleteOnboarding).toHaveBeenCalledTimes(1);
+      expect(mockOnboardingRepository.deleteOnboarding).toHaveBeenCalledTimes(
+        1
+      );
     });
   });
 
@@ -210,228 +241,461 @@ describe('OnboardingService', () => {
 
   describe('getAssessmentLesson', () => {
     it('should return existing assessment lesson if found', async () => {
-      mockOnboardingRepository.getAssessmentLesson.mockResolvedValue(mockAssessmentLesson);
-      const result = await onboardingService.getAssessmentLesson(userId);
-      expect(mockOnboardingRepository.getAssessmentLesson).toHaveBeenCalledWith(userId);
+      mockOnboardingRepository.getAssessmentLesson.mockResolvedValue(
+        mockAssessmentLesson
+      );
+      // CHANGE THIS LINE: Remove userId from the call
+      // const result = await onboardingService.getAssessmentLesson(userId);
+      const result = await onboardingService.getAssessmentLesson(); // No argument
+
+      // CHANGE THIS LINE: Expect call without arguments
+      // expect(mockOnboardingRepository.getAssessmentLesson).toHaveBeenCalledWith(userId);
+      expect(
+        mockOnboardingRepository.getAssessmentLesson
+      ).toHaveBeenCalledTimes(1); // Or .toHaveBeenCalled()
+
       expect(result).toEqual(mockAssessmentLesson);
-      expect(mockAssessmentGeneratorService.generateAssessmentSteps).not.toHaveBeenCalled();
-      expect(mockOnboardingRepository.createAssessmentLesson).not.toHaveBeenCalled();
+      expect(
+        mockAssessmentGeneratorService.generateAssessmentSteps
+      ).not.toHaveBeenCalled();
+      expect(
+        mockOnboardingRepository.createAssessmentLesson
+      ).not.toHaveBeenCalled();
     });
 
     it('should generate and create a new assessment if none exists', async () => {
-      const generatedSteps = [{ stepNumber: 1, type: AssessmentStepType.instruction, content: '...', maxAttempts: 1 }];
-      const stepsWithAudio = [{ ...generatedSteps[0], contentAudioUrl: 'audio.mp3' }];
+      const generatedSteps = [
+        {
+          stepNumber: 1,
+          type: AssessmentStepType.instruction,
+          content: '...',
+          maxAttempts: 1,
+        },
+      ];
+      const stepsWithAudio = [
+        { ...generatedSteps[0], contentAudioUrl: 'audio.mp3' },
+      ];
 
       mockOnboardingRepository.getAssessmentLesson.mockResolvedValue(null);
-      mockOnboardingRepository.getOnboarding.mockResolvedValue(mockOnboarding);
-      mockAssessmentGeneratorService.generateAssessmentSteps.mockResolvedValue(generatedSteps as any);
-      mockAssessmentGeneratorService.generateAudioForSteps.mockResolvedValue(stepsWithAudio as any);
-      mockOnboardingRepository.createAssessmentLesson.mockResolvedValue(mockAssessmentLesson); // Return the created lesson
+      mockOnboardingRepository.getOnboarding.mockResolvedValue(mockOnboarding); // Assuming getOnboarding also doesn't need userId here
+      mockAssessmentGeneratorService.generateAssessmentSteps.mockResolvedValue(
+        generatedSteps as any
+      );
+      mockAssessmentGeneratorService.generateAudioForSteps.mockResolvedValue(
+        stepsWithAudio as any
+      );
+      mockOnboardingRepository.createAssessmentLesson.mockResolvedValue(
+        mockAssessmentLesson
+      ); // Return the created lesson
 
-      const result = await onboardingService.getAssessmentLesson(userId);
+      const result = await onboardingService.getAssessmentLesson(); // No argument
 
-      expect(mockOnboardingRepository.getAssessmentLesson).toHaveBeenCalledWith(userId);
-      expect(mockOnboardingRepository.getOnboarding).toHaveBeenCalledTimes(1);
-      expect(mockAssessmentGeneratorService.generateAssessmentSteps).toHaveBeenCalledWith(
+      expect(
+        mockOnboardingRepository.getAssessmentLesson
+      ).toHaveBeenCalledTimes(1); // Or .toHaveBeenCalled()
+
+      expect(mockOnboardingRepository.getOnboarding).toHaveBeenCalledTimes(1); // This likely still needs to be called
+      expect(
+        mockAssessmentGeneratorService.generateAssessmentSteps
+      ).toHaveBeenCalledWith(
         mockOnboarding.targetLanguage,
         mockOnboarding.nativeLanguage,
         mockOnboarding.proficiencyLevel
       );
-      expect(mockAssessmentGeneratorService.generateAudioForSteps).toHaveBeenCalledWith(
+      expect(
+        mockAssessmentGeneratorService.generateAudioForSteps
+      ).toHaveBeenCalledWith(
         generatedSteps,
         mockOnboarding.targetLanguage,
         mockOnboarding.nativeLanguage
       );
-      expect(mockOnboardingRepository.createAssessmentLesson).toHaveBeenCalledWith(userId, expect.objectContaining({
-        userId: userId,
-        sourceLanguage: mockOnboarding.nativeLanguage,
-        targetLanguage: mockOnboarding.targetLanguage,
-        steps: stepsWithAudio,
-      }));
+      expect(
+        mockOnboardingRepository.createAssessmentLesson
+      ).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({
+          // Keep userId here if create needs it
+          userId: userId,
+          sourceLanguage: mockOnboarding.nativeLanguage,
+          targetLanguage: mockOnboarding.targetLanguage,
+          steps: stepsWithAudio,
+        })
+      );
       expect(result).toEqual(mockAssessmentLesson);
     });
 
     it('should throw error if onboarding data is missing for generation', async () => {
       mockOnboardingRepository.getAssessmentLesson.mockResolvedValue(null);
-      mockOnboardingRepository.getOnboarding.mockResolvedValue({ ...mockOnboarding, targetLanguage: null }); // Missing target language
+      mockOnboardingRepository.getOnboarding.mockResolvedValue({
+        ...mockOnboarding,
+        targetLanguage: null,
+      }); // Missing target language
 
-      await expect(onboardingService.getAssessmentLesson(userId)).rejects.toThrow('Missing required parameters');
+      await expect(onboardingService.getAssessmentLesson()).rejects.toThrow(
+        'Missing required parameters'
+      );
     });
   });
 
   describe('completeAssessmentLesson', () => {
     it('should get lesson, generate results, complete lesson, update progress, and complete onboarding', async () => {
       const assessmentResult = {
-        metrics: { accuracy: 85, overallScore: 80, strengths: ['vocab'], weaknesses: ['grammar'] },
+        metrics: {
+          accuracy: 85,
+          overallScore: 80,
+          strengths: ['vocab'],
+          weaknesses: ['grammar'],
+        },
         summary: 'Good job!',
         proposedTopics: ['Travel', 'Food'],
       };
-      const completedOnboarding = { ...mockOnboarding, completed: true, initialAssessmentCompleted: true };
+      const completedOnboarding = {
+        ...mockOnboarding,
+        completed: true,
+        initialAssessmentCompleted: true,
+      };
 
-
-      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue(mockAssessmentLesson);
-      mockAssessmentGeneratorService.generateAssessmentResult.mockResolvedValue(assessmentResult);
-      mockOnboardingRepository.completeAssessmentLesson.mockResolvedValue(mockCompleteAssessmentLesson);
+      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue(
+        mockAssessmentLesson
+      );
+      mockAssessmentGeneratorService.generateAssessmentResult.mockResolvedValue(
+        assessmentResult
+      );
+      mockOnboardingRepository.completeAssessmentLesson.mockResolvedValue(
+        mockCompleteAssessmentLesson
+      );
       // Mock the LearningProgressService call (assuming it resolves successfully)
       MockLearningProgressService.prototype.updateProgressAfterAssessment.mockResolvedValue();
-      mockOnboardingRepository.completeOnboarding.mockResolvedValue(completedOnboarding);
+      mockOnboardingRepository.completeOnboarding.mockResolvedValue(
+        completedOnboarding
+      );
 
+      const result = await onboardingService.completeAssessmentLesson(
+        assessmentLessonId,
+        'some response'
+      ); // userResponse seems unused here?
 
-      const result = await onboardingService.completeAssessmentLesson(assessmentLessonId, 'some response'); // userResponse seems unused here?
-
-      expect(mockOnboardingRepository.getAssessmentLessonById).toHaveBeenCalledWith(assessmentLessonId);
-      expect(mockAssessmentGeneratorService.generateAssessmentResult).toHaveBeenCalledWith(mockAssessmentLesson);
-      expect(mockOnboardingRepository.completeAssessmentLesson).toHaveBeenCalledWith(
+      expect(
+        mockOnboardingRepository.getAssessmentLessonById
+      ).toHaveBeenCalledWith(assessmentLessonId);
+      expect(
+        mockAssessmentGeneratorService.generateAssessmentResult
+      ).toHaveBeenCalledWith(mockAssessmentLesson);
+      expect(
+        mockOnboardingRepository.completeAssessmentLesson
+      ).toHaveBeenCalledWith(
         expect.objectContaining({ id: assessmentLessonId }), // Pass the updated lesson object
         assessmentResult
       );
-      expect(MockLearningProgressService.prototype.updateProgressAfterAssessment).toHaveBeenCalledWith(userId, mockCompleteAssessmentLesson);
-      expect(mockOnboardingRepository.completeOnboarding).toHaveBeenCalledTimes(1);
+      expect(
+        MockLearningProgressService.prototype.updateProgressAfterAssessment
+      ).toHaveBeenCalledWith(userId, mockCompleteAssessmentLesson);
+      expect(mockOnboardingRepository.completeOnboarding).toHaveBeenCalledTimes(
+        1
+      );
       expect(result).toEqual(mockCompleteAssessmentLesson);
     });
 
     it('should log error if updating learning progress fails', async () => {
       const assessmentResult = {
-        metrics: { accuracy: 85, overallScore: 80, strengths: ['vocab'], weaknesses: ['grammar'] },
+        metrics: {
+          accuracy: 85,
+          overallScore: 80,
+          strengths: ['vocab'],
+          weaknesses: ['grammar'],
+        },
         summary: 'Good job!',
         proposedTopics: ['Travel', 'Food'],
       };
       const progressError = new Error('Failed to update progress');
 
-      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue(mockAssessmentLesson);
-      mockAssessmentGeneratorService.generateAssessmentResult.mockResolvedValue(assessmentResult);
-      mockOnboardingRepository.completeAssessmentLesson.mockResolvedValue(mockCompleteAssessmentLesson);
-      MockLearningProgressService.prototype.updateProgressAfterAssessment.mockRejectedValue(progressError); // Simulate failure
-      mockOnboardingRepository.completeOnboarding.mockResolvedValue({ ...mockOnboarding, completed: true });
+      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue(
+        mockAssessmentLesson
+      );
+      mockAssessmentGeneratorService.generateAssessmentResult.mockResolvedValue(
+        assessmentResult
+      );
+      mockOnboardingRepository.completeAssessmentLesson.mockResolvedValue(
+        mockCompleteAssessmentLesson
+      );
+      MockLearningProgressService.prototype.updateProgressAfterAssessment.mockRejectedValue(
+        progressError
+      ); // Simulate failure
+      mockOnboardingRepository.completeOnboarding.mockResolvedValue({
+        ...mockOnboarding,
+        completed: true,
+      });
 
-      await onboardingService.completeAssessmentLesson(assessmentLessonId, 'some response');
+      await onboardingService.completeAssessmentLesson(
+        assessmentLessonId,
+        'some response'
+      );
 
-      expect(MockLearningProgressService.prototype.updateProgressAfterAssessment).toHaveBeenCalledWith(userId, mockCompleteAssessmentLesson);
+      expect(
+        MockLearningProgressService.prototype.updateProgressAfterAssessment
+      ).toHaveBeenCalledWith(userId, mockCompleteAssessmentLesson);
       expect(logger.error).toHaveBeenCalledWith(
         'Failed to update learning progress after assessment completion',
-        expect.objectContaining({ userId, assessmentId: assessmentLessonId, error: progressError })
+        expect.objectContaining({
+          userId,
+          assessmentId: assessmentLessonId,
+          error: progressError,
+        })
       );
       // Ensure onboarding completion still happens
-      expect(mockOnboardingRepository.completeOnboarding).toHaveBeenCalledTimes(1);
+      expect(mockOnboardingRepository.completeOnboarding).toHaveBeenCalledTimes(
+        1
+      );
     });
 
     it('should throw error if assessment lesson not found', async () => {
       mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue(null);
-      await expect(onboardingService.completeAssessmentLesson(assessmentLessonId, 'response')).rejects.toThrow('Assessment lesson not found');
+      await expect(
+        onboardingService.completeAssessmentLesson(
+          assessmentLessonId,
+          'response'
+        )
+      ).rejects.toThrow('Assessment lesson not found');
     });
   });
 
   describe('recordStepAttempt', () => {
     it('should throw error if lesson not found', async () => {
       mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue(null);
-      await expect(onboardingService.recordStepAttempt(assessmentLessonId, stepId, 'response')).rejects.toThrow('Assessment lesson not found');
+      await expect(
+        onboardingService.recordStepAttempt(
+          assessmentLessonId,
+          stepId,
+          'response'
+        )
+      ).rejects.toThrow('Assessment lesson not found');
     });
 
     it('should throw error if step not found in lesson', async () => {
-      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({ ...mockAssessmentLesson, steps: [] }); // Lesson without the step
-      await expect(onboardingService.recordStepAttempt(assessmentLessonId, stepId, 'response')).rejects.toThrow('Step not found');
+      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({
+        ...mockAssessmentLesson,
+        steps: [],
+      }); // Lesson without the step
+      await expect(
+        onboardingService.recordStepAttempt(
+          assessmentLessonId,
+          stepId,
+          'response'
+        )
+      ).rejects.toThrow('Step not found');
     });
 
     it('should record attempt as correct (but use expected answer) if max attempts reached', async () => {
       const stepAtMaxAttempts = { ...mockAssessmentStep, attempts: 3 }; // attempts >= maxAttempts
-      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({ ...mockAssessmentLesson, steps: [stepAtMaxAttempts] });
-      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({ ...stepAtMaxAttempts, attempts: 4 }); // Simulate repo response
-
-      const result = await onboardingService.recordStepAttempt(assessmentLessonId, stepId, 'wrong answer');
-
-      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(assessmentLessonId, stepId, {
-        userResponse: mockAssessmentStep.expectedAnswer, // Should use expected answer
-        correct: true, // Mark as correct to proceed UI
+      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({
+        ...mockAssessmentLesson,
+        steps: [stepAtMaxAttempts],
       });
-      expect(logger.info).toHaveBeenCalledWith('Maximum attempts reached', expect.anything());
+      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({
+        ...stepAtMaxAttempts,
+        attempts: 4,
+      }); // Simulate repo response
+
+      const result = await onboardingService.recordStepAttempt(
+        assessmentLessonId,
+        stepId,
+        'wrong answer'
+      );
+
+      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(
+        assessmentLessonId,
+        stepId,
+        {
+          userResponse: mockAssessmentStep.expectedAnswer, // Should use expected answer
+          correct: true, // Mark as correct to proceed UI
+        }
+      );
+      expect(logger.info).toHaveBeenCalledWith(
+        'Maximum attempts reached',
+        expect.anything()
+      );
       expect(result).toBeDefined();
     });
 
     it('should correctly identify a correct answer for a question step (exact match)', async () => {
       const step = { ...mockAssessmentStep, expectedAnswer: 'Exact Answer' };
-      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({ ...mockAssessmentLesson, steps: [step] });
-      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({ ...step, correct: true, attempts: 1 });
-
-      await onboardingService.recordStepAttempt(assessmentLessonId, stepId, 'Exact Answer');
-
-      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(assessmentLessonId, stepId, {
-        userResponse: 'Exact Answer',
-        correct: true,
+      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({
+        ...mockAssessmentLesson,
+        steps: [step],
       });
+      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({
+        ...step,
+        correct: true,
+        attempts: 1,
+      });
+
+      await onboardingService.recordStepAttempt(
+        assessmentLessonId,
+        stepId,
+        'Exact Answer'
+      );
+
+      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(
+        assessmentLessonId,
+        stepId,
+        {
+          userResponse: 'Exact Answer',
+          correct: true,
+        }
+      );
     });
 
     it('should correctly identify a correct answer for a question step (normalized match)', async () => {
-      const step = { ...mockAssessmentStep, expectedAnswer: 'Expected Answer...' };
-      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({ ...mockAssessmentLesson, steps: [step] });
-      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({ ...step, correct: true, attempts: 1 });
-
-      await onboardingService.recordStepAttempt(assessmentLessonId, stepId, '  expected answer! '); // With extra space, punctuation, case difference
-
-      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(assessmentLessonId, stepId, {
-        userResponse: '  expected answer! ',
-        correct: true, // Normalization should handle this
+      const step = {
+        ...mockAssessmentStep,
+        expectedAnswer: 'Expected Answer...',
+      };
+      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({
+        ...mockAssessmentLesson,
+        steps: [step],
       });
+      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({
+        ...step,
+        correct: true,
+        attempts: 1,
+      });
+
+      await onboardingService.recordStepAttempt(
+        assessmentLessonId,
+        stepId,
+        '  expected answer! '
+      ); // With extra space, punctuation, case difference
+
+      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(
+        assessmentLessonId,
+        stepId,
+        {
+          userResponse: '  expected answer! ',
+          correct: true, // Normalization should handle this
+        }
+      );
     });
 
     it('should correctly identify an incorrect answer for a question step', async () => {
       const step = { ...mockAssessmentStep, expectedAnswer: 'Correct Answer' };
-      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({ ...mockAssessmentLesson, steps: [step] });
-      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({ ...step, correct: false, attempts: 1 });
-
-      await onboardingService.recordStepAttempt(assessmentLessonId, stepId, 'Wrong Answer');
-
-      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(assessmentLessonId, stepId, {
-        userResponse: 'Wrong Answer',
-        correct: false,
+      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({
+        ...mockAssessmentLesson,
+        steps: [step],
       });
+      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({
+        ...step,
+        correct: false,
+        attempts: 1,
+      });
+
+      await onboardingService.recordStepAttempt(
+        assessmentLessonId,
+        stepId,
+        'Wrong Answer'
+      );
+
+      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(
+        assessmentLessonId,
+        stepId,
+        {
+          userResponse: 'Wrong Answer',
+          correct: false,
+        }
+      );
     });
 
     it('should mark instruction/feedback/summary steps as correct', async () => {
-      const instructionStep = { ...mockAssessmentStep, type: AssessmentStepType.instruction, expectedAnswer: null };
-      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({ ...mockAssessmentLesson, steps: [instructionStep] });
-      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({ ...instructionStep, correct: true, attempts: 1 });
-
-      await onboardingService.recordStepAttempt(assessmentLessonId, stepId, 'Acknowledged'); // Or empty string
-
-      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(assessmentLessonId, stepId, {
-        userResponse: 'Acknowledged',
-        correct: true,
+      const instructionStep = {
+        ...mockAssessmentStep,
+        type: AssessmentStepType.instruction,
+        expectedAnswer: null,
+      };
+      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({
+        ...mockAssessmentLesson,
+        steps: [instructionStep],
       });
+      mockOnboardingRepository.recordStepAttempt.mockResolvedValue({
+        ...instructionStep,
+        correct: true,
+        attempts: 1,
+      });
+
+      await onboardingService.recordStepAttempt(
+        assessmentLessonId,
+        stepId,
+        'Acknowledged'
+      ); // Or empty string
+
+      expect(mockOnboardingRepository.recordStepAttempt).toHaveBeenCalledWith(
+        assessmentLessonId,
+        stepId,
+        {
+          userResponse: 'Acknowledged',
+          correct: true,
+        }
+      );
     });
 
     it('should handle errors during recording and log them', async () => {
       const dbError = new Error('DB write failed');
       const step = { ...mockAssessmentStep, expectedAnswer: 'Answer' };
-      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({ ...mockAssessmentLesson, steps: [step] });
+      mockOnboardingRepository.getAssessmentLessonById.mockResolvedValue({
+        ...mockAssessmentLesson,
+        steps: [step],
+      });
       mockOnboardingRepository.recordStepAttempt.mockRejectedValue(dbError);
 
-      await expect(onboardingService.recordStepAttempt(assessmentLessonId, stepId, 'Answer')).rejects.toThrow('DB write failed');
-      expect(logger.error).toHaveBeenCalledWith('Error recording step attempt:', dbError);
+      await expect(
+        onboardingService.recordStepAttempt(
+          assessmentLessonId,
+          stepId,
+          'Answer'
+        )
+      ).rejects.toThrow('DB write failed');
+      expect(logger.error).toHaveBeenCalledWith(
+        'Error recording step attempt:',
+        dbError
+      );
     });
-
   });
 
   describe('updateOnboardingAssessmentLesson', () => {
     it('should call repository updateOnboardingAssessmentLesson with correct arguments', async () => {
-      const updateData: Partial<AssessmentLesson> = { summary: 'Updated summary' };
-      const updatedLesson = { ...mockAssessmentLesson, summary: 'Updated summary' };
-      mockOnboardingRepository.updateOnboardingAssessmentLesson.mockResolvedValue(updatedLesson);
+      const updateData: Partial<AssessmentLesson> = {
+        summary: 'Updated summary',
+      };
+      const updatedLesson = {
+        ...mockAssessmentLesson,
+        summary: 'Updated summary',
+      };
+      mockOnboardingRepository.updateOnboardingAssessmentLesson.mockResolvedValue(
+        updatedLesson
+      );
 
-      const result = await onboardingService.updateOnboardingAssessmentLesson(assessmentLessonId, updateData);
+      const result = await onboardingService.updateOnboardingAssessmentLesson(
+        assessmentLessonId,
+        updateData
+      );
 
-      expect(mockOnboardingRepository.updateOnboardingAssessmentLesson).toHaveBeenCalledWith(assessmentLessonId, updateData);
+      expect(
+        mockOnboardingRepository.updateOnboardingAssessmentLesson
+      ).toHaveBeenCalledWith(assessmentLessonId, updateData);
       expect(result).toEqual(updatedLesson);
     });
 
     it('should throw error if lessonId is missing', async () => {
-      await expect(onboardingService.updateOnboardingAssessmentLesson('', { summary: 'test' })).rejects.toThrow('Lesson ID is required');
-      expect(mockOnboardingRepository.updateOnboardingAssessmentLesson).not.toHaveBeenCalled();
+      await expect(
+        onboardingService.updateOnboardingAssessmentLesson('', {
+          summary: 'test',
+        })
+      ).rejects.toThrow('Lesson ID is required');
+      expect(
+        mockOnboardingRepository.updateOnboardingAssessmentLesson
+      ).not.toHaveBeenCalled();
     });
   });
 
   describe('processAssessmentLessonRecording', () => {
-
-
     const mockAudioData = 'audio data';
     const mockBlob = new Blob([mockAudioData], { type: 'audio/webm' });
 
@@ -441,35 +705,93 @@ describe('OnboardingService', () => {
     const recordingTime = 10;
     const recordingSize = 1024;
     const fileUri = 'mock/path/to/recording.webm';
-    const mockAiResponse = { /* structure based on convertAiResponseToAudioMetrics input */
-      pronunciationScore: 80, fluencyScore: 70, grammarScore: 75, vocabularyScore: 85, overallPerformance: 78,
-      proficiencyLevel: 'B1', learningTrajectory: 'steady',
-      pronunciationAssessment: { overall_score: 80, native_language_influence: {}, phoneme_analysis: [], problematic_sounds: [], strengths: [], areas_for_improvement: [] },
-      fluencyAssessment: { overall_score: 70, speech_rate: {}, hesitation_patterns: {}, rhythm_and_intonation: {} },
-      grammarAssessment: { overall_score: 75, error_patterns: [], grammar_rules_to_review: [], grammar_strengths: [] },
-      vocabularyAssessment: { overall_score: 85, range: 'good', appropriateness: 0, precision: 0, areas_for_expansion: [] },
-      exerciseCompletion: { overall_score: 0, exercises_analyzed: [], comprehension_level: 'good' },
-      suggestedTopics: [], grammarFocusAreas: [], vocabularyDomains: [], nextSkillTargets: [], preferredPatterns: [], effectiveApproaches: [],
+    const mockAiResponse = {
+      /* structure based on convertAiResponseToAudioMetrics input */
+      pronunciationScore: 80,
+      fluencyScore: 70,
+      grammarScore: 75,
+      vocabularyScore: 85,
+      overallPerformance: 78,
+      proficiencyLevel: 'B1',
+      learningTrajectory: 'steady',
+      pronunciationAssessment: {
+        overall_score: 80,
+        native_language_influence: {},
+        phoneme_analysis: [],
+        problematic_sounds: [],
+        strengths: [],
+        areas_for_improvement: [],
+      },
+      fluencyAssessment: {
+        overall_score: 70,
+        speech_rate: {},
+        hesitation_patterns: {},
+        rhythm_and_intonation: {},
+      },
+      grammarAssessment: {
+        overall_score: 75,
+        error_patterns: [],
+        grammar_rules_to_review: [],
+        grammar_strengths: [],
+      },
+      vocabularyAssessment: {
+        overall_score: 85,
+        range: 'good',
+        appropriateness: 0,
+        precision: 0,
+        areas_for_expansion: [],
+      },
+      exerciseCompletion: {
+        overall_score: 0,
+        exercises_analyzed: [],
+        comprehension_level: 'good',
+      },
+      suggestedTopics: [],
+      grammarFocusAreas: [],
+      vocabularyDomains: [],
+      nextSkillTargets: [],
+      preferredPatterns: [],
+      effectiveApproaches: [],
     };
-    const mockConvertedAudioMetrics: AudioMetrics = { /* structure matching AudioMetrics */
+    const mockConvertedAudioMetrics: AudioMetrics = {
+      /* structure matching AudioMetrics */
       id: expect.any(String), // crypto.randomUUID()
-      pronunciationScore: 80, fluencyScore: 70, grammarScore: 75, vocabularyScore: 85, overallPerformance: 78,
-      proficiencyLevel: 'B1', learningTrajectory: 'steady',
+      pronunciationScore: 80,
+      fluencyScore: 70,
+      grammarScore: 75,
+      vocabularyScore: 85,
+      overallPerformance: 78,
+      proficiencyLevel: 'B1',
+      learningTrajectory: 'steady',
       // ... other fields populated from mockAiResponse or defaults
-      pronunciationAssessment: expect.any(Object), fluencyAssessment: expect.any(Object), grammarAssessment: expect.any(Object), vocabularyAssessment: expect.any(Object), exerciseCompletion: expect.any(Object),
-      suggestedTopics: [], grammarFocusAreas: [], vocabularyDomains: [], nextSkillTargets: [], preferredPatterns: [], effectiveApproaches: [],
-      createdAt: expect.any(Date), updatedAt: expect.any(Date),
+      pronunciationAssessment: expect.any(Object),
+      fluencyAssessment: expect.any(Object),
+      grammarAssessment: expect.any(Object),
+      vocabularyAssessment: expect.any(Object),
+      exerciseCompletion: expect.any(Object),
+      suggestedTopics: [],
+      grammarFocusAreas: [],
+      vocabularyDomains: [],
+      nextSkillTargets: [],
+      preferredPatterns: [],
+      effectiveApproaches: [],
+      createdAt: expect.any(Date),
+      updatedAt: expect.any(Date),
     };
 
     it('should process recording, get AI analysis, convert, and update lesson', async () => {
       mockOnboardingRepository.getOnboarding.mockResolvedValue(mockOnboarding);
       MockRecordingService.prototype.uploadFile.mockResolvedValue(fileUri);
-      MockRecordingService.prototype.submitLessonRecordingSession.mockResolvedValue(mockAiResponse);
+      MockRecordingService.prototype.submitLessonRecordingSession.mockResolvedValue(
+        mockAiResponse
+      );
       // The conversion happens internally, assume it works for this test focus
-      mockOnboardingRepository.updateOnboardingAssessmentLesson.mockResolvedValue({
-        ...mockAssessmentLesson,
-        audioMetrics: mockConvertedAudioMetrics // Simulate the update result
-      });
+      mockOnboardingRepository.updateOnboardingAssessmentLesson.mockResolvedValue(
+        {
+          ...mockAssessmentLesson,
+          audioMetrics: mockConvertedAudioMetrics, // Simulate the update result
+        }
+      );
 
       const result = await onboardingService.processAssessmentLessonRecording(
         mockBlob,
@@ -484,14 +806,21 @@ describe('OnboardingService', () => {
         'audio/webm',
         expect.stringContaining(`lesson-${assessmentLessonId}-`) // Filename pattern
       );
-      expect(MockRecordingService.prototype.submitLessonRecordingSession).toHaveBeenCalledWith(
+      expect(
+        MockRecordingService.prototype.submitLessonRecordingSession
+      ).toHaveBeenCalledWith(
         fileUri,
         recordingTime,
         recordingSize,
-        { targetLanguage: mockOnboarding.targetLanguage, nativeLanguage: mockOnboarding.nativeLanguage },
+        {
+          targetLanguage: mockOnboarding.targetLanguage,
+          nativeLanguage: mockOnboarding.nativeLanguage,
+        },
         mockAssessmentLesson
       );
-      expect(mockOnboardingRepository.updateOnboardingAssessmentLesson).toHaveBeenCalledWith(
+      expect(
+        mockOnboardingRepository.updateOnboardingAssessmentLesson
+      ).toHaveBeenCalledWith(
         assessmentLessonId,
         { audioMetrics: expect.objectContaining({ pronunciationScore: 80 }) } // Check if conversion result is passed
       );
@@ -501,8 +830,14 @@ describe('OnboardingService', () => {
 
     it('should throw error if onboarding data not found', async () => {
       mockOnboardingRepository.getOnboarding.mockResolvedValue(null);
-      await expect(onboardingService.processAssessmentLessonRecording(mockBlob, mockAssessmentLesson, recordingTime, recordingSize))
-        .rejects.toThrow('User onboarding data not found');
+      await expect(
+        onboardingService.processAssessmentLessonRecording(
+          mockBlob,
+          mockAssessmentLesson,
+          recordingTime,
+          recordingSize
+        )
+      ).rejects.toThrow('User onboarding data not found');
     });
 
     it('should handle error during file upload', async () => {
@@ -510,22 +845,41 @@ describe('OnboardingService', () => {
       mockOnboardingRepository.getOnboarding.mockResolvedValue(mockOnboarding);
       MockRecordingService.prototype.uploadFile.mockRejectedValue(uploadError);
 
-      await expect(onboardingService.processAssessmentLessonRecording(mockBlob, mockAssessmentLesson, recordingTime, recordingSize))
-        .rejects.toThrow('S3 Upload Failed'); // Or whatever error uploadFile throws
-      expect(MockRecordingService.prototype.submitLessonRecordingSession).not.toHaveBeenCalled();
-      expect(mockOnboardingRepository.updateOnboardingAssessmentLesson).not.toHaveBeenCalled();
+      await expect(
+        onboardingService.processAssessmentLessonRecording(
+          mockBlob,
+          mockAssessmentLesson,
+          recordingTime,
+          recordingSize
+        )
+      ).rejects.toThrow('S3 Upload Failed'); // Or whatever error uploadFile throws
+      expect(
+        MockRecordingService.prototype.submitLessonRecordingSession
+      ).not.toHaveBeenCalled();
+      expect(
+        mockOnboardingRepository.updateOnboardingAssessmentLesson
+      ).not.toHaveBeenCalled();
     });
 
     it('should handle error during AI submission', async () => {
       const aiError = new Error('AI Service Unavailable');
       mockOnboardingRepository.getOnboarding.mockResolvedValue(mockOnboarding);
       MockRecordingService.prototype.uploadFile.mockResolvedValue(fileUri);
-      MockRecordingService.prototype.submitLessonRecordingSession.mockRejectedValue(aiError);
+      MockRecordingService.prototype.submitLessonRecordingSession.mockRejectedValue(
+        aiError
+      );
 
-      await expect(onboardingService.processAssessmentLessonRecording(mockBlob, mockAssessmentLesson, recordingTime, recordingSize))
-        .rejects.toThrow('AI Service Unavailable');
-      expect(mockOnboardingRepository.updateOnboardingAssessmentLesson).not.toHaveBeenCalled();
+      await expect(
+        onboardingService.processAssessmentLessonRecording(
+          mockBlob,
+          mockAssessmentLesson,
+          recordingTime,
+          recordingSize
+        )
+      ).rejects.toThrow('AI Service Unavailable');
+      expect(
+        mockOnboardingRepository.updateOnboardingAssessmentLesson
+      ).not.toHaveBeenCalled();
     });
   });
-
 });
