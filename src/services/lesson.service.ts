@@ -10,6 +10,7 @@ import {
   LessonStep,
   OnboardingModel,
   isPerformanceMetrics,
+  AssessmentLesson,
 } from '@/models/AppAllModels.model';
 
 import {
@@ -22,7 +23,15 @@ import RecordingService from './recording.service';
 
 import { JsonValue } from '@prisma/client/runtime/library';
 import { mockAudioMetrics } from '@/__mocks__/generated-audio-metrics.mock';
-import { ComprehensionLevel, HesitationFrequency, LanguageInfluenceLevel, LearningTrajectory, SpeechRateEvaluation, VocabularyRange, MasteryLevel } from '@prisma/client';
+import {
+  ComprehensionLevel,
+  HesitationFrequency,
+  LanguageInfluenceLevel,
+  LearningTrajectory,
+  SpeechRateEvaluation,
+  VocabularyRange,
+  MasteryLevel,
+} from '@prisma/client';
 import LearningProgressService from './learning-progress.service';
 import { LearningProgressRepository } from '@/repositories/learning-progress.repository';
 
@@ -36,7 +45,6 @@ export default class LessonService {
 
   private learningProgressService: LearningProgressService;
 
-
   constructor(
     lessonRepository: ILessonRepository,
     lessonGeneratorService: ILessonGeneratorService,
@@ -47,16 +55,26 @@ export default class LessonService {
     this.onboardingRepository = onboardingRepository;
     this.recordingService = new RecordingService();
     const progressRepository = new LearningProgressRepository();
-    this.learningProgressService = new LearningProgressService(progressRepository); // Instantiate it here
-
-
+    this.learningProgressService = new LearningProgressService(
+      progressRepository
+    ); // Instantiate it here
   }
 
   async getLessons(): Promise<LessonModel[]> {
     const lessons = await this.lessonRepository.getLessons();
     if (!lessons || lessons.length === 0) {
-      logger.info('No lessons found, generating initial lessons');
-      return await this.generateInitialLessons();
+      logger.info('No lessons found, checking the onboarding data');
+      // get onboarding data
+      const onboardingData = await this.onboardingRepository.getOnboarding();
+      if (onboardingData && onboardingData.initialAssessmentCompleted) {
+        logger.info('Initial assessment completed, generating lessons');
+        // Call the method directly, don't return here as it might be called from checkAndGenerateNewLessons context indirectly
+        return await this.generateInitialLessons();
+      } else {
+        // Throw specific error if assessment isn't done, but onboarding exists
+        logger.warn('Initial assessment not completed, cannot proceed.');
+        throw new Error('Initial assessment not completed');
+      }
     }
     return lessons;
   }
@@ -121,8 +139,6 @@ export default class LessonService {
       errorPatterns?: string[];
     }
   ): Promise<LessonModel> {
-
-
     // Get the lesson with all steps to analyze performance
     const lesson = await this.getLessonById(lessonId);
     logger.info('completing lesson', { lesson });
@@ -140,37 +156,46 @@ export default class LessonService {
     try {
       // Collect all user responses from the steps
       const userResponses = lesson.steps
-        .filter(step => step.attempts > 0)
-        .map(step => {
+        .filter((step) => step.attempts > 0)
+        .map((step) => {
           // Get responses from history if available, otherwise use single response
           const responseHistory = step.userResponseHistory
             ? (JSON.parse(step.userResponseHistory as string) as string[])
             : [];
 
           // Use the most recent response (either from history or the single field)
-          const latestResponse = responseHistory.length > 0
-            ? responseHistory[responseHistory.length - 1]
-            : (step.userResponse || '');
+          const latestResponse =
+            responseHistory.length > 0
+              ? responseHistory[responseHistory.length - 1]
+              : step.userResponse || '';
 
           return {
             stepId: step.id,
             response: latestResponse,
             // Optionally include full history if needed by analysis
-            allResponses: responseHistory.length > 0 ? responseHistory : (step.userResponse ? [step.userResponse] : [])
+            allResponses:
+              responseHistory.length > 0
+                ? responseHistory
+                : step.userResponse
+                ? [step.userResponse]
+                : [],
           };
         });
 
       logger.info('Collected user responses for analysis', {
-        responseCount: userResponses.length
+        responseCount: userResponses.length,
       });
 
       // Generate comprehensive lesson analysis using the LessonGeneratorService
-      const completionResults = await this.lessonGeneratorService.generateLessonCompletionResults(
-        lesson,
-        userResponses
-      );
+      const completionResults =
+        await this.lessonGeneratorService.generateLessonCompletionResults(
+          lesson,
+          userResponses
+        );
 
-      logger.info('Lesson completion analysis generated', { completionResults });
+      logger.info('Lesson completion analysis generated', {
+        completionResults,
+      });
 
       // Prepare comprehensive metrics for saving
       const fullMetrics = {
@@ -182,7 +207,7 @@ export default class LessonService {
         strengths: completionResults.metrics.strengths,
         weaknesses: completionResults.metrics.weaknesses,
         summary: completionResults.summary,
-        nextLessonSuggestions: completionResults.nextLessonSuggestions
+        nextLessonSuggestions: completionResults.nextLessonSuggestions,
       };
 
       // Update the lesson repository with comprehensive metrics
@@ -191,13 +216,17 @@ export default class LessonService {
         fullMetrics
       );
 
-      this.learningProgressService.updateProgressAfterLesson(completedLesson.userId, completedLesson)
-        .catch(err => {
-          logger.error('Failed to update learning progress after lesson completion', {
-            userId: completedLesson.userId,
-            lessonId: completedLesson.id,
-            error: err
-          });
+      this.learningProgressService
+        .updateProgressAfterLesson(completedLesson.userId, completedLesson)
+        .catch((err) => {
+          logger.error(
+            'Failed to update learning progress after lesson completion',
+            {
+              userId: completedLesson.userId,
+              lessonId: completedLesson.id,
+              error: err,
+            }
+          );
           // Decide if this failure needs further handling
         });
 
@@ -210,9 +239,10 @@ export default class LessonService {
       const attemptedSteps = steps.filter((step) => step.attempts > 0);
       const correctSteps = steps.filter((step) => step.correct);
 
-      const accuracy = attemptedSteps.length > 0
-        ? Math.round((correctSteps.length / attemptedSteps.length) * 100)
-        : 0;
+      const accuracy =
+        attemptedSteps.length > 0
+          ? Math.round((correctSteps.length / attemptedSteps.length) * 100)
+          : 0;
 
       // Calculate a simple pronunciation score
       const pronunciationScore = Math.min(
@@ -230,12 +260,12 @@ export default class LessonService {
         overallScore: accuracy,
         strengths: [],
         weaknesses: [],
-        summary: "Lesson completed successfully.",
-        nextLessonSuggestions: []
+        summary: 'Lesson completed successfully.',
+        nextLessonSuggestions: [],
       };
 
       logger.info('Using fallback metrics for lesson completion', {
-        fallbackMetrics
+        fallbackMetrics,
       });
 
       return this.lessonRepository.completeLesson(lessonId, fallbackMetrics);
@@ -246,15 +276,69 @@ export default class LessonService {
     return this.lessonRepository.deleteLesson(lessonId);
   }
 
-  async generateInitialLessons(): Promise<LessonModel[]> {
-    // Get user onboarding data to extract learning preferences
-    const onboardingData = await this.onboardingRepository.getOnboarding();
-
-    if (!onboardingData) {
-      throw new Error(
-        'Cannot generate lessons: User onboarding data not found'
-      );
+  private constructAdaptiveRequest(assessment: AssessmentLesson): any {
+    if (!assessment) {
+      return undefined;
     }
+
+    if (!assessment.audioMetrics) {
+      return {
+        completedAssessment: true,
+        audioMetricsAvailable: false,
+        metrics: assessment.metrics,
+        proposedTopics: assessment.proposedTopics || [],
+        summary: assessment.summary || '',
+      };
+    }
+
+    const audioMetrics = assessment.audioMetrics;
+    return {
+      completedAssessment: true,
+      audioMetricsAvailable: true,
+      metrics: assessment.metrics,
+      audioMetrics: {
+        pronunciationScore: audioMetrics.pronunciationScore,
+        fluencyScore: audioMetrics.fluencyScore,
+        grammarScore: audioMetrics.grammarScore,
+        vocabularyScore: audioMetrics.vocabularyScore,
+        overallPerformance: audioMetrics.overallPerformance,
+        problematicSounds:
+          audioMetrics.pronunciationAssessment.problematic_sounds,
+        grammarRulesToReview:
+          audioMetrics.grammarAssessment.grammar_rules_to_review,
+        vocabularyAreasForExpansion:
+          audioMetrics.vocabularyAssessment.areas_for_expansion,
+        suggestedTopics: audioMetrics.suggestedTopics,
+        proficiencyLevel: audioMetrics.proficiencyLevel,
+      },
+      proposedTopics: assessment.proposedTopics || [],
+      summary: assessment.summary || '',
+    };
+  }
+
+  private async validateAssessmentData(): Promise<{
+    onboardingData: OnboardingModel;
+    assessment: AssessmentLesson;
+  }> {
+    const onboardingData = await this.onboardingRepository.getOnboarding();
+    if (!onboardingData) {
+      throw new Error('User onboarding data not found');
+    }
+
+    if (!onboardingData.initialAssessmentCompleted) {
+      throw new Error('Initial assessment not completed');
+    }
+
+    const assessment = await this.onboardingRepository.getAssessmentLesson();
+    if (!assessment) {
+      throw new Error('Completed assessment not found');
+    }
+
+    return { onboardingData, assessment };
+  }
+
+  async generateInitialLessons(): Promise<LessonModel[]> {
+    const { onboardingData, assessment } = await this.validateAssessmentData();
 
     // Extract necessary data for lesson generation
     const targetLanguage = onboardingData.targetLanguage || 'German';
@@ -269,61 +353,15 @@ export default class LessonService {
     let learningPurposeTopics: string[] = [];
     let adaptiveRequest: any = undefined;
 
-    // Get assessment data with audio metrics if available
-    if (onboardingData.initialAssessmentCompleted) {
-      // Get the latest assessment with audio metrics
-      const assessment = await this.onboardingRepository.getAssessmentLesson();
+    // Collect topics from assessment
+    assessmentTopics = assessment.proposedTopics || [];
+    logger.info('Found assessment topics', { assessmentTopics });
 
-      if (assessment) {
-        // Collect topics from assessment
-        assessmentTopics = assessment.proposedTopics || [];
-        logger.info('Found assessment topics', { assessmentTopics });
-
-        // If we have audio metrics, use those for richer insights
-        if (assessment.audioMetrics) {
-          const audioMetrics = assessment.audioMetrics;
-
-          // Gather topics from audio metrics
-          audioMetricsTopics = [
-            ...audioMetrics.suggestedTopics || [],
-            ...audioMetrics.grammarFocusAreas || [],
-            ...audioMetrics.vocabularyDomains || []
-          ];
-
-          logger.info('Found audio metrics topics', { audioMetricsTopics });
-
-          // Create adaptive request with detailed audio metrics
-          adaptiveRequest = {
-            completedAssessment: true,
-            audioMetricsAvailable: true,
-            metrics: assessment.metrics,
-            audioMetrics: {
-              pronunciationScore: audioMetrics.pronunciationScore,
-              fluencyScore: audioMetrics.fluencyScore,
-              grammarScore: audioMetrics.grammarScore,
-              vocabularyScore: audioMetrics.vocabularyScore,
-              overallPerformance: audioMetrics.overallPerformance,
-              problematicSounds: audioMetrics.pronunciationAssessment.problematic_sounds,
-              grammarRulesToReview: audioMetrics.grammarAssessment.grammar_rules_to_review,
-              vocabularyAreasForExpansion: audioMetrics.vocabularyAssessment.areas_for_expansion,
-              suggestedTopics: audioMetrics.suggestedTopics,
-              proficiencyLevel: audioMetrics.proficiencyLevel
-            },
-            proposedTopics: assessment.proposedTopics || [],
-            summary: assessment.summary || ''
-          };
-        } else {
-          // Create basic assessment data if no audio metrics
-          adaptiveRequest = {
-            completedAssessment: true,
-            audioMetricsAvailable: false,
-            metrics: assessment.metrics,
-            proposedTopics: assessment.proposedTopics || [],
-            summary: assessment.summary || ''
-          };
-        }
-      }
-    }
+    // If we have audio metrics, use those for richer insights
+    adaptiveRequest = this.constructAdaptiveRequest(assessment);
+    logger.info('creating adaptiveRequest for lesson generation', {
+      adaptiveRequest,
+    });
 
     // Get topics from learning purpose
     learningPurposeTopics = this.getTopicsFromLearningPurpose(learningPurpose);
@@ -345,7 +383,7 @@ export default class LessonService {
         targetLanguage,
         proficiencyLevel,
         sourceLanguage,
-        adaptiveRequest  // Pass enriched assessment data to the generator
+        adaptiveRequest // Pass enriched assessment data to the generator
       );
       const lessonItems = Array.isArray(generatedResult.data)
         ? generatedResult.data
@@ -390,19 +428,19 @@ export default class LessonService {
 
     // Score topics from different sources with different weights
     // Audio metrics topics get highest priority as they're most personalized
-    audioMetricsTopics.forEach(topic => {
+    audioMetricsTopics.forEach((topic) => {
       const normalizedTopic = this.normalizeTopic(topic);
       topicScores[normalizedTopic] = (topicScores[normalizedTopic] || 0) + 3;
     });
 
     // Assessment topics get second priority
-    assessmentTopics.forEach(topic => {
+    assessmentTopics.forEach((topic) => {
       const normalizedTopic = this.normalizeTopic(topic);
       topicScores[normalizedTopic] = (topicScores[normalizedTopic] || 0) + 2;
     });
 
     // Learning purpose topics get lowest priority but ensure some basics are covered
-    learningPurposeTopics.forEach(topic => {
+    learningPurposeTopics.forEach((topic) => {
       const normalizedTopic = this.normalizeTopic(topic);
       topicScores[normalizedTopic] = (topicScores[normalizedTopic] || 0) + 1;
     });
@@ -410,9 +448,10 @@ export default class LessonService {
     // For beginners, ensure basic topics are included
     if (proficiencyLevel === 'beginner') {
       const basicTopics = ['Greetings', 'Introductions', 'Basic Phrases'];
-      basicTopics.forEach(topic => {
+      basicTopics.forEach((topic) => {
         const normalizedTopic = this.normalizeTopic(topic);
-        topicScores[normalizedTopic] = (topicScores[normalizedTopic] || 0) + 1.5;
+        topicScores[normalizedTopic] =
+          (topicScores[normalizedTopic] || 0) + 1.5;
       });
     }
 
@@ -427,7 +466,7 @@ export default class LessonService {
       const defaultTopics = [
         'Daily Conversations',
         'Practical Vocabulary',
-        'Essential Grammar'
+        'Essential Grammar',
       ];
 
       for (const topic of defaultTopics) {
@@ -459,15 +498,12 @@ export default class LessonService {
       throw new Error('Step not found');
     }
 
-
-
-
     // Check if max attempts has been reached
     if (step.attempts >= step.maxAttempts) {
       logger.info('Maximum attempts reached', {
         stepId,
         attempts: step.attempts,
-        maxAttempts: step.maxAttempts
+        maxAttempts: step.maxAttempts,
       });
 
       if (!step.expectedAnswer) {
@@ -475,14 +511,10 @@ export default class LessonService {
       }
 
       // Record the attempt but mark as incorrect, preserving user response
-      return this.lessonRepository.recordStepAttempt(
-        lessonId,
-        stepId,
-        {
-          userResponse: step.expectedAnswer,
-          correct: true, // to proceed on the frontend
-        }
-      );
+      return this.lessonRepository.recordStepAttempt(lessonId, stepId, {
+        userResponse: step.expectedAnswer,
+        correct: true, // to proceed on the frontend
+      });
     }
 
     logger.info('step.type ', step.type);
@@ -539,7 +571,9 @@ export default class LessonService {
           // the essential part of the normalized expected answer
 
           // First check if expected answer without ellipses is in user response
-          const essentialExpectedPart = normalizedExpectedAnswer.replace(/\.{3,}/g, '').trim();
+          const essentialExpectedPart = normalizedExpectedAnswer
+            .replace(/\.{3,}/g, '')
+            .trim();
 
           logger.info('Normalized user response:', normalizedUserResponse);
           logger.info('Essential expected part:', essentialExpectedPart);
@@ -558,8 +592,8 @@ export default class LessonService {
 
             // If user said at least half of the essential words, consider it correct
             // This helps with partial responses that are still meaningful
-            const matchedWordCount = userWords.filter(word =>
-              essentialWords.includes(word) && word.length > 1
+            const matchedWordCount = userWords.filter(
+              (word) => essentialWords.includes(word) && word.length > 1
             ).length;
 
             correct = matchedWordCount / essentialWords.length >= 0.5;
@@ -609,7 +643,7 @@ export default class LessonService {
   }
 
   async checkAndGenerateNewLessons(): Promise<LessonModel[]> {
-    const currentLessons = await this.getLessons();
+    const currentLessons = await this.lessonRepository.getLessons();
     logger.info('currentLessons', { currentLessons });
     // If there are no lessons or not all are complete, just return
     if (currentLessons.length === 0) throw new Error('No lessons found');
@@ -638,16 +672,23 @@ export default class LessonService {
 
     let learningProgress: LearningProgressModel | null = null;
     try {
-      learningProgress = await this.learningProgressService.getLearningProgressWithDetails(userId);
+      learningProgress =
+        await this.learningProgressService.getLearningProgressWithDetails(
+          userId
+        );
       if (!learningProgress) {
-        logger.warn('Learning progress not found for user, proceeding with lesson metrics only.', { userId });
+        logger.warn(
+          'Learning progress not found for user, proceeding with lesson metrics only.',
+          { userId }
+        );
         // Handle case where progress doesn't exist yet - maybe create a default one?
       }
     } catch (error) {
-      logger.error('Failed to fetch learning progress, proceeding without it.', { userId, error });
+      logger.error(
+        'Failed to fetch learning progress, proceeding without it.',
+        { userId, error }
+      );
     }
-
-
 
     // Extract base preferences
     const targetLanguage = onboardingData.targetLanguage;
@@ -663,10 +704,17 @@ export default class LessonService {
     }
 
     // Aggregate metrics from completed lessons (both performance metrics and audio metrics)
-    const aggregatedMetrics = this.aggregateMetrics(completedLessons, learningProgress);
+    const aggregatedMetrics = this.aggregateMetrics(
+      completedLessons,
+      learningProgress
+    );
 
     // Determine focus areas based on aggregated metrics
-    const focusAreas = this.determineFocusAreas(aggregatedMetrics, proficiencyLevel, learningProgress);
+    const focusAreas = this.determineFocusAreas(
+      aggregatedMetrics,
+      proficiencyLevel,
+      learningProgress
+    );
 
     // Generate new lessons for each focus area
     const lessonPromises = focusAreas.map(async (topic) => {
@@ -758,21 +806,23 @@ export default class LessonService {
       recommendedTopics: [] as string[],
       mostRecentAudioMetrics: undefined as AudioMetrics | undefined,
       overallScore: learningProgress?.overallScore, // Add overall score
-      learningTrajectory: learningProgress?.learningTrajectory // Add trajectory
+      learningTrajectory: learningProgress?.learningTrajectory, // Add trajectory
     };
 
     // Find lessons with audio metrics
     const lessonsWithAudioMetrics = completedLessons
-      .filter(lesson => lesson.audioMetrics)
-      .sort((a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      .filter((lesson) => lesson.audioMetrics)
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
 
     if (lessonsWithAudioMetrics.length > 0) {
       result.audioAnalysisAvailable = true;
 
       // Store most recent audio metrics for detailed insights
-      result.mostRecentAudioMetrics = lessonsWithAudioMetrics[0].audioMetrics ?? undefined;
+      result.mostRecentAudioMetrics =
+        lessonsWithAudioMetrics[0].audioMetrics ?? undefined;
 
       // Calculate average scores from audio metrics
       // TODO: initial lessons are not being generated / gemini 503 issue
@@ -782,33 +832,37 @@ export default class LessonService {
         pronunciation: [] as number[],
         grammar: [] as number[],
         vocabulary: [] as number[],
-        fluency: [] as number[]
+        fluency: [] as number[],
       };
 
       // Collect strengths, weaknesses, and topics from all audio metrics
-      lessonsWithAudioMetrics.forEach(lesson => {
+      lessonsWithAudioMetrics.forEach((lesson) => {
         if (lesson.audioMetrics) {
           // Add scores for averaging
-          audioMetricsScores.pronunciation.push(lesson.audioMetrics.pronunciationScore);
+          audioMetricsScores.pronunciation.push(
+            lesson.audioMetrics.pronunciationScore
+          );
           audioMetricsScores.grammar.push(lesson.audioMetrics.grammarScore);
-          audioMetricsScores.vocabulary.push(lesson.audioMetrics.vocabularyScore);
+          audioMetricsScores.vocabulary.push(
+            lesson.audioMetrics.vocabularyScore
+          );
           audioMetricsScores.fluency.push(lesson.audioMetrics.fluencyScore);
 
           // Collect areas for improvement
-          lesson.audioMetrics.pronunciationAssessment.areas_for_improvement.forEach(area =>
-            allWeaknesses.add(area)
+          lesson.audioMetrics.pronunciationAssessment.areas_for_improvement.forEach(
+            (area) => allWeaknesses.add(area)
           );
 
           // Collect strengths
-          lesson.audioMetrics.pronunciationAssessment.strengths.forEach(strength =>
-            allStrengths.add(strength)
+          lesson.audioMetrics.pronunciationAssessment.strengths.forEach(
+            (strength) => allStrengths.add(strength)
           );
-          lesson.audioMetrics.grammarAssessment.grammar_strengths.forEach(strength =>
-            allStrengths.add(strength)
+          lesson.audioMetrics.grammarAssessment.grammar_strengths.forEach(
+            (strength) => allStrengths.add(strength)
           );
 
           // Collect suggested topics
-          lesson.audioMetrics.suggestedTopics.forEach(topic =>
+          lesson.audioMetrics.suggestedTopics.forEach((topic) =>
             allTopics.add(topic)
           );
         }
@@ -816,11 +870,17 @@ export default class LessonService {
 
       // Calculate averages
       const calculateAverage = (arr: number[]) =>
-        arr.length > 0 ? arr.reduce((sum, val) => sum + val, 0) / arr.length : 0;
+        arr.length > 0
+          ? arr.reduce((sum, val) => sum + val, 0) / arr.length
+          : 0;
 
-      result.avgPronunciationScore = calculateAverage(audioMetricsScores.pronunciation);
+      result.avgPronunciationScore = calculateAverage(
+        audioMetricsScores.pronunciation
+      );
       result.avgGrammarScore = calculateAverage(audioMetricsScores.grammar);
-      result.avgVocabularyScore = calculateAverage(audioMetricsScores.vocabulary);
+      result.avgVocabularyScore = calculateAverage(
+        audioMetricsScores.vocabulary
+      );
       result.avgFluencyScore = calculateAverage(audioMetricsScores.fluency);
 
       // Store weaknesses, strengths, and topics
@@ -830,16 +890,20 @@ export default class LessonService {
     }
 
     // Add lesson performance metrics
-    completedLessons.forEach(lesson => {
+    completedLessons.forEach((lesson) => {
       // First check if performanceMetrics exists
       if (lesson.performanceMetrics) {
         // Then use type guard on the JsonValue
         if (isPerformanceMetrics(lesson.performanceMetrics)) {
           if (Array.isArray(lesson.performanceMetrics.weaknesses)) {
-            lesson.performanceMetrics.weaknesses.forEach((w: string) => allWeaknesses.add(w));
+            lesson.performanceMetrics.weaknesses.forEach((w: string) =>
+              allWeaknesses.add(w)
+            );
           }
           if (Array.isArray(lesson.performanceMetrics.strengths)) {
-            lesson.performanceMetrics.strengths.forEach((s: string) => allStrengths.add(s));
+            lesson.performanceMetrics.strengths.forEach((s: string) =>
+              allStrengths.add(s)
+            );
           }
         }
       }
@@ -858,19 +922,27 @@ export default class LessonService {
 
     // Prioritize learning progress weaknesses
     if (learningProgress?.weaknesses) {
-      learningProgress.weaknesses.slice(0, 2).forEach(weakness =>
-        focusAreas.add(this.normalizeTopic(weakness)));
+      learningProgress.weaknesses
+        .slice(0, 2)
+        .forEach((weakness) => focusAreas.add(this.normalizeTopic(weakness)));
     }
 
     // Add low mastery topics from learning progress
     if (learningProgress?.topics) {
       learningProgress.topics
-        .filter(t => t.masteryLevel === MasteryLevel.NotStarted ||
-          t.masteryLevel === MasteryLevel.Seen ||
-          t.masteryLevel === MasteryLevel.Learning)
-        .sort((a, b) => (a.lastStudiedAt?.getTime() ?? 0) - (b.lastStudiedAt?.getTime() ?? 0))
+        .filter(
+          (t) =>
+            t.masteryLevel === MasteryLevel.NotStarted ||
+            t.masteryLevel === MasteryLevel.Seen ||
+            t.masteryLevel === MasteryLevel.Learning
+        )
+        .sort(
+          (a, b) =>
+            (a.lastStudiedAt?.getTime() ?? 0) -
+            (b.lastStudiedAt?.getTime() ?? 0)
+        )
         .slice(0, 2)
-        .forEach(t => focusAreas.add(this.normalizeTopic(t.topicName)));
+        .forEach((t) => focusAreas.add(this.normalizeTopic(t.topicName)));
     }
 
     // If we have audio analysis, use it to determine priorities
@@ -878,9 +950,9 @@ export default class LessonService {
       // First prioritize topics directly recommended from audio analysis
       if (metrics.recommendedTopics.length > 0) {
         // Take the top 2 recommended topics
-        metrics.recommendedTopics.slice(0, 2).forEach(topic =>
-          focusAreas.add(topic)
-        );
+        metrics.recommendedTopics
+          .slice(0, 2)
+          .forEach((topic) => focusAreas.add(topic));
       }
 
       // Then prioritize areas of weakness
@@ -888,33 +960,40 @@ export default class LessonService {
 
       // Identify weakest area to focus on
       const scoreMap = [
-        { area: "Pronunciation Practice", score: metrics.avgPronunciationScore },
-        { area: "Grammar Skills", score: metrics.avgGrammarScore },
-        { area: "Vocabulary Building", score: metrics.avgVocabularyScore },
-        { area: "Speaking Fluency", score: metrics.avgFluencyScore }
+        {
+          area: 'Pronunciation Practice',
+          score: metrics.avgPronunciationScore,
+        },
+        { area: 'Grammar Skills', score: metrics.avgGrammarScore },
+        { area: 'Vocabulary Building', score: metrics.avgVocabularyScore },
+        { area: 'Speaking Fluency', score: metrics.avgFluencyScore },
       ];
 
       // Sort by lowest score first
       scoreMap.sort((a, b) => a.score - b.score);
 
       // Add the weakest area if not already covered by recommendations
-      if (scoreMap[0].score < 75 && !Array.from(focusAreas).some(topic =>
-        topic.toLowerCase().includes(scoreMap[0].area.toLowerCase()))) {
+      if (
+        scoreMap[0].score < 75 &&
+        !Array.from(focusAreas).some((topic) =>
+          topic.toLowerCase().includes(scoreMap[0].area.toLowerCase())
+        )
+      ) {
         focusAreas.add(scoreMap[0].area);
       }
 
       // Add grammar focus areas if grammar is weak
       if (metrics.avgGrammarScore < 70) {
-        audioMetrics.grammarFocusAreas.slice(0, 1).forEach(area =>
-          focusAreas.add(area)
-        );
+        audioMetrics.grammarFocusAreas
+          .slice(0, 1)
+          .forEach((area) => focusAreas.add(area));
       }
 
       // Add vocabulary domains if vocabulary is weak
       if (metrics.avgVocabularyScore < 70) {
-        audioMetrics.vocabularyDomains.slice(0, 1).forEach(domain =>
-          focusAreas.add(domain)
-        );
+        audioMetrics.vocabularyDomains
+          .slice(0, 1)
+          .forEach((domain) => focusAreas.add(domain));
       }
     } else {
       // Fall back to error pattern-based focus areas if no audio metrics
@@ -949,46 +1028,70 @@ export default class LessonService {
     }
 
     const audioMetrics = metrics.mostRecentAudioMetrics;
-    const mostRecentLesson = completedLessons.sort((a, b) =>
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    const mostRecentLesson = completedLessons.sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     )[0];
 
     // Extract grammar rules to focus on
-    const grammarRulesToFocus = audioMetrics.grammarAssessment.grammar_rules_to_review.map(rule => ({
-      rule: typeof rule === 'object' && 'rule' in rule ? rule.rule : String(rule),
-      priority: typeof rule === 'object' && 'priority' in rule ? String(rule.priority) : 'medium'
-    }));
+    const grammarRulesToFocus =
+      audioMetrics.grammarAssessment.grammar_rules_to_review.map((rule) => ({
+        rule:
+          typeof rule === 'object' && 'rule' in rule ? rule.rule : String(rule),
+        priority:
+          typeof rule === 'object' && 'priority' in rule
+            ? String(rule.priority)
+            : 'medium',
+      }));
 
     // Extract common grammar errors (handling possible type variations)
-    const grammarCommonErrors = audioMetrics.grammarAssessment.error_patterns.map(pattern => ({
-      category: typeof pattern === 'object' && 'category' in pattern ? pattern.category : 'general',
-      description: typeof pattern === 'object' && 'description' in pattern ? pattern.description : String(pattern)
-    }));
+    const grammarCommonErrors =
+      audioMetrics.grammarAssessment.error_patterns.map((pattern) => ({
+        category:
+          typeof pattern === 'object' && 'category' in pattern
+            ? pattern.category
+            : 'general',
+        description:
+          typeof pattern === 'object' && 'description' in pattern
+            ? pattern.description
+            : String(pattern),
+      }));
 
     // Extract vocabulary areas for improvement
-    const vocabularyAreas = audioMetrics.vocabularyAssessment.areas_for_expansion.map(area => ({
-      topic: typeof area === 'object' && 'topic' in area ? area.topic : 'general',
-      suggestedVocabulary: typeof area === 'object' && 'suggested_vocabulary' in area ?
-        Array.isArray(area.suggested_vocabulary) ? area.suggested_vocabulary : [] : []
-    }));
+    const vocabularyAreas =
+      audioMetrics.vocabularyAssessment.areas_for_expansion.map((area) => ({
+        topic:
+          typeof area === 'object' && 'topic' in area ? area.topic : 'general',
+        suggestedVocabulary:
+          typeof area === 'object' && 'suggested_vocabulary' in area
+            ? Array.isArray(area.suggested_vocabulary)
+              ? area.suggested_vocabulary
+              : []
+            : [],
+      }));
 
     return {
       userInfo: {
         nativeLanguage: onboardingData.nativeLanguage || 'English',
         targetLanguage: onboardingData.targetLanguage || 'English',
-        proficiencyLevel: learningProgress?.estimatedProficiencyLevel || 'beginner',
-        learningPurpose: onboardingData.learningPurpose || 'general'
+        proficiencyLevel:
+          learningProgress?.estimatedProficiencyLevel || 'beginner',
+        learningPurpose: onboardingData.learningPurpose || 'general',
       },
       focusTopic,
-      overallProgress: learningProgress ? {
-        estimatedProficiencyLevel: learningProgress.estimatedProficiencyLevel,
-        overallScore: learningProgress.overallScore,
-        learningTrajectory: learningProgress.learningTrajectory,
-        persistentWeaknesses: learningProgress.weaknesses,
-        lowMasteryTopics: learningProgress.topics?.filter(t =>
-          t.masteryLevel !== MasteryLevel.Mastered
-        ).map(t => t.topicName) ?? []
-      } : undefined,
+      overallProgress: learningProgress
+        ? {
+            estimatedProficiencyLevel:
+              learningProgress.estimatedProficiencyLevel,
+            overallScore: learningProgress.overallScore,
+            learningTrajectory: learningProgress.learningTrajectory,
+            persistentWeaknesses: learningProgress.weaknesses,
+            lowMasteryTopics:
+              learningProgress.topics
+                ?.filter((t) => t.masteryLevel !== MasteryLevel.Mastered)
+                .map((t) => t.topicName) ?? [],
+          }
+        : undefined,
       performanceMetrics: {
         avgAccuracy: metrics.avgAccuracy,
         avgPronunciationScore: metrics.avgPronunciationScore,
@@ -996,30 +1099,32 @@ export default class LessonService {
         avgVocabularyScore: metrics.avgVocabularyScore,
         avgFluencyScore: metrics.avgFluencyScore,
         strengths: metrics.strengths,
-        weaknesses: metrics.weaknesses
+        weaknesses: metrics.weaknesses,
       },
       improvementAreas: {
         pronunciation: audioMetrics.pronunciationAssessment.problematic_sounds,
         grammar: {
           rulesToFocus: grammarRulesToFocus,
-          commonErrors: grammarCommonErrors
+          commonErrors: grammarCommonErrors,
         },
-        vocabulary: vocabularyAreas
+        vocabulary: vocabularyAreas,
       },
       learningRecommendations: {
         suggestedTopics: audioMetrics.suggestedTopics,
         focusAreas: audioMetrics.grammarFocusAreas,
-        nextSkillTargets: audioMetrics.nextSkillTargets
+        nextSkillTargets: audioMetrics.nextSkillTargets,
       },
       learningStyle: {
         effectiveApproaches: audioMetrics.effectiveApproaches,
-        preferredPatterns: audioMetrics.preferredPatterns
+        preferredPatterns: audioMetrics.preferredPatterns,
       },
-      previousLesson: mostRecentLesson ? {
-        id: mostRecentLesson.id,
-        focusArea: mostRecentLesson.focusArea,
-        targetSkills: mostRecentLesson.targetSkills
-      } : undefined
+      previousLesson: mostRecentLesson
+        ? {
+            id: mostRecentLesson.id,
+            focusArea: mostRecentLesson.focusArea,
+            targetSkills: mostRecentLesson.targetSkills,
+          }
+        : undefined,
     };
   }
 
@@ -1092,8 +1197,6 @@ export default class LessonService {
     const targetLanguage = onboardingData.targetLanguage || 'English';
     const sourceLanguage = onboardingData.nativeLanguage || 'English';
 
-
-
     // 3. Determine proper mime type
     // 2. Convert the Blob to a Buffer for upload
     const arrayBuffer = await sessionRecording.arrayBuffer();
@@ -1107,10 +1210,8 @@ export default class LessonService {
     logger.info('Uploading recording file', {
       fileName,
       mimeType,
-      size: buffer.length
+      size: buffer.length,
     });
-
-
 
     const fileUri = await this.recordingService.uploadFile(
       buffer,
@@ -1137,32 +1238,42 @@ export default class LessonService {
 
     logger.info('AI response received', { aiResponse });
 
-    // 3. convert ai  response to audioMetrics model. 
-    const audioMetrics = this.convertAiResponseToAudioMetrics(aiResponse)
+    // 3. convert ai  response to audioMetrics model.
+    const audioMetrics = this.convertAiResponseToAudioMetrics(aiResponse);
     logger.info('Audio metrics generated', { audioMetrics });
 
-    return this.lessonRepository.updateLesson(lesson.id, { audioMetrics })
+    return this.lessonRepository.updateLesson(lesson.id, { audioMetrics });
   }
 
-  private convertAiResponseToAudioMetrics(aiResponse: Record<string, unknown>): AudioMetrics {
+  private convertAiResponseToAudioMetrics(
+    aiResponse: Record<string, unknown>
+  ): AudioMetrics {
     // Extract top-level metrics with defaults if not present
-    const pronunciationScore = typeof aiResponse.pronunciationScore === 'number'
-      ? aiResponse.pronunciationScore : 0;
-    const fluencyScore = typeof aiResponse.fluencyScore === 'number'
-      ? aiResponse.fluencyScore : 0;
-    const grammarScore = typeof aiResponse.grammarScore === 'number'
-      ? aiResponse.grammarScore : 0;
-    const vocabularyScore = typeof aiResponse.vocabularyScore === 'number'
-      ? aiResponse.vocabularyScore : 0;
-    const overallPerformance = typeof aiResponse.overallPerformance === 'number'
-      ? aiResponse.overallPerformance : 0;
+    const pronunciationScore =
+      typeof aiResponse.pronunciationScore === 'number'
+        ? aiResponse.pronunciationScore
+        : 0;
+    const fluencyScore =
+      typeof aiResponse.fluencyScore === 'number' ? aiResponse.fluencyScore : 0;
+    const grammarScore =
+      typeof aiResponse.grammarScore === 'number' ? aiResponse.grammarScore : 0;
+    const vocabularyScore =
+      typeof aiResponse.vocabularyScore === 'number'
+        ? aiResponse.vocabularyScore
+        : 0;
+    const overallPerformance =
+      typeof aiResponse.overallPerformance === 'number'
+        ? aiResponse.overallPerformance
+        : 0;
 
     // Generate a unique ID for the metrics
     const id = randomUUID();
 
     // Extract CEFR level and learning trajectory
-    const proficiencyLevel = typeof aiResponse.proficiencyLevel === 'string'
-      ? aiResponse.proficiencyLevel : 'A1';
+    const proficiencyLevel =
+      typeof aiResponse.proficiencyLevel === 'string'
+        ? aiResponse.proficiencyLevel
+        : 'A1';
 
     // Safely convert learning trajectory to enum value
     let learningTrajectory: LearningTrajectory = 'steady';
@@ -1179,12 +1290,12 @@ export default class LessonService {
       overall_score: pronunciationScore,
       native_language_influence: {
         level: 'moderate' as LanguageInfluenceLevel,
-        specific_features: []
+        specific_features: [],
       },
       phoneme_analysis: [],
       problematic_sounds: [],
       strengths: [],
-      areas_for_improvement: []
+      areas_for_improvement: [],
     };
 
     const fluencyAssessment = getFluencyAssessment(
@@ -1193,18 +1304,18 @@ export default class LessonService {
       overall_score: fluencyScore,
       speech_rate: {
         words_per_minute: 0,
-        evaluation: 'appropriate' as SpeechRateEvaluation
+        evaluation: 'appropriate' as SpeechRateEvaluation,
       },
       hesitation_patterns: {
         frequency: 'occasional' as HesitationFrequency,
         average_pause_duration: 0,
-        typical_contexts: []
+        typical_contexts: [],
       },
       rhythm_and_intonation: {
         naturalness: 0,
         sentence_stress_accuracy: 0,
-        intonation_pattern_accuracy: 0
-      }
+        intonation_pattern_accuracy: 0,
+      },
     };
 
     const grammarAssessment = getGrammarAssessment(
@@ -1213,7 +1324,7 @@ export default class LessonService {
       overall_score: grammarScore,
       error_patterns: [],
       grammar_rules_to_review: [],
-      grammar_strengths: []
+      grammar_strengths: [],
     };
 
     const vocabularyAssessment = getVocabularyAssessment(
@@ -1223,7 +1334,7 @@ export default class LessonService {
       range: 'adequate' as VocabularyRange,
       appropriateness: 0,
       precision: 0,
-      areas_for_expansion: []
+      areas_for_expansion: [],
     };
 
     const exerciseCompletion = getExerciseCompletion(
@@ -1231,13 +1342,13 @@ export default class LessonService {
     ) || {
       overall_score: 0,
       exercises_analyzed: [],
-      comprehension_level: 'fair' as ComprehensionLevel
+      comprehension_level: 'fair' as ComprehensionLevel,
     };
 
     // Extract string arrays safely
     const extractStringArray = (value: unknown): string[] => {
       if (Array.isArray(value)) {
-        return value.filter(item => typeof item === 'string') as string[];
+        return value.filter((item) => typeof item === 'string') as string[];
       }
       return [];
     };
@@ -1247,13 +1358,19 @@ export default class LessonService {
     const vocabularyDomains = extractStringArray(aiResponse.vocabularyDomains);
     const nextSkillTargets = extractStringArray(aiResponse.nextSkillTargets);
     const preferredPatterns = extractStringArray(aiResponse.preferredPatterns);
-    const effectiveApproaches = extractStringArray(aiResponse.effectiveApproaches);
+    const effectiveApproaches = extractStringArray(
+      aiResponse.effectiveApproaches
+    );
 
     // Extract metadata
-    const audioRecordingUrl = typeof aiResponse.audioRecordingUrl === 'string'
-      ? aiResponse.audioRecordingUrl : null;
-    const recordingDuration = typeof aiResponse.recordingDuration === 'number'
-      ? aiResponse.recordingDuration : null;
+    const audioRecordingUrl =
+      typeof aiResponse.audioRecordingUrl === 'string'
+        ? aiResponse.audioRecordingUrl
+        : null;
+    const recordingDuration =
+      typeof aiResponse.recordingDuration === 'number'
+        ? aiResponse.recordingDuration
+        : null;
 
     // Construct and return the AudioMetrics object
     return {
@@ -1279,8 +1396,7 @@ export default class LessonService {
       audioRecordingUrl,
       recordingDuration,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
   }
 }
-

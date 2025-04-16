@@ -30,7 +30,7 @@ interface LessonContextType {
   loading: boolean;
   error: string | null;
   clearError: () => void;
-  getLessons: () => Promise<LessonModel[]>;
+  getLessons: () => Promise<LessonModel[] | undefined>;
   getLessonById: (lessonId: string) => Promise<LessonModel | null>;
   createLesson: (lessonData: {
     focusArea: string;
@@ -95,9 +95,23 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
 
   const getLessons = async () => {
     return withLoadingAndErrorHandling(async () => {
-      const fetchedLessons = await getLessonsAction();
-      setLessons(fetchedLessons);
-      return fetchedLessons;
+      try {
+        const fetchedLessons = await getLessonsAction();
+        setLessons(fetchedLessons);
+        return fetchedLessons;
+      } catch (error) {
+        logger.error('Error getting lessons', error);
+        if(error instanceof Error && error.message.includes('Initial assessment not completed')) {
+          toast.error('Please complete the onboarding process to generate lessons');
+          window.location.href = '/onboarding';
+        } else {
+          toast.error('An error occurred while fetching lessons');
+          logger.error('Error getting lessons', error);
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        }
+      }
     });
   };
 

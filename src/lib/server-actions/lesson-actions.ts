@@ -24,7 +24,11 @@ function createLessonService() {
 
 export async function getLessonsAction() {
   const lessonService = createLessonService();
-  return await lessonService.getLessons();
+  try {
+    return await lessonService.getLessons();
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function getLessonByIdAction(lessonId: string) {
