@@ -899,15 +899,15 @@ describe('LessonChat Component', () => {
   // --- Recording ---
 
   it('calls onComplete when the last step is completed', async () => {
-    // ... (setup remains the same) ...
     const lessonAtStep3: LessonModel = {
       ...mockLesson,
       steps: [
         { ...mockStep1, userResponse: 'Ack', correct: true },
-        mockStep2,
-        mockStep3,
+        { ...mockStep2, userResponse: 'Hello', correct: true }, // Mark step 2 as completed
+        mockStep3, // Now the component will correctly start at index 2 (step 3)
       ],
     };
+
     mockOnStepComplete.mockResolvedValueOnce({
       ...mockStep3,
       userResponse: 'Acknowledged',
@@ -929,8 +929,11 @@ describe('LessonChat Component', () => {
     });
 
     await act(async () => {
+
       userEvent.click(micButton);
     });
+
+    // mic button should instantiate the recorder
 
     // Wait for recorder setup
     await waitFor(() => { expect(mockMediaRecorderInstance).toBeDefined(); });
@@ -1013,15 +1016,15 @@ describe('LessonChat Component', () => {
 
 
   it('creates a recording blob on completion', async () => {
-    // ... (setup remains the same) ...
-     const lessonAtStep3: LessonModel = {
-       ...mockLesson,
-       steps: [
-         { ...mockStep1, userResponse: 'Ack', correct: true },
-         mockStep2,
-         mockStep3,
-       ],
-     };
+    const lessonAtStep3: LessonModel = {
+      ...mockLesson,
+      steps: [
+        { ...mockStep1, userResponse: 'Ack', correct: true },
+        { ...mockStep2, userResponse: 'Hello', correct: true }, // Mark step 2 as completed
+        mockStep3, // Now the component will correctly start at index 2 (step 3)
+      ],
+    };
+
      mockOnStepComplete.mockResolvedValueOnce({
        ...mockStep3,
        userResponse: 'Acknowledged',

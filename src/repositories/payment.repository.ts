@@ -12,6 +12,7 @@ export interface IPaymentRepository {
     productId?: string | null;
     productType?: string | null;
     status: PaymentStatus;
+    stripePaymentIntentId?: string | null;
   }): Promise<PaymentModel>;
 
   updatePayment(id: string, data: {
@@ -36,6 +37,7 @@ export class PaymentRepository implements IPaymentRepository {
     productId?: string | null;
     productType?: string | null;
     status: PaymentStatus;
+    stripePaymentIntentId?: string | null;
   }): Promise<PaymentModel> {
     try {
       const payment = await prisma.payment.create({
@@ -46,7 +48,7 @@ export class PaymentRepository implements IPaymentRepository {
           productId: data.productId,
           productType: data.productType,
           status: data.status,
-          // stripePaymentIntentId will be updated later
+          stripePaymentIntentId: data.stripePaymentIntentId || null,
         },
       });
       return payment;

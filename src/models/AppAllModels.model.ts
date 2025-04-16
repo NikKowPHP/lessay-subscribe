@@ -465,7 +465,7 @@ export interface WordProgressModel {
 export interface PaymentModel {
   id: string;
   userId: string;
-  stripePaymentIntentId: string;
+  stripePaymentIntentId?: string | null;
   status: PaymentStatus;
   amount: number; // Amount in smallest currency unit
   currency: string;

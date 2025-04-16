@@ -346,7 +346,7 @@ model Payment {
   userId                String
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  stripePaymentIntentId String    @unique // Stripe Payment Intent ID
+  stripePaymentIntentId String?    @unique // Changed to optional
   status                PaymentStatus @default(PENDING)
   amount                Int       // Amount in smallest currency unit (e.g., cents for USD)
   currency              String    // e.g., "usd"
