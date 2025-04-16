@@ -27,9 +27,13 @@ jest.mock('@/components/lessons/lessonChat', () => {
       <div data-testid="lesson-chat">
         <button onClick={() => onStepComplete(lesson.steps[0], 'User step response')}>Complete Step</button>
         <button onClick={() => {
-            const mockBlob: RecordingBlob = new Blob(['mockaudio'], { type: 'audio/webm' }) as RecordingBlob;
-            mockBlob.size = 1234;
-            mockBlob.recordingTime = 5678;
+            const mockBlob = Object.assign(
+              new Blob(['mockaudio'], { type: 'audio/webm' }), 
+              {
+                size: 1234,
+                recordingTime: 5678
+              }
+            ) as RecordingBlob;
             onComplete(mockBlob);
         }}>
           Complete Lesson Chat
@@ -95,7 +99,7 @@ const mockAudioMetricsData: AudioMetrics = { /* Fill with mock data */
     id: 'audio-m-1',
     pronunciationScore: 90, fluencyScore: 65, grammarScore: 85, vocabularyScore: 75, overallPerformance: 80,
     proficiencyLevel: 'A2', learningTrajectory: 'steady',
-    pronunciationAssessment: { overall_score: 90, native_language_influence: { level: 'low', specific_features: [] }, phoneme_analysis: [], problematic_sounds: ['ü'], strengths: ['clear vowels'], areas_for_improvement: ['ü sound'] },
+    pronunciationAssessment: { overall_score: 90, native_language_influence: { level: 'minimal', specific_features: [] }, phoneme_analysis: [], problematic_sounds: ['ü'], strengths: ['clear vowels'], areas_for_improvement: ['ü sound'] },
     fluencyAssessment: { overall_score: 65, speech_rate: { words_per_minute: 90, evaluation: 'slow' }, hesitation_patterns: { frequency: 'occasional', average_pause_duration: 1.2, typical_contexts: [] }, rhythm_and_intonation: { naturalness: 60, sentence_stress_accuracy: 70, intonation_pattern_accuracy: 65 } },
     grammarAssessment: { overall_score: 85, error_patterns: [], grammar_rules_to_review: [], grammar_strengths: [] },
     vocabularyAssessment: { overall_score: 75, range: 'adequate', appropriateness: 70, precision: 65, areas_for_expansion: [] },
@@ -305,10 +309,11 @@ describe('AssessmentStep Component', () => {
         const handleProcessRecording = async (rec: RecordingBlob, less: AssessmentLesson, time: number, size: number) => {
             setIsAudioProcessing(true);
             try {
-                const result = await mockProcessAssessmentLessonRecording(rec, less, time, size);
-                setCurrentLesson(result); // Update lesson state with the result
+                return await mockProcessAssessmentLessonRecording(rec, less, time, size);
             } catch (e) {
-                // handle error if needed
+                // Error is caught, toast should be shown (mocked)
+                toast.error('Failed to process pronunciation analysis.');
+                return less; // Return the original lesson on error
             } finally {
                 setIsAudioProcessing(false);
             }
@@ -319,10 +324,19 @@ describe('AssessmentStep Component', () => {
             // This simulates the useEffect in AssessmentStep triggering the call
             // In a real scenario, this would be triggered by sessionRecording state change
             if (currentLesson === mockLessonWithTextMetrics) { // Only trigger if we are in the text-only state
-                 const mockBlob: RecordingBlob = new Blob(['mockaudio'], { type: 'audio/webm' }) as RecordingBlob;
-                 mockBlob.size = 1234;
-                 mockBlob.recordingTime = 5678;
-                 handleProcessRecording(mockBlob, currentLesson, mockBlob.recordingTime, mockBlob.size);
+                 const mockBlob = Object.assign(
+                   new Blob(['mockaudio'], { type: 'audio/webm' }), 
+                   {
+                     size: 1234,
+                     recordingTime: 5678
+                   }
+                 ) as RecordingBlob;
+                 handleProcessRecording(
+                  mockBlob, 
+                  currentLesson, 
+                  mockBlob.recordingTime!, // Non-null assertion (safe here since we just set it)
+                  mockBlob.size! // Non-null assertion
+                );
             }
         }, [currentLesson]);
 
@@ -417,15 +431,19 @@ describe('AssessmentStep Component', () => {
             // In a real test, you might resolve later or not at all to check the disabled state
             // setCurrentLesson(mockLessonWithAllMetrics);
             setIsAudioProcessing(false);
+            return mockLessonWithAllMetrics;
         };
 
         React.useEffect(() => {
-             const mockBlob: RecordingBlob = new Blob(['mockaudio'], { type: 'audio/webm' }) as RecordingBlob;
-             mockBlob.size = 1234;
-             mockBlob.recordingTime = 5678;
-             handleProcessRecording(mockBlob, currentLesson!, mockBlob.recordingTime, mockBlob.size);
+             const mockBlob = Object.assign(
+               new Blob(['mockaudio'], { type: 'audio/webm' }), 
+               {
+                 size: 1234,
+                 recordingTime: 5678
+               }
+             ) as RecordingBlob;
+             handleProcessRecording(mockBlob, currentLesson!, mockBlob.recordingTime!, mockBlob.size!);
         }, []);
-
 
         return (
             <AssessmentStep
@@ -471,17 +489,24 @@ describe('AssessmentStep Component', () => {
         const [currentLesson, setCurrentLesson] = React.useState<AssessmentLesson | null>(mockLessonWithTextMetrics);
 
         const handleProcessRecording = async (rec: RecordingBlob, less: AssessmentLesson, time: number, size: number) => {
-            // Simulate the call triggering the error
-            await mockProcessAssessmentLessonRecording(rec, less, time, size).catch(e => {
+            try {
+                return await mockProcessAssessmentLessonRecording(rec, less, time, size);
+            } catch (e) {
                 // Error is caught, toast should be shown (mocked)
-            });
+                toast.error('Failed to process pronunciation analysis.');
+                return less; // Return the original lesson on error
+            }
         };
 
          React.useEffect(() => {
-             const mockBlob: RecordingBlob = new Blob(['mockaudio'], { type: 'audio/webm' }) as RecordingBlob;
-             mockBlob.size = 1234;
-             mockBlob.recordingTime = 5678;
-             handleProcessRecording(mockBlob, currentLesson!, mockBlob.recordingTime, mockBlob.size);
+             const mockBlob = Object.assign(
+               new Blob(['mockaudio'], { type: 'audio/webm' }), 
+               {
+                 size: 1234,
+                 recordingTime: 5678
+               }
+             ) as RecordingBlob;
+             handleProcessRecording(mockBlob, currentLesson!, mockBlob.recordingTime!, mockBlob.size);
         }, []);
 
         return (
