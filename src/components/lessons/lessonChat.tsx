@@ -19,7 +19,7 @@ interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
 }
 
-interface SpeechRecognition extends EventTarget {
+export interface SpeechRecognition extends EventTarget {
   new (): SpeechRecognition;
   start(): void;
   stop(): void;
@@ -840,6 +840,7 @@ export default function LessonChat({
           onSubmit={handleSubmit}
           disableSubmit={!userResponse || loading}
           onUpdateResponse={handleUpdateResponse}
+          
         />
 
         {/* Mock buttons */}

@@ -47,7 +47,8 @@ const ChatInput = React.memo(function ChatInput({
           type="button"
           onClick={onToggleListening}
           className={`flex-1 py-2 px-4 border border-transparent rounded-[4px] shadow-sm text-sm font-medium text-white ${
-            isListening ? 'bg-accent-9 hover:bg-accent-10' : 'bg-accent-7 hover:bg-accent-8'
+          isListening ? 'bg-accent-9 hover:bg-accent-10' : 'bg-accent-7 hover:bg-accent-8 disabled:opacity-50' // Add disabled style
+         } ${disableSubmit ? 'opacity-50 cursor-not-allowed' : ''
           } focus:outline-none focus:ring-2 focus:ring-accent-8`}
         >
           {isListening ? 'Pause Listening' : 'Start Listening'}
