@@ -584,8 +584,7 @@ export default function LessonChat({
           setLessonCompleted(true);
 
           if (!isMockMode) {
-            onComplete(fullSessionRecording);
-          } else {
+        
             setLessonReadyToComplete(true);
             stopRecordingCompletely();
           }
@@ -776,11 +775,19 @@ export default function LessonChat({
   const handleCompleteLesson = () => {
     // Reset the ready state
     setLessonReadyToComplete(false);
-  };
+    // Call onComplete ONLY when the button is clicked in mock mode
+    if (fullSessionRecording) { // Ensure recording is available
+        onComplete(fullSessionRecording);
+    } else {
+        logger.warn("Complete Lesson clicked in mock mode, but no recording available yet.");
+        // Optionally call onComplete with null or handle differently
+        onComplete(null);
+    }
+};
 
   // Add this useEffect to trigger onComplete when recording is ready
   useEffect(() => {
-    if (fullSessionRecording && lessonCompleted && !loading) {
+    if (fullSessionRecording && lessonCompleted && !loading && !isMockMode) {
       logger.info('Lesson completed with recording', {
         recordingSize: fullSessionRecording.size,
         recordingTime: (fullSessionRecording as any).recordingTime,
@@ -789,7 +796,7 @@ export default function LessonChat({
       // Call onComplete with the recording
       onComplete(fullSessionRecording);
     }
-  }, [fullSessionRecording, lessonCompleted, loading, onComplete]);
+  }, [fullSessionRecording, lessonCompleted, loading, onComplete, isMockMode]);
 
   return (
     lesson && (

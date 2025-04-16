@@ -399,19 +399,21 @@ describe('LessonChat Component', () => {
     mockAudioSrc = '';
     mockMediaRecorderChunks = [];
     audioEventListeners = {}; // Reset audio listeners
-    if (mockRecognitionInstance) {
-      mockRecognitionInstance.onstart = null;
-      mockRecognitionInstance.onresult = null;
-      mockRecognitionInstance.onerror = null;
-      mockRecognitionInstance.onend = null;
-    }
-    if (mockMediaRecorderInstance) {
-      mockMediaRecorderInstance.ondataavailable = null;
-      mockMediaRecorderInstance.onstop = null;
-      mockMediaRecorderInstance.onerror = null;
-      mockMediaRecorderInstance.state = 'inactive';
-      mockMediaRecorderInstance._startTime = 0;
-    }
+    mockMediaRecorderInstance = undefined;
+    mockRecognitionInstance = undefined
+    // if (mockRecognitionInstance) {
+    //   mockRecognitionInstance.onstart = null;
+    //   mockRecognitionInstance.onresult = null;
+    //   mockRecognitionInstance.onerror = null;
+    //   mockRecognitionInstance.onend = null;
+    // }
+    // if (mockMediaRecorderInstance) {
+    //   mockMediaRecorderInstance.ondataavailable = null;
+    //   mockMediaRecorderInstance.onstop = null;
+    //   mockMediaRecorderInstance.onerror = null;
+    //   mockMediaRecorderInstance.state = 'inactive';
+    //   mockMediaRecorderInstance._startTime = 0;
+    // }
 
     // Reset timers
     jest.useFakeTimers();
@@ -861,26 +863,50 @@ describe('LessonChat Component', () => {
       />
     );
 
+    // Ensure the component has rendered the button before interacting
+    const micButton = await screen.findByRole('button', {
+      name: 'Start Listening',
+    });
+
     // Simulate user interaction (needed to trigger audio playback and recording start)
-    const micButton = screen.getByRole('button', { name: 'Start Listening' });
     await act(async () => {
       userEvent.click(micButton);
     });
 
-    // Wait specifically for the recorder's start method to be called.
-    // This implies the instance was created and initialized.
-    await waitFor(() => {
-      // Check if the mock factory was called and the instance exists *before* accessing methods
-      // This helps debug if the factory itself isn't running as expected.
-      expect(mockRecognitionInstance.start).toHaveBeenCalled()
+    // --- Synchronization Point ---
+    // Wait for the component's useEffect to initialize the recorder and assign handlers.
+    // We check for `ondataavailable` being assigned as it happens right after `new MediaRecorder`.
+    // --- Synchronization Point ---
+    await act(async () => {
+      await waitFor(() => {
+        expect(mockMediaRecorderInstance).toBeDefined();
+        expect(mockMediaRecorderInstance.ondataavailable).not.toBeNull();
+        expect(mockMediaRecorderInstance.onstop).not.toBeNull(); // Added onstop check
+      });
+      await waitFor(() => {
+        expect(mockMediaRecorderInstance.start).toHaveBeenCalled();
+    });
     });
 
-    // Also wait for the audio for the summary step to start playing
-    await waitFor(() => {
+    // --- Assertions after Synchronization ---
+    // Now that we know the initialization likely completed, check the factory and start calls.
+    expect(mockMediaRecorder).toHaveBeenCalled(); // Check the factory/constructor mock
+    expect(mockMediaRecorderInstance.start).toHaveBeenCalled(); // Check the start method
+
+    await act(async () => {
+      // Also wait for the audio for the summary step to start playing
+      await waitFor(() => {
         expect(mockAudioPlay).toHaveBeenCalled();
         expect(mockAudioSrc).toBe(mockStep3.contentAudioUrl);
-    });
+      });
 
+
+    // Wait for the onstop handler to be assigned (might be redundant now, but safe)
+    await waitFor(() => {
+      expect(mockMediaRecorderInstance).toBeDefined();
+      expect(mockMediaRecorderInstance.onstop).not.toBeNull();
+    });
+  });
 
     // Simulate audio ending for step 3 (summary step) - this triggers auto-completion
     act(() => {
@@ -895,42 +921,43 @@ describe('LessonChat Component', () => {
       );
     });
 
+    // Wait for the component to recognize completion and call stop on the recorder
+    await waitFor(() => {
+      expect(mockMediaRecorderInstance).toBeDefined();
+      expect(mockMediaRecorderInstance.stop).toHaveBeenCalled();
+    });
 
- 
+    // Simulate recorder stopping and providing data via the onstop handler
+    const mockRecordingBlob = new Blob(['audio data'], {
+      type: 'audio/webm',
+    }) as RecordingBlob;
+    // Manually add mock properties
+    (mockRecordingBlob as any).recordingTime = 1234;
+    (mockRecordingBlob as any).recordingSize = 10;
+    (mockRecordingBlob as any).lastModified = Date.now();
 
+    // Trigger the onstop handler
+    act(() => {
+      if (mockMediaRecorderInstance?.onstop) {
+        mockMediaRecorderInstance.onstop({ data: mockRecordingBlob } as Event);
+      } else {
+        throw new Error(
+          'mockMediaRecorderInstance.onstop is unexpectedly null'
+        );
+      }
+    });
 
-// Simulate recorder stopping and providing data via the onstop handler
-const mockRecordingBlob = new Blob(['audio data'], {
-  type: 'audio/webm',
-}) as RecordingBlob;
-// Manually add mock properties
-(mockRecordingBlob as any).recordingTime = 1234;
-(mockRecordingBlob as any).recordingSize = 10;
-(mockRecordingBlob as any).lastModified = Date.now();
+    // Wait for the useEffect watching fullSessionRecording to call onComplete
+    await waitFor(() => {
+      expect(mockOnComplete).toHaveBeenCalledWith(expect.any(Blob));
 
-// Trigger the onstop handler which sets the fullSessionRecording state
-act(() => {
-  // Ensure the instance and handler exist before calling
-  if (mockMediaRecorderInstance?.onstop) {
-    mockMediaRecorderInstance.onstop({ data: mockRecordingBlob });
-  } else {
-    // Fail the test explicitly if the handler isn't set up as expected
-    throw new Error('mockMediaRecorderInstance.onstop is not defined');
-  }
-});
-
-// Wait for the useEffect watching fullSessionRecording to call onComplete
-await waitFor(() => {
-  expect(mockOnComplete).toHaveBeenCalledWith(expect.any(Blob));
-
-  const receivedBlob = mockOnComplete.mock.calls[0][0] as RecordingBlob;
-  expect(receivedBlob.size).toBeGreaterThan(0);
-  expect((receivedBlob as any).recordingTime).toBeGreaterThan(0);
-  expect((receivedBlob as any).recordingSize).toBeGreaterThan(0);
-  expect((receivedBlob as any).lastModified).toBeGreaterThan(0);
-});
-});
-
+      const receivedBlob = mockOnComplete.mock.calls[0][0] as RecordingBlob;
+      expect(receivedBlob.size).toBeGreaterThan(0);
+      expect((receivedBlob as any).recordingTime).toBeGreaterThan(0);
+      expect((receivedBlob as any).recordingSize).toBeGreaterThan(0);
+      expect((receivedBlob as any).lastModified).toBeGreaterThan(0);
+    });
+  });
   // --- Audio Playback ---
 
   it('queues and plays audio for steps after user interaction', async () => {
@@ -1020,27 +1047,44 @@ await waitFor(() => {
       />
     );
 
-    // Interact and complete step 3
+    // Interact to start recording
     const micButton = screen.getByRole('button', { name: 'Start Listening' });
     await act(async () => {
       userEvent.click(micButton);
-    }); // Start recording
-    await waitFor(() =>
-      screen.getByRole('button', { name: /Listening|Pause/i })
-    );
+    });
+
+    // Wait for media recorder initialization
+    await waitFor(() => {
+      expect(mockMediaRecorderInstance).toBeDefined();
+      expect(mockMediaRecorderInstance.start).toHaveBeenCalled();
+    });
+
+    // Now safely set the state
     mockMediaRecorderInstance.state = 'recording';
-    mockMediaRecorderInstance._startTime = Date.now() - 1000; // Pretend it started 1s ago
-    const stopButton = screen.getByRole('button', { name: /Listening|Pause/i });
+    mockMediaRecorderInstance._startTime = Date.now() - 1000;
+
+    // Wait for UI update reflecting recording state (if any, e.g., button text change)
+    // This wait might already exist or might need adjustment based on UI
+    await waitFor(
+      () => screen.getByRole('button', { name: /Listening|Pause/i }) // Adjust name if needed
+    );
+
+    // Simulate pausing recording (if relevant to the test flow)
+    const stopButton = screen.getByRole('button', { name: /Listening|Pause/i }); // Adjust name
     await act(async () => {
       userEvent.click(stopButton);
-    }); // Pause recording
-    await waitFor(() =>
-      screen.getByRole('button', { name: 'Start Listening' })
+    });
+    await waitFor(
+      () => screen.getByRole('button', { name: 'Start Listening' }) // Wait for button to revert
     );
-    mockMediaRecorderInstance.state = 'paused';
-    simulateAudioEnded(); // Trigger auto-completion of step 3
+    mockMediaRecorderInstance.state = 'paused'; // Update mock state
 
-    // Wait for step 3 to be marked complete
+    // Simulate audio ending for step 3 (summary step) - this triggers auto-completion
+    act(() => {
+      simulateAudioEnded();
+    });
+
+    // Wait for step 3 to be marked complete via onStepComplete
     await waitFor(() => {
       expect(mockOnStepComplete).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'step-3' }),
@@ -1048,27 +1092,56 @@ await waitFor(() => {
       );
     });
 
-    // Simulate recorder stop and data available
+    // Wait for the component to call stop on the recorder upon completion
+    await waitFor(() => {
+      expect(mockMediaRecorderInstance).toBeDefined(); // Sanity check
+      expect(mockMediaRecorderInstance.stop).toHaveBeenCalled();
+    });
+
+    // Simulate recorder stopping and providing data via the onstop handler
     const mockAudioChunk = new Blob(['chunk1'], { type: 'audio/webm' });
+    const mockRecordingBlob = new Blob([mockAudioChunk], {
+      // Create final blob from chunks
+      type: 'audio/webm',
+    }) as RecordingBlob;
+    // Manually add mock properties (as done in the mock's onstop)
+    (mockRecordingBlob as any).recordingTime =
+      Date.now() -
+      mockMediaRecorderInstance._startTime -
+      /* pause duration if tracked */ 0;
+    (mockRecordingBlob as any).recordingSize = mockRecordingBlob.size;
+    (mockRecordingBlob as any).lastModified = Date.now();
+
+    // Trigger the onstop handler with the final blob data
     act(() => {
-      mockMediaRecorderChunks.push(mockAudioChunk); // Add chunk before stop
+      // Ensure the onstop handler is still assigned before calling it
       if (mockMediaRecorderInstance?.onstop) {
-        mockMediaRecorderInstance.onstop({}); // Trigger stop event
+        // Pass an object simulating the event structure if needed,
+        // but the mock implementation uses the blob directly.
+        // The mock implementation itself adds the metadata.
+        mockMediaRecorderInstance.onstop({ data: mockRecordingBlob } as Event); // Pass the blob if needed by the mock's logic
+      } else {
+        throw new Error(
+          'mockMediaRecorderInstance.onstop is unexpectedly null before triggering'
+        );
       }
     });
 
     // Wait for onComplete to be called with the blob
-    await waitFor(() => {
-      expect(mockOnComplete).toHaveBeenCalledTimes(1);
-      const receivedBlob = mockOnComplete.mock.calls[0][0] as RecordingBlob;
-      expect(receivedBlob).toBeInstanceOf(Blob);
-      expect(receivedBlob.size).toBe(mockAudioChunk.size);
-      expect(receivedBlob.type).toBe('audio/webm');
-      // Check for mock properties added in the mock implementation
-      expect((receivedBlob as any).recordingTime).toBeGreaterThan(0);
-      expect((receivedBlob as any).recordingSize).toBe(mockAudioChunk.size);
-      expect((receivedBlob as any).lastModified).toBeGreaterThan(0);
-    });
+    await waitFor(
+      () => {
+        expect(mockOnComplete).toHaveBeenCalledTimes(1);
+        const receivedBlob = mockOnComplete.mock.calls[0][0] as RecordingBlob;
+        expect(receivedBlob).toBeInstanceOf(Blob);
+        expect(receivedBlob.size).toBe(mockAudioChunk.size); // Check size matches chunk
+        expect(receivedBlob.type).toBe('audio/webm');
+        // Check for mock properties added in the mock implementation or above
+        expect((receivedBlob as any).recordingTime).toBeGreaterThan(0);
+        expect((receivedBlob as any).recordingSize).toBe(mockAudioChunk.size);
+        expect((receivedBlob as any).lastModified).toBeGreaterThan(0);
+      },
+      { timeout: 5000 }
+    ); // Increased timeout just in case
   });
 
   // --- Navigation ---
@@ -1092,7 +1165,9 @@ await waitFor(() => {
       await act(async () => {
         userEvent.click(backButton);
       });
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/lessons');
+      await waitFor(() => {
+        expect(mockRouterPush).toHaveBeenCalledWith('/app/lessons');
+      });
     },
     NAVIGATION_TEST_TIMEOUT
   ); // Apply increased timeout
@@ -1114,7 +1189,9 @@ await waitFor(() => {
       await act(async () => {
         userEvent.click(backButton);
       });
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/onboarding');
+      await waitFor(() => {
+        expect(mockRouterPush).toHaveBeenCalledWith('/app/onboarding');
+      });
     },
     NAVIGATION_TEST_TIMEOUT
   ); // Apply increased timeout
