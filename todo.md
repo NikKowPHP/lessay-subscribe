@@ -9,15 +9,15 @@
   - [ ] Add UI for Payment History (Optional - Requires querying Payment records)
 
 
-- [ ] getLessons if empty generates new one 
+- [X] getLessons if empty generates new one 
 
 
 
 ### Testing Lesson Generation
-- [ ] Unit tests for generateInitialLessons()
+- [X] Unit tests for generateInitialLessons()
   - [X] Happy path with valid assessment data
-  - [ ] Error when assessment not completed
-  - [ ] Handling empty proposedTopics from assessment
+  - [X] Error when assessment not completed
+  - [X] Handling empty proposedTopics from assessment
   - [X] Verify topic prioritization logic
   - [X] Test language configuration fallbacks
-  - [ ] Handle empty lesson generation from AI service
+  - [X] Handle empty lesson generation from AI **service**
