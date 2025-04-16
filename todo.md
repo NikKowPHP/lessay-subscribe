@@ -11,3 +11,13 @@
 
 - [ ] getLessons if empty generates new one 
 
+
+
+### Testing Lesson Generation
+- [ ] Unit tests for generateInitialLessons()
+  - [ ] Happy path with valid assessment data
+  - [ ] Error when assessment not completed
+  - [ ] Handling empty proposedTopics from assessment
+  - [ ] Verify topic prioritization logic
+  - [ ] Test language configuration fallbacks
+  - [ ] Handle empty lesson generation from AI service

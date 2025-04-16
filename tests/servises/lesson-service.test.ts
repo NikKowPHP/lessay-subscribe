@@ -15,6 +15,7 @@ import {
   LessonStep,
   OnboardingModel,
   AudioMetrics,
+  AssessmentLesson,
   LearningProgressModel,
   AdaptiveLessonGenerationRequest,
 } from '@/models/AppAllModels.model';
@@ -73,6 +74,9 @@ describe('LessonService', () => {
   const lessonId = 'lesson-123';
   const stepId = 'step-abc';
   const onboardingId = 'onboarding-xyz';
+
+const assessmentId = 'assessment-abc';
+
 
   const mockLessonStep: LessonStep = {
     id: stepId,
@@ -143,6 +147,28 @@ describe('LessonService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
+
+
+// Mock Assessment Lesson
+const mockAssessment: AssessmentLesson = {
+  id: assessmentId,
+  userId: userId,
+  description: 'German Assessment',
+  completed: true, // Assessment is complete
+  sourceLanguage: 'English',
+  targetLanguage: 'German',
+  metrics: { accuracy: 70 },
+  proposedTopics: ['Travel Vocabulary', 'Basic Grammar'],
+  summary: 'Initial assessment summary.',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  steps: [
+    /* Add mock assessment steps if needed */
+  ],
+  // Add audioMetrics if testing scenarios involving them
+  audioMetrics: null, // Default to null
+};
+  
 
   const mockOnboardingAssessmentComplete: OnboardingModel = {
     ...mockOnboarding,
@@ -593,26 +619,34 @@ describe('LessonService', () => {
     const mockGeneratedLessonData = {
       focusArea: 'Topic 1',
       targetSkills: ['skill1'],
-      steps: [],
+      steps: [{ stepNumber: 1, type: 'instruction', content: 'Hi' }],
     };
     const mockGeneratedLessonResult = { data: [mockGeneratedLessonData] };
     const mockCreatedLesson = {
       ...mockLesson,
       id: 'new-lesson-1',
       focusArea: 'Topic 1',
+      steps: mockGeneratedLessonData.steps as LessonStep[],
     };
 
     beforeEach(() => {
-      // Mock dependencies for this specific describe block
-      mockOnboardingRepository.getOnboarding.mockResolvedValue(mockOnboarding);
+      // Restore spy to allow testing the actual implementation
+      generateInitialLessonsSpy.mockRestore();
+
+      // Common mocks for generateInitialLessons tests
+      mockOnboardingRepository.getOnboarding.mockResolvedValue(
+        mockOnboardingAssessmentComplete
+      );
+      mockOnboardingRepository.getAssessmentLesson.mockResolvedValue(
+        mockAssessment
+      );
       mockLessonGeneratorService.generateLesson.mockResolvedValue(
         mockGeneratedLessonResult
       );
       mockLessonGeneratorService.generateAudioForSteps.mockImplementation(
-        async (steps) => steps
-      ); // Pass through steps
+        async (steps) => steps.map((s) => ({ ...s, contentAudioUrl: 'audio.mp3' })) // Simulate adding audio
+      );
       mockLessonRepository.createLesson.mockResolvedValue(mockCreatedLesson);
-      mockOnboardingRepository.getAssessmentLesson.mockResolvedValue(null); // Default: no assessment yet
     });
 
     it('should throw error if onboarding data not found', async () => {
@@ -621,10 +655,18 @@ describe('LessonService', () => {
         'User onboarding data not found'
       );
     });
-    it('should throw if on assessment lesson found', async () => {
+
+    it('should throw error if initial assessment is not completed', async () => {
+      mockOnboardingRepository.getOnboarding.mockResolvedValue(mockOnboarding); // Assessment not complete
+      await expect(lessonService.generateInitialLessons()).rejects.toThrow(
+        'Initial assessment not completed'
+      );
+    });
+
+    it('should throw error if completed assessment data is not found', async () => {
       mockOnboardingRepository.getAssessmentLesson.mockResolvedValue(null);
       await expect(lessonService.generateInitialLessons()).rejects.toThrow(
-        'completed assessment not found'
+        'Completed assessment not found'
       );
     });
 

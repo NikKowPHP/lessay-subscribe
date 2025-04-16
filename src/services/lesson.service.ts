@@ -11,6 +11,7 @@ import {
   OnboardingModel,
   isPerformanceMetrics,
   AssessmentLesson,
+  AdaptiveLessonGenerationRequest,
 } from '@/models/AppAllModels.model';
 
 import {
@@ -37,6 +38,40 @@ import { LearningProgressRepository } from '@/repositories/learning-progress.rep
 
 import { randomUUID } from 'crypto';
 
+
+
+interface LessonGenerationConfig {
+  defaultLanguage: string;
+  defaultProficiency: string;
+  defaultPurpose: string;
+}
+
+// interface AdaptiveRequest {
+//   completedAssessment: boolean;
+//   audioMetricsAvailable: boolean;
+//   metrics: any;
+//   audioMetrics?: AudioMetricsPayload;
+//   proposedTopics: string[];
+//   summary: string;
+// }
+
+interface AudioMetricsPayload {
+  pronunciationScore: number;
+  fluencyScore: number;
+  grammarScore: number;
+  vocabularyScore: number;
+  overallPerformance: number;
+  problematicSounds: string[];
+  grammarRulesToReview: string[];
+  vocabularyAreasForExpansion: string[];
+  suggestedTopics: string[];
+  proficiencyLevel: string;
+}
+
+
+
+
+
 export default class LessonService {
   private lessonRepository: ILessonRepository;
   private lessonGeneratorService: ILessonGeneratorService;
@@ -44,6 +79,13 @@ export default class LessonService {
   private recordingService: RecordingService;
 
   private learningProgressService: LearningProgressService;
+
+  // Add class-level configuration constant
+private readonly lessonConfig: LessonGenerationConfig = {
+  defaultLanguage: 'German',
+  defaultProficiency: 'beginner',
+  defaultPurpose: 'general'
+  };
 
   constructor(
     lessonRepository: ILessonRepository,
@@ -336,84 +378,80 @@ export default class LessonService {
 
     return { onboardingData, assessment };
   }
+  private getLanguageConfig(onboardingData: OnboardingModel) {
+    return {
+      targetLanguage: onboardingData.targetLanguage || this.lessonConfig.defaultLanguage,
+      proficiencyLevel: onboardingData.proficiencyLevel?.toLowerCase() || this.lessonConfig.defaultProficiency,
+      learningPurpose: onboardingData.learningPurpose || this.lessonConfig.defaultPurpose,
+      sourceLanguage: onboardingData.nativeLanguage || 'English'
+    };
+  }
 
-  async generateInitialLessons(): Promise<LessonModel[]> {
-    const { onboardingData, assessment } = await this.validateAssessmentData();
-
-    // Extract necessary data for lesson generation
-    const targetLanguage = onboardingData.targetLanguage || 'German';
-    const proficiencyLevel =
-      onboardingData.proficiencyLevel?.toLowerCase() || 'beginner';
-    const learningPurpose = onboardingData.learningPurpose || 'general';
-    const sourceLanguage = onboardingData.nativeLanguage || 'English';
-
-    // Initialize variables for collecting topic suggestions from various sources
-    let assessmentTopics: string[] = [];
-    let audioMetricsTopics: string[] = [];
-    let learningPurposeTopics: string[] = [];
-    let adaptiveRequest: any = undefined;
-
-    // Collect topics from assessment
-    assessmentTopics = assessment.proposedTopics || [];
-    logger.info('Found assessment topics', { assessmentTopics });
-
-    // If we have audio metrics, use those for richer insights
-    adaptiveRequest = this.constructAdaptiveRequest(assessment);
-    logger.info('creating adaptiveRequest for lesson generation', {
-      adaptiveRequest,
-    });
-
-    // Get topics from learning purpose
-    learningPurposeTopics = this.getTopicsFromLearningPurpose(learningPurpose);
-
-    // Combine and prioritize topics
-    const selectedTopics = this.selectPrioritizedTopics(
-      assessmentTopics,
-      audioMetricsTopics,
-      learningPurposeTopics,
-      proficiencyLevel
-    );
-
-    logger.info('Selected prioritized topics', { selectedTopics });
-
-    // Generate lessons for each selected topic
-    const lessonPromises = selectedTopics.map(async (topic) => {
+  private async generateLessonsForTopic(
+    topic: string,
+    languageConfig: ReturnType<typeof this.getLanguageConfig>,
+    adaptiveRequest: AdaptiveLessonGenerationRequest
+  ): Promise<LessonModel[]> {
+    try {
       const generatedResult = await this.lessonGeneratorService.generateLesson(
         topic,
-        targetLanguage,
-        proficiencyLevel,
-        sourceLanguage,
-        adaptiveRequest // Pass enriched assessment data to the generator
+        languageConfig.targetLanguage,
+        languageConfig.proficiencyLevel,
+        languageConfig.sourceLanguage,
+        adaptiveRequest
       );
+  
       const lessonItems = Array.isArray(generatedResult.data)
         ? generatedResult.data
         : [generatedResult.data];
+  
+      return Promise.all(lessonItems.map(async (lessonItem) => {
+        const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(
+          lessonItem.steps as LessonStep[],
+          languageConfig.targetLanguage,
+          languageConfig.sourceLanguage
+        );
+  
+        return this.createLesson({
+          focusArea: lessonItem.focusArea,
+          targetSkills: lessonItem.targetSkills,
+          steps: audioSteps
+        });
+      }));
+    } catch (error) {
+      logger.error('Failed to generate lesson for topic', { topic, error });
+      return []; // Return empty array to prevent failing entire batch
+    }
+  }
 
-      // For each lesson item, create a lesson record
-      const createdLessons = await Promise.all(
-        lessonItems.map(async (lessonItem: any) => {
-          const audioSteps =
-            await this.lessonGeneratorService.generateAudioForSteps(
-              lessonItem.steps as LessonStep[],
-              targetLanguage,
-              sourceLanguage
-            );
-
-          const lessonData = {
-            focusArea: lessonItem.focusArea,
-            targetSkills: lessonItem.targetSkills,
-            steps: audioSteps,
-          };
-          return this.createLesson(lessonData);
-        })
-      );
-
-      return createdLessons;
-    });
-
-    // Flatten the nested array of lessons and return
-    const lessonsNested = await Promise.all(lessonPromises);
-    return lessonsNested.flat();
+  async generateInitialLessons(): Promise<LessonModel[]> {
+    const { onboardingData, assessment } = await this.validateAssessmentData();
+    const languageConfig = this.getLanguageConfig(onboardingData);
+    
+    const assessmentTopics = assessment.proposedTopics || [];
+    const adaptiveRequest = this.constructAdaptiveRequest(assessment);
+    const learningPurposeTopics = this.getTopicsFromLearningPurpose(languageConfig.learningPurpose);
+  
+    const selectedTopics = this.selectPrioritizedTopics(
+      assessmentTopics,
+      [], // audioMetricsTopics seems unused in original code
+      learningPurposeTopics,
+      languageConfig.proficiencyLevel
+    );
+  
+    logger.info('Starting lesson generation for topics', { selectedTopics });
+  
+    const lessonPromises = selectedTopics.map(topic => 
+      this.generateLessonsForTopic(topic, languageConfig, adaptiveRequest)
+    );
+  
+    try {
+      const lessonsNested = await Promise.all(lessonPromises);
+      return lessonsNested.flat();
+    } catch (error) {
+      logger.error('Critical error in lesson generation', { error });
+      throw new Error('Failed to generate initial lessons');
+    }
   }
 
   // New helper method to intelligently select and prioritize topics
