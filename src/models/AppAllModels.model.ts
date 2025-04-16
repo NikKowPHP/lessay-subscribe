@@ -149,6 +149,8 @@ export interface UserProfileModel {
   subscriptionEndDate?: Date | null;
   billingCycle?: string | null;
   paymentMethodId?: string | null;
+  stripeCustomerId?: string | null;
+  cancelAtPeriodEnd?: boolean;
 }
 
 // Add a type guard for assessment metrics

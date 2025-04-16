@@ -80,13 +80,13 @@ implementing the monthly/yearly subscription with a trial plan
     *   [x] Add `trialEndDate` (DateTime?). *Already present*
     *   [x] Add `subscriptionStartDate` (DateTime?) for when the paid subscription begins (after trial or immediately). *Already present*
     *   [x] Add `subscriptionEndDate` (DateTime?) for the end of the current billing cycle or cancellation date. *Already present*
-    *   [ ] Add `stripeCustomerId` (String?, unique) to store the Stripe Customer ID (useful for managing billing portal, etc.).
-    *   [ ] Consider adding `cancelAtPeriodEnd` (Boolean, default: false) if you want to track user-initiated cancellations that are still active until the period end.
-    *   [ ] Consider `billingCycle` (String?) if needed (e.g., 'monthly', 'yearly'). *Already present*
-    *   [ ] Consider `paymentMethodId` (String?). *Already present*
-*   **[ ] Update `SubscriptionStatus` enum (`schema.prisma`):**
+    *   [x] Add `stripeCustomerId` (String?, unique) to store the Stripe Customer ID (useful for managing billing portal, etc.).
+    *   [x] Consider adding `cancelAtPeriodEnd` (Boolean, default: false) if you want to track user-initiated cancellations that are still active until the period end.
+    *   [x] Consider `billingCycle` (String?) if needed (e.g., 'monthly', 'yearly'). *Already present*
+    *   [x] Consider `paymentMethodId` (String?). *Already present*
+*   **[x] Update `SubscriptionStatus` enum (`schema.prisma`):**
     *   [x] Ensure it includes `NONE`, `TRIAL`, `ACTIVE`, `CANCELED`, `PAST_DUE`, `EXPIRED`. *Already present*
-*   **[ ] Run Prisma migrations:**
+*   **[x] Run Prisma migrations:**
     *   `npx prisma migrate dev --name add_subscription_fields` (or similar)
     *   `npx prisma generate`
 

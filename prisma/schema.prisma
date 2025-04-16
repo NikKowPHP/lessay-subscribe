@@ -51,6 +51,8 @@ model User {
   subscriptionStartDate DateTime?
   billingCycle      String?
   paymentMethodId   String?
+  stripeCustomerId  String?            @unique
+  cancelAtPeriodEnd Boolean            @default(false)
 }
 
 enum ProficiencyLevel {
