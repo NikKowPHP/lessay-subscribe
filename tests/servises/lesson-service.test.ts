@@ -670,6 +670,51 @@ const mockAssessment: AssessmentLesson = {
       );
     });
 
+
+    // --- Happy Path Test ---
+    it('should generate lessons based on assessment topics (happy path)', async () => {
+      const result = await lessonService.generateInitialLessons();
+
+      expect(mockOnboardingRepository.getOnboarding).toHaveBeenCalledTimes(1);
+      expect(mockOnboardingRepository.getAssessmentLesson).toHaveBeenCalledTimes(
+        1
+      );
+      // Expect generateLesson to be called for selected topics
+      // Based on mockAssessment.proposedTopics = ['Travel Vocabulary', 'Basic Grammar']
+      // and beginner level adding 'Greetings', 'Introductions', 'Basic Phrases',
+      // selectPrioritizedTopics should pick top 3, likely assessment + one basic.
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledTimes(3); // Expecting 3 topics
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledWith(
+        'travel-vocabulary', // Normalized topic
+        'German',
+        'beginner',
+        'English',
+        expect.any(Object) // Adaptive request
+      );
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledWith(
+        'basic-grammar', // Normalized topic
+        'German',
+        'beginner',
+        'English',
+        expect.any(Object) // Adaptive request
+      );
+      // The third topic depends on scoring, could be 'greetings', 'introductions', or 'basic-phrases'
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledWith(
+        expect.stringMatching(/^(greetings|introductions|basic-phrases)$/),
+        'German',
+        'beginner',
+        'English',
+        expect.any(Object) // Adaptive request
+      );
+
+      expect(
+        mockLessonGeneratorService.generateAudioForSteps
+      ).toHaveBeenCalledTimes(3); // Called for each generated lesson
+      expect(mockLessonRepository.createLesson).toHaveBeenCalledTimes(3); // Called for each generated lesson
+      expect(result).toHaveLength(3);
+      expect(result[0]).toEqual(mockCreatedLesson); // Check structure of created lesson
+    });
+
   
   });
 
