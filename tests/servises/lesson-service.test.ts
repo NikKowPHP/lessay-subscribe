@@ -75,8 +75,7 @@ describe('LessonService', () => {
   const stepId = 'step-abc';
   const onboardingId = 'onboarding-xyz';
 
-const assessmentId = 'assessment-abc';
-
+  const assessmentId = 'assessment-abc';
 
   const mockLessonStep: LessonStep = {
     id: stepId,
@@ -148,27 +147,25 @@ const assessmentId = 'assessment-abc';
     updatedAt: new Date(),
   };
 
-
-// Mock Assessment Lesson
-const mockAssessment: AssessmentLesson = {
-  id: assessmentId,
-  userId: userId,
-  description: 'German Assessment',
-  completed: true, // Assessment is complete
-  sourceLanguage: 'English',
-  targetLanguage: 'German',
-  metrics: { accuracy: 70 },
-  proposedTopics: ['Travel Vocabulary', 'Basic Grammar'],
-  summary: 'Initial assessment summary.',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  steps: [
-    /* Add mock assessment steps if needed */
-  ],
-  // Add audioMetrics if testing scenarios involving them
-  audioMetrics: null, // Default to null
-};
-  
+  // Mock Assessment Lesson
+  const mockAssessment: AssessmentLesson = {
+    id: assessmentId,
+    userId: userId,
+    description: 'German Assessment',
+    completed: true, // Assessment is complete
+    sourceLanguage: 'English',
+    targetLanguage: 'German',
+    metrics: { accuracy: 70 },
+    proposedTopics: ['Travel Vocabulary', 'Basic Grammar'],
+    summary: 'Initial assessment summary.',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    steps: [
+      /* Add mock assessment steps if needed */
+    ],
+    // Add audioMetrics if testing scenarios involving them
+    audioMetrics: null, // Default to null
+  };
 
   const mockOnboardingAssessmentComplete: OnboardingModel = {
     ...mockOnboarding,
@@ -644,7 +641,8 @@ const mockAssessment: AssessmentLesson = {
         mockGeneratedLessonResult
       );
       mockLessonGeneratorService.generateAudioForSteps.mockImplementation(
-        async (steps) => steps.map((s) => ({ ...s, contentAudioUrl: 'audio.mp3' })) // Simulate adding audio
+        async (steps) =>
+          steps.map((s) => ({ ...s, contentAudioUrl: 'audio.mp3' })) // Simulate adding audio
       );
       mockLessonRepository.createLesson.mockResolvedValue(mockCreatedLesson);
     });
@@ -670,20 +668,21 @@ const mockAssessment: AssessmentLesson = {
       );
     });
 
-
     // --- Happy Path Test ---
     it('should generate lessons based on assessment topics (happy path)', async () => {
       const result = await lessonService.generateInitialLessons();
 
       expect(mockOnboardingRepository.getOnboarding).toHaveBeenCalledTimes(1);
-      expect(mockOnboardingRepository.getAssessmentLesson).toHaveBeenCalledTimes(
-        1
-      );
+      expect(
+        mockOnboardingRepository.getAssessmentLesson
+      ).toHaveBeenCalledTimes(1);
       // Expect generateLesson to be called for selected topics
       // Based on mockAssessment.proposedTopics = ['Travel Vocabulary', 'Basic Grammar']
       // and beginner level adding 'Greetings', 'Introductions', 'Basic Phrases',
       // selectPrioritizedTopics should pick top 3, likely assessment + one basic.
-      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledTimes(3); // Expecting 3 topics
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledTimes(
+        3
+      ); // Expecting 3 topics
       expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledWith(
         'travel-vocabulary', // Normalized topic
         'German',
@@ -715,16 +714,17 @@ const mockAssessment: AssessmentLesson = {
       expect(result[0]).toEqual(mockCreatedLesson); // Check structure of created lesson
     });
 
-
-     // --- Verify topic prioritization logic ---
-     it('should prioritize assessment topics over learning purpose topics', async () => {
+    // --- Verify topic prioritization logic ---
+    it('should prioritize assessment topics over learning purpose topics', async () => {
       // Assessment topics: ['Travel Vocabulary', 'Basic Grammar'] score 2
       // Learning purpose ('travel'): ['Airport Navigation', 'Hotel Booking', 'Restaurant Ordering'] score 1
       // Beginner basics: ['Greetings', 'Introductions', 'Basic Phrases'] score 1.5
       // Expected order: Travel Vocabulary, Basic Grammar, (one of the basics)
       await lessonService.generateInitialLessons();
 
-      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledTimes(3);
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledTimes(
+        3
+      );
       const calls = mockLessonGeneratorService.generateLesson.mock.calls;
       const calledTopics = calls.map((call) => call[0]); // Get the first argument (topic) of each call
 
@@ -737,10 +737,36 @@ const mockAssessment: AssessmentLesson = {
       ).toBe(true);
     });
 
-  
-  });
+    // --- Test language configuration fallbacks ---
+    it('should use default language config if onboarding fields are missing', async () => {
+      mockOnboardingRepository.getOnboarding.mockResolvedValue({
+        ...mockOnboardingAssessmentComplete,
+        targetLanguage: undefined, // Missing target language
+        proficiencyLevel: undefined,
+        learningPurpose: undefined,
+        nativeLanguage: undefined,
+      });
 
-  
+      await lessonService.generateInitialLessons();
+
+      // Expect generateLesson to be called with defaults
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledWith(
+        expect.any(String),
+        'German', // Default target
+        'beginner', // Default proficiency
+        'English', // Default source
+        expect.any(Object)
+      );
+      // Expect audio generation to use defaults too
+      expect(
+        mockLessonGeneratorService.generateAudioForSteps
+      ).toHaveBeenCalledWith(
+        expect.any(Array),
+        'German', // Default target
+        'English' // Default source
+      );
+    });
+  });
 
   describe('recordStepAttempt', () => {
     it('should throw error if lesson not found', async () => {
@@ -978,7 +1004,9 @@ const mockAssessment: AssessmentLesson = {
 
     it('should throw error if onboarding data not found', async () => {
       mockOnboardingRepository.getOnboarding.mockResolvedValue(null);
-      await expect(lessonService.generateNewLessonsBasedOnProgress()).rejects.toThrow('User onboarding data not found');
+      await expect(
+        lessonService.generateNewLessonsBasedOnProgress()
+      ).rejects.toThrow('User onboarding data not found');
     });
 
     it('should throw error if no completed lessons found', async () => {

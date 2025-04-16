@@ -19,5 +19,5 @@
   - [ ] Error when assessment not completed
   - [ ] Handling empty proposedTopics from assessment
   - [X] Verify topic prioritization logic
-  - [ ] Test language configuration fallbacks
+  - [X] Test language configuration fallbacks
   - [ ] Handle empty lesson generation from AI service
