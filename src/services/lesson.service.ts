@@ -38,8 +38,6 @@ import { LearningProgressRepository } from '@/repositories/learning-progress.rep
 
 import { randomUUID } from 'crypto';
 
-
-
 interface LessonGenerationConfig {
   defaultLanguage: string;
   defaultProficiency: string;
@@ -68,10 +66,6 @@ interface AudioMetricsPayload {
   proficiencyLevel: string;
 }
 
-
-
-
-
 export default class LessonService {
   private lessonRepository: ILessonRepository;
   private lessonGeneratorService: ILessonGeneratorService;
@@ -81,10 +75,10 @@ export default class LessonService {
   private learningProgressService: LearningProgressService;
 
   // Add class-level configuration constant
-private readonly lessonConfig: LessonGenerationConfig = {
-  defaultLanguage: 'German',
-  defaultProficiency: 'beginner',
-  defaultPurpose: 'general'
+  private readonly lessonConfig: LessonGenerationConfig = {
+    defaultLanguage: 'German',
+    defaultProficiency: 'beginner',
+    defaultPurpose: 'general',
   };
 
   constructor(
@@ -380,10 +374,14 @@ private readonly lessonConfig: LessonGenerationConfig = {
   }
   private getLanguageConfig(onboardingData: OnboardingModel) {
     return {
-      targetLanguage: onboardingData.targetLanguage || this.lessonConfig.defaultLanguage,
-      proficiencyLevel: onboardingData.proficiencyLevel?.toLowerCase() || this.lessonConfig.defaultProficiency,
-      learningPurpose: onboardingData.learningPurpose || this.lessonConfig.defaultPurpose,
-      sourceLanguage: onboardingData.nativeLanguage || 'English'
+      targetLanguage:
+        onboardingData.targetLanguage || this.lessonConfig.defaultLanguage,
+      proficiencyLevel:
+        onboardingData.proficiencyLevel?.toLowerCase() ||
+        this.lessonConfig.defaultProficiency,
+      learningPurpose:
+        onboardingData.learningPurpose || this.lessonConfig.defaultPurpose,
+      sourceLanguage: onboardingData.nativeLanguage || 'English',
     };
   }
 
@@ -400,24 +398,57 @@ private readonly lessonConfig: LessonGenerationConfig = {
         languageConfig.sourceLanguage,
         adaptiveRequest
       );
-  
+
       const lessonItems = Array.isArray(generatedResult.data)
         ? generatedResult.data
-        : [generatedResult.data];
-  
-      return Promise.all(lessonItems.map(async (lessonItem) => {
-        const audioSteps = await this.lessonGeneratorService.generateAudioForSteps(
-          lessonItem.steps as LessonStep[],
-          languageConfig.targetLanguage,
-          languageConfig.sourceLanguage
-        );
-  
-        return this.createLesson({
-          focusArea: lessonItem.focusArea,
-          targetSkills: lessonItem.targetSkills,
-          steps: audioSteps
+        : generatedResult.data
+        ? [generatedResult.data]
+        : [];
+
+      // Check if the array is empty or contains only falsy values
+      if (lessonItems.length === 0 || !lessonItems[0]) {
+        // Log the error as expected by the test when AI returns no usable data
+        logger.error('Failed to generate lesson for topic', {
+          topic,
+          reason: 'AI returned empty or invalid result',
         });
-      }));
+        return []; // Return empty array gracefully
+      }
+
+      return Promise.all(
+        lessonItems.map(async (lessonItem: any) => {
+          if (!lessonItem || !lessonItem.steps) {
+            logger.warn('Invalid lesson item structure received from AI', {
+              topic,
+              lessonItem,
+            });
+            return null; // Skip this invalid item
+          }
+          const audioSteps =
+            await this.lessonGeneratorService.generateAudioForSteps(
+              lessonItem.steps as LessonStep[],
+              languageConfig.targetLanguage,
+              languageConfig.sourceLanguage
+            );
+          // Ensure createLesson receives valid data
+          if (!lessonItem.focusArea || !lessonItem.targetSkills) {
+            logger.warn(
+              'Missing focusArea or targetSkills in generated lesson item',
+              { topic, lessonItem }
+            );
+            return null; // Skip creation if essential data is missing
+          }
+
+          return this.createLesson({
+            focusArea: lessonItem.focusArea,
+            targetSkills: lessonItem.targetSkills,
+            steps: audioSteps,
+          });
+        })
+      ).then(
+        (results) =>
+          results.filter((lesson) => lesson !== null) as LessonModel[]
+      );
     } catch (error) {
       logger.error('Failed to generate lesson for topic', { topic, error });
       return []; // Return empty array to prevent failing entire batch
@@ -427,24 +458,26 @@ private readonly lessonConfig: LessonGenerationConfig = {
   async generateInitialLessons(): Promise<LessonModel[]> {
     const { onboardingData, assessment } = await this.validateAssessmentData();
     const languageConfig = this.getLanguageConfig(onboardingData);
-    
+
     const assessmentTopics = assessment.proposedTopics || [];
     const adaptiveRequest = this.constructAdaptiveRequest(assessment);
-    const learningPurposeTopics = this.getTopicsFromLearningPurpose(languageConfig.learningPurpose);
-  
+    const learningPurposeTopics = this.getTopicsFromLearningPurpose(
+      languageConfig.learningPurpose
+    );
+
     const selectedTopics = this.selectPrioritizedTopics(
       assessmentTopics,
       [], // audioMetricsTopics seems unused in original code
       learningPurposeTopics,
       languageConfig.proficiencyLevel
     );
-  
+
     logger.info('Starting lesson generation for topics', { selectedTopics });
-  
-    const lessonPromises = selectedTopics.map(topic => 
+
+    const lessonPromises = selectedTopics.map((topic) =>
       this.generateLessonsForTopic(topic, languageConfig, adaptiveRequest)
     );
-  
+
     try {
       const lessonsNested = await Promise.all(lessonPromises);
       return lessonsNested.flat();

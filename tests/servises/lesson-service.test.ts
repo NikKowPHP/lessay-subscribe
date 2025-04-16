@@ -766,6 +766,87 @@ describe('LessonService', () => {
         'English' // Default source
       );
     });
+    // --- Handle empty lesson generation from AI service ---
+    it('should handle empty lesson generation from AI service gracefully', async () => {
+      mockLessonGeneratorService.generateLesson.mockResolvedValue({ data: [] }); // AI returns empty data
+
+      const result = await lessonService.generateInitialLessons();
+
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledTimes(
+        3
+      ); // Still attempts to generate for 3 topics
+      expect(
+        mockLessonGeneratorService.generateAudioForSteps
+      ).not.toHaveBeenCalled(); // No steps to generate audio for
+      expect(mockLessonRepository.createLesson).not.toHaveBeenCalled(); // No lessons to create
+      expect(result).toEqual([]); // Should return an empty array
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to generate lesson for topic',
+        expect.any(Object)
+      ); // Should log the error for each failed topic
+    });
+
+    it('should handle AI service failure for one topic but succeed for others', async () => {
+      const errorTopic = 'basic-grammar';
+      const successTopic1 = 'travel-vocabulary';
+      const successTopic2 = 'greetings';
+
+      // Mock AI to fail for one topic and succeed for others
+      mockLessonGeneratorService.generateLesson.mockImplementation(
+        async (topic) => {
+          if (topic === errorTopic) {
+            throw new Error(`AI failed for ${topic}`);
+          }
+          // Return standard success response for other topics
+          return { data: [{ ...mockGeneratedLessonData, focusArea: topic }] };
+        }
+      );
+      // Mock createLesson to reflect successful creation
+      mockLessonRepository.createLesson.mockImplementation(async (data) => ({
+        ...mockCreatedLesson,
+        focusArea: data.focusArea,
+        id: `created-${data.focusArea}`,
+      }));
+
+      const result = await lessonService.generateInitialLessons();
+
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledTimes(
+        3
+      );
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to generate lesson for topic',
+        expect.objectContaining({ topic: errorTopic })
+      );
+      // Audio and create should only be called for successful generations
+      expect(
+        mockLessonGeneratorService.generateAudioForSteps
+      ).toHaveBeenCalledTimes(2);
+      expect(mockLessonRepository.createLesson).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(2); // Only two lessons should be created
+      expect(result.some((l) => l.focusArea === successTopic1)).toBe(true);
+      expect(result.some((l) => l.focusArea === successTopic2)).toBe(true);
+    });
+
+    it('should throw if all lesson generations fail critically', async () => {
+      // Mock AI service to always throw an error
+      mockLessonGeneratorService.generateLesson.mockRejectedValue(
+        new Error('Critical AI Error')
+      );
+
+      await expect(lessonService.generateInitialLessons()).rejects.toThrow(
+        'Failed to generate initial lessons'
+      );
+
+      expect(mockLessonGeneratorService.generateLesson).toHaveBeenCalledTimes(
+        3
+      ); // It tries for all topics
+      expect(logger.error).toHaveBeenCalledTimes(3); // Logs error for each topic
+      expect(logger.error).toHaveBeenCalledWith(
+        'Critical error in lesson generation',
+        expect.any(Object)
+      ); // Logs the final critical error
+      expect(mockLessonRepository.createLesson).not.toHaveBeenCalled();
+    });
   });
 
   describe('recordStepAttempt', () => {
