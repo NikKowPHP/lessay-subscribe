@@ -268,12 +268,7 @@ export default function LessonChat({
         const updatedStep = await onStepComplete(step, userInput);
         logger.info('Step completion result:', updatedStep);
 
-        // Add user response to chat history *before* checking correctness/advancing
-        // This ensures the user sees their submitted response immediately.
-        setChatHistory((prev) => [
-          ...prev,
-          { type: 'response', content: updatedStep.userResponse || userInput },
-        ]);
+       
         setUserResponse(''); // Clear input field immediately after submission
 
         if (!updatedStep.correct) {
@@ -288,6 +283,12 @@ export default function LessonChat({
           // For now, let's require manual re-activation via button click.
           return; // Exit early if incorrect
         }
+         // Add user response to chat history *before* checking correctness/advancing
+        // This ensures the user sees their submitted response immediately.
+        setChatHistory((prev) => [
+          ...prev,
+          { type: 'response', content: updatedStep.userResponse || userInput },
+        ]);
 
         // --- Correct Response Handling ---
         setFeedback(''); // Clear feedback on correct
