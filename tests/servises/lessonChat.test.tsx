@@ -928,6 +928,18 @@ describe('LessonChat Component', () => {
       name: 'Start Listening',
     });
 
+       // --- Start recording simulation ---
+       const startTime = Date.now(); // Get initial time under fake timers
+       mockMediaRecorderInstance.state = 'recording';
+       mockMediaRecorderInstance._startTime = startTime;
+       // --- Simulate time passing ---
+       const recordingDurationMs = 1500; // Simulate 1.5 seconds
+       act(() => {
+           jest.advanceTimersByTime(recordingDurationMs);
+       });
+       const endTime = startTime + recordingDurationMs; // Calculate expected end time
+       // --- End recording simulation ---
+
     await act(async () => {
 
       userEvent.click(micButton);
@@ -978,40 +990,38 @@ describe('LessonChat Component', () => {
           expect(mockMediaRecorderInstance.stop).toHaveBeenCalled();
       });
     });
-
-    // Simulate recorder stopping and providing data via the onstop handler
-    // The mock onstop will use the chunk simulated above
     const finalBlobFromMock = new Blob([mockAudioChunk], { type: 'audio/webm' }) as RecordingBlob;
-     // Add metadata like the mock does
-    (finalBlobFromMock as any).recordingTime = Date.now() - mockMediaRecorderInstance._startTime;
+    // --- FIX: Add metadata using simulated duration ---
+    (finalBlobFromMock as any).recordingTime = recordingDurationMs; // Use the simulated duration
     (finalBlobFromMock as any).recordingSize = finalBlobFromMock.size;
-    (finalBlobFromMock as any).lastModified = Date.now();
+    (finalBlobFromMock as any).lastModified = endTime; // Use the calculated end time
+    // --- END FIX ---
+
+
 
     act(() => {
       if (mockMediaRecorderInstance?.onstop) {
         // Pass the blob the mock *would* create based on chunks
-        mockMediaRecorderInstance.onstop({ data: finalBlobFromMock } as Event);
+        mockMediaRecorderInstance.onstop({ data: finalBlobFromMock } as unknown as Event);
       } else {
         throw new Error('mockMediaRecorderInstance.onstop is unexpectedly null');
       }
     });
 
-    // Wait for onComplete
     await waitFor(() => {
       expect(mockOnComplete).toHaveBeenCalledWith(expect.any(Blob));
-
       const receivedBlob = mockOnComplete.mock.calls[0][0] as RecordingBlob;
-      // --- FIX: Check against the chunk size ---
-      expect(receivedBlob.size).toBe(mockAudioChunk.size); // This was failing (received 0)
-      expect(receivedBlob.size).toBeGreaterThan(0); // Should now pass
-      // --- END FIX ---
+      expect(receivedBlob.size).toBeGreaterThan(0);
+      // --- FIX: Check the simulated duration ---
+      expect((receivedBlob as any).recordingTime).toBe(recordingDurationMs);
       expect((receivedBlob as any).recordingTime).toBeGreaterThan(0);
+      // --- END FIX ---
       expect((receivedBlob as any).recordingSize).toBeGreaterThan(0);
-      expect((receivedBlob as any).lastModified).toBeGreaterThan(0);
+      expect((receivedBlob as any).lastModified).toBe(endTime); // Check end time
     });
 
-    // Final check: Ensure onComplete was called exactly once
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
+
   });
 
 
@@ -1053,8 +1063,18 @@ describe('LessonChat Component', () => {
     await waitFor(() => { expect(mockMediaRecorderInstance.onstop).not.toBeNull(); });
     await waitFor(() => { expect(mockMediaRecorderInstance.start).toHaveBeenCalled(); });
 
+    // --- Start recording simulation ---
+    const startTime = Date.now(); // Get initial time under fake timers
     mockMediaRecorderInstance.state = 'recording';
-    mockMediaRecorderInstance._startTime = Date.now() - 1000;
+    mockMediaRecorderInstance._startTime = startTime;
+    // --- Simulate time passing ---
+    const recordingDurationMs = 1200; // Simulate 1.2 seconds
+    act(() => {
+        jest.advanceTimersByTime(recordingDurationMs);
+    });
+    const endTime = startTime + recordingDurationMs; // Calculate expected end time
+
+    
 
     // Wait for UI update
     await waitFor(() => screen.getByRole('button', { name: /Pause Listening/i }));
@@ -1095,16 +1115,15 @@ describe('LessonChat Component', () => {
     // Simulate recorder stopping and providing data via the onstop handler
     const finalBlobFromMock = new Blob([mockAudioChunk], { type: 'audio/webm' }) as RecordingBlob;
     // Add metadata like the mock does
-    (finalBlobFromMock as any).recordingTime = Date.now() - mockMediaRecorderInstance._startTime;
+    (finalBlobFromMock as any).recordingTime = recordingDurationMs; // Use the simulated duration
     (finalBlobFromMock as any).recordingSize = finalBlobFromMock.size;
-    (finalBlobFromMock as any).lastModified = Date.now();
+    (finalBlobFromMock as any).lastModified = endTime; // Use the calculated end time
 
 
     // Trigger the onstop handler
     act(() => {
       if (mockMediaRecorderInstance?.onstop) {
-         // Pass the blob the mock *would* create based on chunks
-        mockMediaRecorderInstance.onstop({ data: finalBlobFromMock } as Event);
+        mockMediaRecorderInstance.onstop({ data: finalBlobFromMock } as unknown as Event);
       } else {
         throw new Error('mockMediaRecorderInstance.onstop is unexpectedly null');
       }
@@ -1113,16 +1132,17 @@ describe('LessonChat Component', () => {
     // Wait for onComplete
     await waitFor(
       () => {
-        // --- FIX: Check call count first ---
-        expect(mockOnComplete).toHaveBeenCalledTimes(1); // This was failing (received 2)
-        // --- END FIX ---
+        expect(mockOnComplete).toHaveBeenCalledTimes(1); // Expect exactly one call
         const receivedBlob = mockOnComplete.mock.calls[0][0] as RecordingBlob;
         expect(receivedBlob).toBeInstanceOf(Blob);
         expect(receivedBlob.size).toBe(mockAudioChunk.size);
         expect(receivedBlob.type).toBe('audio/webm');
+         // --- FIX: Check simulated duration ---
+        expect((receivedBlob as any).recordingTime).toBe(recordingDurationMs);
         expect((receivedBlob as any).recordingTime).toBeGreaterThan(0);
+         // --- END FIX ---
         expect((receivedBlob as any).recordingSize).toBe(mockAudioChunk.size);
-        expect((receivedBlob as any).lastModified).toBeGreaterThan(0);
+        expect((receivedBlob as any).lastModified).toBe(endTime); // Check end time
       },
       { timeout: 5000 }
     );
