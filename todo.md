@@ -262,7 +262,7 @@ This list provides a detailed plan. Remember to handle loading states and errors
 - [x] only correct user answers gets added to the chat history 
 - [x] fix issue with leson generation : issue 1 
 - [ ] the lesson generation prompt is not properly constructed
-- [ ] user delete all data is not working properly
+- [x] user delete all data is not working properly
 
 ## test fixes
 - [ ] speech recognition should never stop once initiated
