@@ -16,10 +16,10 @@ export async function loginAction(email: string, password: string): Promise<{ da
     password,
   });
   if (error) {
-    if (error.message.includes('Invalid login credentials') || error.code === 'invalid_credentials') {
-      logger.info('Login failed with invalid credentials, attempting registration...');
-      return registerAction(email, password);
-    }
+    // if (error.message.includes('Invalid login credentials') || error.code === 'invalid_credentials') {
+    //   logger.info('Login failed with invalid credentials, attempting registration...');
+    //   return registerAction(email, password);
+    // }
     
     logger.error('Login error:', error);
     return { data: { user: null, session: null }, error };
