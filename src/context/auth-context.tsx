@@ -95,31 +95,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const login = async (email: string, password: string) => {
-      // Check mount status at the beginning of async operations
-      if (!isMounted.current) return;
-      setError(null)
-      setLoading(true)
+      setError(null);
+      setLoading(true);
+  
       try {
-        const { data, error: actionError } = await loginAction(email, password) // Rename error variable
+        const { data, error: actionError } = await loginAction(email, password);
+  
         if (actionError) {
-          setError(checkErrorMessageAndGiveTheUserError(actionError.message));
+          const friendly = checkErrorMessageAndGiveTheUserError(actionError.message);
+          setError(friendly);
+          // re‑throw so your page’s `catch` fires
+          throw new Error(friendly);
         }
-        if (isMounted.current) {
-          setUser(data.user);
-          setSession(data.session);
-        }
-      } catch (caughtError: any) {
-          if (isMounted.current) {
-              const message = caughtError?.message ? caughtError.message : 'Failed to login';
-              // setError(message);
-              throw new Error(message);
-          }
+  
+        // success → update user & session
+        setUser(data.user);
+        setSession(data.session);
       } finally {
-        if (isMounted.current) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
-    }
+    };
 
     const register = async (email: string, password: string) => {
       if (!isMounted.current) return;
