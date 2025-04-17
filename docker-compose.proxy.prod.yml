@@ -18,6 +18,10 @@ services:
       - HTTPS_PROXY=http://172.16.2.254:3128
       - NO_PROXY=localhost,127.0.0.1,.docker.internal
       - NODE_TLS_REJECT_UNAUTHORIZED=0
+      - CHOKIDAR_INTERVAL=300
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - FAST_REFRESH=false
     # depends_on:
     #   - db
     volumes:

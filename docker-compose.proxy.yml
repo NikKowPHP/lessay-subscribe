@@ -16,6 +16,10 @@ services:
       - HTTP_PROXY=http://172.16.2.254:3128
       - HTTPS_PROXY=http://172.16.2.254:3128
       - DATABASE_URL=postgresql://myuser:mypassword@db:5432/mydb
+      - CHOKIDAR_INTERVAL=300
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - FAST_REFRESH=false
     depends_on:
       - db
     volumes:
