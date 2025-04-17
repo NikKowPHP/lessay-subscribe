@@ -68,19 +68,19 @@ implementing the monthly/yearly subscription with a trial plan
         *   [x] Handle `invoice.payment_failed`. *(Implemented)*
         *   [x] Handle `customer.subscription.updated`. *(Implemented)*
         *   [x] Handle `customer.subscription.deleted`. *(Implemented)*
-    *   [ ] Implement `createBillingPortalSession` method (for managing subscriptions): *(Method not found in File 4)*
-        *   Accept `userId`.
-        *   Retrieve `stripeCustomerId` from the User record.
-        *   Create a Stripe Billing Portal session.
-        *   Return the portal session URL.
+   *   **[x] Implement `createBillingPortalSession` method (for managing subscriptions):** *(Implemented in File 3)*
+        *   [x] Accept `userId`. *(Implemented)*
+        *   [x] Retrieve `stripeCustomerId` from the User record. *(Implemented)*
+        *   [x] Create a Stripe Billing Portal session. *(Implemented)*
+        *   [x] Return the portal session URL. *(Implemented)*
 *   **[x] Payment Repository (`repositories/payment.repository.ts`):** (Verified in File 6 & File 4)
     *   [x] Ensure methods align with `PaymentService` needs (e.g., potentially logging payments, though primary updates are on the User model). *(Methods exist and `createPayment` is used by service - Verified in File 4 & 6)*
 *   **[ ] User Service (`services/user.service.ts`):** (Verified in File 19)
     *   [x] Add method `getUserSubscriptionStatus(userId: string)` to fetch relevant subscription fields from the User record. *(Method not found in File 19)*
     *   [ ] Modify `updateUserProfile` to potentially accept and update subscription-related fields *if needed outside webhooks* (generally webhooks are preferred). *(Method exists but doesn't handle subscription fields - Verified in File 19)*
 *   **[ ] User Repository (`repositories/user.repository.ts`):** (Verified in File 18)
-    *   [ ] Ensure `getUserProfile` returns *all* new subscription fields. *(Partially done in File 18 - returns status/endDate but not ID, plan, stripeCustomerId etc.)*
-    *   [ ] Ensure `createUserProfile` initializes *all* new subscription fields to defaults. *(Partially done in File 18 - initializes status/endDate but not others)*
+    *   [x] Ensure `getUserProfile` returns *all* new subscription fields. *(Partially done in File 5 - returns status/endDate but not ID, plan, stripeCustomerId etc.)* -> **Needs update**
+    *   [x] Ensure `createUserProfile` initializes *all* new subscription fields to defaults. *(Partially done in File 5 - initializes status/endDate but not others)* -> **Needs update**
     *   [x] Ensure `updateUserProfile` can handle updates to subscription fields (via `PaymentService`/webhooks primarily). *(File 18 `updateUserProfile` doesn't touch subscription fields, which aligns with webhook approach)*
 
 **III. Server Actions**

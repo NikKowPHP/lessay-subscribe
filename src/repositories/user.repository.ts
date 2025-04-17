@@ -1,3 +1,6 @@
+// File 5: /src/repositories/user.repository.ts
+// Updated content for getUserProfile and createUserProfile
+
 import { ILessonRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 import {
@@ -75,13 +78,14 @@ export class UserRepository implements IUserRepository {
 
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        include: { onboarding: true },
+        include: { onboarding: true }, // Include onboarding data
       });
 
       if (!user) {
         return null;
       }
 
+      // Map Prisma User model to UserProfileModel, including ALL subscription fields
       const userProfile: UserProfileModel = {
         id: user.id,
         userId: user.id, // Assuming userId in model is same as id
@@ -97,18 +101,19 @@ export class UserRepository implements IUserRepository {
         initialAssessmentCompleted:
           user.onboarding?.initialAssessmentCompleted ?? false,
 
-        // Subscription fields (directly from User model)
-        subscriptionStatus: user.subscriptionStatus,
-        subscriptionId: user.subscriptionId ?? null,
-        subscriptionPlan: user.subscriptionPlan ?? null,
-        trialStartDate: user.trialStartDate ?? null,
-        trialEndDate: user.trialEndDate ?? null,
-        subscriptionStartDate: user.subscriptionStartDate ?? null,
-        subscriptionEndDate: user.subscriptionEndDate ?? null,
-        billingCycle: user.billingCycle ?? null,
-        paymentMethodId: user.paymentMethodId ?? null,
-        stripeCustomerId: user.stripeCustomerId ?? null,
-        cancelAtPeriodEnd: user.cancelAtPeriodEnd ?? false,
+        // --- Subscription fields (ALL fields mapped) ---
+        subscriptionStatus: user.subscriptionStatus, // Enum, should always be present
+        subscriptionId: user.subscriptionId ?? null, // String?, unique
+        subscriptionPlan: user.subscriptionPlan ?? null, // String?
+        trialStartDate: user.trialStartDate ?? null, // DateTime?
+        trialEndDate: user.trialEndDate ?? null, // DateTime?
+        subscriptionStartDate: user.subscriptionStartDate ?? null, // DateTime?
+        subscriptionEndDate: user.subscriptionEndDate ?? null, // DateTime?
+        stripeCustomerId: user.stripeCustomerId ?? null, // String?, unique
+        cancelAtPeriodEnd: user.cancelAtPeriodEnd ?? false, // Boolean, default: false
+        billingCycle: user.billingCycle ?? null, // String?
+        paymentMethodId: user.paymentMethodId ?? null, // String?
+        // --- End Subscription fields ---
 
         // Timestamps
         createdAt: user.createdAt,
@@ -164,44 +169,53 @@ export class UserRepository implements IUserRepository {
         );
       }
 
-   // Create the user with default subscription values
-   const user = await prisma.user.create({
-    data: {
-      id: userId,
-      email,
-      name: profile.name ?? null, // Add name if provided
-      // Default subscription fields
-      subscriptionStatus: SubscriptionStatus.NONE,
-      subscriptionId: null,
-      subscriptionEndDate: null,
-      subscriptionPlan: null,
-      trialStartDate: null,
-      trialEndDate: null,
-      subscriptionStartDate: null,
-      billingCycle: null,
-      paymentMethodId: null,
-      stripeCustomerId: null,
-      cancelAtPeriodEnd: false,
-      // Create related onboarding record
-      onboarding: {
-        create: {
-          steps: {},
-          completed: false,
-          nativeLanguage: profile.nativeLanguage ?? null,
-          targetLanguage: profile.targetLanguage ?? null,
-          proficiencyLevel: profile.proficiencyLevel ?? null,
-          learningPurpose: profile.learningPurpose ?? null,
-          initialAssessmentCompleted: false,
-        },
-      },
-    },
-    include: {
-      onboarding: true,
-    },
-  });
+      // Create the user with default subscription values
+      const user = await prisma.user.create({
+        data: {
+          id: userId,
+          email,
+          name: profile.name ?? null, // Add name if provided
 
-  // Map the created user back to the UserProfileModel
-  return await this.getUserProfile(user.id) as UserProfileModel; // Re-fetch to ensure consistency
+          // --- Default subscription fields (ALL fields initialized) ---
+          subscriptionStatus: SubscriptionStatus.NONE, // Default enum value
+          subscriptionId: null, // String?, unique
+          subscriptionPlan: null, // String?
+          trialStartDate: null, // DateTime?
+          trialEndDate: null, // DateTime?
+          subscriptionStartDate: null, // DateTime?
+          subscriptionEndDate: null, // DateTime?
+          stripeCustomerId: null, // String?, unique
+          cancelAtPeriodEnd: false, // Boolean, default: false
+          billingCycle: null, // String?
+          paymentMethodId: null, // String?
+          // --- End Default subscription fields ---
+
+          // Create related onboarding record
+          onboarding: {
+            create: {
+              steps: {},
+              completed: false,
+              nativeLanguage: profile.nativeLanguage ?? null,
+              targetLanguage: profile.targetLanguage ?? null,
+              proficiencyLevel: profile.proficiencyLevel ?? null,
+              learningPurpose: profile.learningPurpose ?? null,
+              initialAssessmentCompleted: false,
+            },
+          },
+        },
+        include: {
+          onboarding: true,
+        },
+      });
+
+      // Map the created user back to the UserProfileModel
+      // Re-fetch to ensure consistency and get all fields including defaults
+      const newProfile = await this.getUserProfile(user.id);
+      if (!newProfile) {
+        // This should not happen if creation was successful
+        throw new Error("Failed to retrieve newly created user profile.");
+      }
+      return newProfile;
     } catch (error) {
       logger.error('Error creating user profile:', error);
       throw error;
@@ -223,7 +237,9 @@ export class UserRepository implements IUserRepository {
 
       // User fields
       if ('name' in profile && profile.name !== undefined) userData.name = profile.name;
-      // IMPORTANT: Exclude direct updates to subscription fields managed by webhooks
+
+      // --- IMPORTANT: Exclude ALL subscription fields from direct updates ---
+      // These should only be updated via webhooks from the PaymentService
       const {
           subscriptionStatus, subscriptionId, subscriptionEndDate, subscriptionPlan,
           trialStartDate, trialEndDate, subscriptionStartDate, billingCycle,
@@ -231,10 +247,13 @@ export class UserRepository implements IUserRepository {
           // Onboarding fields handled below
           nativeLanguage, targetLanguage, proficiencyLevel, learningPurpose,
           onboardingCompleted, initialAssessmentCompleted,
-          // Other fields
+          // Other fields (ID, email etc. are usually not updated here)
           id, userId: profileUserId, email, createdAt, updatedAt, learningProgressSummary,
-          ...restOfUserData
+          ...restOfUserData // This should ideally be empty if only 'name' is updatable here
       } = profile;
+
+      // Apply any other non-subscription, non-onboarding user fields if necessary
+      // Object.assign(userData, restOfUserData); // Be cautious with this
 
       // Onboarding fields
       if ('nativeLanguage' in profile && profile.nativeLanguage !== undefined) onboardingData.nativeLanguage = profile.nativeLanguage;
@@ -258,14 +277,13 @@ export class UserRepository implements IUserRepository {
       const user = await prisma.user.update({
         where: { id: userId },
         data: {
-          ...userData, // Update user fields
+          ...userData, // Update user fields (e.g., name)
           // Upsert onboarding data only if there are onboarding updates
           ...(hasOnboardingUpdates && {
              onboarding: {
                upsert: {
                  where: { userId: userId }, // Condition for update
                  create: { // Data for creation if onboarding doesn't exist
-                   // REMOVED userId: userId, // Prisma handles this link automatically
                    steps: {}, // Default empty steps
                    completed: profile.onboardingCompleted ?? false,
                    initialAssessmentCompleted: profile.initialAssessmentCompleted ?? false,
@@ -317,6 +335,7 @@ export class UserRepository implements IUserRepository {
       await prisma.$transaction(async (tx) => {
          // Delete dependent records first in the correct order
          await tx.payment.deleteMany({ where: { userId: userId } });
+         // Delete AudioMetrics linked via Lesson or AssessmentLesson
          await tx.audioMetrics.deleteMany({ where: { OR: [{ lesson: { userId: userId } }, { assessmentLesson: { userId: userId } }] } });
          await tx.lessonStep.deleteMany({ where: { lesson: { userId: userId } } });
          await tx.lesson.deleteMany({ where: { userId: userId } });
