@@ -18,6 +18,10 @@ import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
 }
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message?: string;
+}
 
 export interface SpeechRecognition extends EventTarget {
   new (): SpeechRecognition;
@@ -73,6 +77,7 @@ export default function LessonChat({
   const SILENCE_TIMEOUT_MS = 1000; // 1 second silence detection
   const router = useRouter();
   const recognitionRef = useRef<any>(null);
+  const manuallyStoppedRef = useRef(false); // Flag to track if the user manually stopped recording
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -624,6 +629,9 @@ export default function LessonChat({
 
   // Set up real time speech recognition
   useEffect(() => {
+    let isMounted = true;
+    logger.info('Setting up speech recognition effect...');
+
     if (targetLanguage) {
       // Initialize speech recognition
       try {
@@ -638,7 +646,10 @@ export default function LessonChat({
         recognitionRef.current.interimResults = true;
 
         recognitionRef.current.onstart = () => {
+          if (!isMounted) return;
+          logger.info('Speech Recognition: Started');
           setIsListening(true);
+          manuallyStoppedRef.current = false; // Ensure flag is reset on successful start
         };
 
         recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
@@ -649,27 +660,114 @@ export default function LessonChat({
           const transcript = result[0].transcript;
 
           // If we have debounce timer, clear it
-          if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-          }
+          if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
           // Set user response with the transcript
           setUserResponse(transcript);
         };
 
-        recognitionRef.current.onerror = (event: Event) => {
-          logger.error('Speech recognition error:', event);
-          setIsListening(false);
+        recognitionRef.current.onerror = (
+          event: SpeechRecognitionErrorEvent
+        ) => {
+          // Use specific event type
+          if (!isMounted) return;
+          // Only log the error here. Let onend handle state and restart.
+          logger.error(
+            'Speech recognition error event:',
+            event.error,
+            event.message
+          );
+          // Optionally provide user feedback for critical errors
+          if (
+            event.error !== 'no-speech' &&
+            event.error !== 'audio-capture' &&
+            event.error !== 'not-allowed'
+          ) {
+            setFeedback(
+              `Recognition error: ${event.error}. Please check microphone permissions or network.`
+            );
+          }
+          // NOTE: 'not-allowed' often means the user denied permission permanently. Restarting won't help.
         };
 
         recognitionRef.current.onend = () => {
+          if (!isMounted) {
+            logger.info('Speech Recognition: Ended after component unmounted.');
+            return;
+          }
+
+          const wasManualStop = manuallyStoppedRef.current;
+          const isLessonDone = lessonCompleted; // Capture state at the time of execution
+
+          logger.info(
+            `Speech Recognition: Ended. isListening=${isListening}, manualStop=${wasManualStop}, lessonCompleted=${isLessonDone}`
+          );
+
+          // Always update listening state when it ends
           setIsListening(false);
 
-          // Clear the silence timer when recognition ends
           if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
             silenceTimerRef.current = null;
           }
+
+          // --- Automatic Restart Logic ---
+          if (!wasManualStop && !isLessonDone) {
+            logger.info('Conditions met for automatic restart check.');
+            // Use a small timeout to prevent potential rapid restart loops
+            // and allow the browser state to settle.
+            const restartTimeout = setTimeout(() => {
+              // Check ref and conditions *again* inside timeout, as state might change
+              // and ensure component is still mounted
+              if (
+                isMounted &&
+                recognitionRef.current &&
+                !manuallyStoppedRef.current &&
+                !lessonCompleted
+              ) {
+                logger.info(
+                  'Inside timeout: Attempting to restart recognition...'
+                );
+                try {
+                  recognitionRef.current.start();
+                  // onstart will set isListening back to true if successful
+                } catch (startError: any) {
+                  // Log specific start errors (e.g., InvalidStateError if already started somehow)
+                  logger.error(
+                    'Error restarting recognition in onend timeout:',
+                    startError.name,
+                    startError.message
+                  );
+                  // Ensure state is correct if restart fails
+                  if (isMounted) setIsListening(false);
+                }
+              } else {
+                logger.warn('Inside timeout: Recognition restart aborted.', {
+                  isMounted,
+                  hasRef: !!recognitionRef.current,
+                  isManualNow: manuallyStoppedRef.current, // Check ref value again
+                  isLessonDoneNow: lessonCompleted, // Check state value again
+                });
+                // If it was aborted due to manual stop flag being set *during* the timeout, reset it.
+                if (manuallyStoppedRef.current) {
+                  manuallyStoppedRef.current = false;
+                }
+              }
+            }, 150); // Slightly longer delay (150ms)
+
+            // Store timeout ID for potential cleanup if needed, though unlikely here
+            // restartTimerRef.current = restartTimeout;
+          } else {
+            logger.info(
+              'Speech Recognition: End condition met (Manual Stop or Lesson Completed). Not restarting.'
+            );
+            // Reset the manual stop flag *only if* it was the reason for not restarting
+            if (wasManualStop) {
+              manuallyStoppedRef.current = false;
+              logger.info('Reset manual stop flag.');
+            }
+          }
+          // --- End Automatic Restart Logic ---
         };
       } catch (error) {
         logger.error('Error initializing speech recognition:', error);
@@ -679,10 +777,13 @@ export default function LessonChat({
     // Clean up function
     return () => {
       if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        manuallyStoppedRef.current = true;
         recognitionRef.current.onresult = null;
         recognitionRef.current.onstart = null;
         recognitionRef.current.onend = null;
         recognitionRef.current.onerror = null;
+        recognitionRef.current = null;
       }
 
       // Clear any remaining timers
@@ -696,7 +797,7 @@ export default function LessonChat({
         debounceTimerRef.current = null;
       }
     };
-  }, [targetLanguage]);
+  }, [targetLanguage, lessonCompleted]);
 
   // Add this useEffect to handle silence detection
   useEffect(() => {
@@ -848,10 +949,12 @@ export default function LessonChat({
 
     if (isListening) {
       logger.info('Manual pause triggered.');
+      manuallyStoppedRef.current = true;
       pauseListening();
       pauseRecording(); // Also pause recording when manually pausing listening
     } else {
       logger.info('Manual start triggered.');
+      manuallyStoppedRef.current = false;
       startListening();
       startRecording(); // Also start recording when manually starting listening
     }
