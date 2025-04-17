@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AssessmentLesson,
   AssessmentStep,
@@ -103,6 +103,296 @@ export default function LessonChat({
   // Add state to track if lesson is complete but waiting for manual completion in mock mode
   const [lessonReadyToComplete, setLessonReadyToComplete] = useState(false);
 
+  const stopRecordingCompletely = useCallback(() => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== 'inactive'
+    ) {
+      try {
+        mediaRecorderRef.current.stop(); // onstop handler will set state and process blob
+        logger.info('Recording stopped completely triggered');
+        // setIsRecording(false); // Let onstop handle this
+      } catch (error) {
+        logger.error('Error stopping recording completely:', error);
+        setIsRecording(false); // Ensure state is correct on error
+      }
+    }
+  }, []);
+
+  // Start session recording function
+  const startRecording = useCallback(() => {
+    if (!mediaRecorderRef.current || isRecording) {
+      logger.warn('Media recorder not initialized or already recording');
+      return;
+    }
+    try {
+      if (mediaRecorderRef.current.state === 'inactive') {
+        recordingStartTimeRef.current = Date.now();
+        recordingPausedTimeRef.current = 0; // Reset pause time on new start
+        audioChunksRef.current = []; // Clear previous chunks
+        mediaRecorderRef.current.start(1000); // Collect data every second
+        setIsRecording(true);
+        logger.info('Recording started');
+      } else if (mediaRecorderRef.current.state === 'paused') {
+        mediaRecorderRef.current.resume();
+        // Adjust start time based on pause duration
+        recordingStartTimeRef.current +=
+          Date.now() - recordingPausedTimeRef.current;
+        recordingPausedTimeRef.current = 0; // Reset pause time
+        setIsRecording(true);
+        logger.info('Recording resumed');
+      }
+    } catch (error) {
+      logger.error('Error starting recording:', error);
+      setIsRecording(false);
+    }
+  }, [isRecording]);
+
+  // Pause recording function
+  const pauseRecording = useCallback(() => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === 'recording'
+    ) {
+      try {
+        mediaRecorderRef.current.pause();
+        recordingPausedTimeRef.current = Date.now(); // Record pause time
+        setIsRecording(false);
+        logger.info('Recording paused');
+      } catch (error) {
+        logger.error('Error pausing recording:', error);
+        setIsRecording(false); // Ensure state is correct on error
+      }
+    }
+  }, []);
+
+  const pauseListening = useCallback(() => {
+    if (!recognitionRef.current || !isListening) return;
+    try {
+      recognitionRef.current.stop();
+      logger.info('LessonChat: Paused listening triggered');
+      // setIsListening(false); // onend handles this
+    } catch (error) {
+      logger.error('LessonChat: Error stopping listening', { error });
+      // Ensure state is correct if stop fails unexpectedly
+      setIsListening(false);
+    }
+  }, [isListening]);
+
+  const handleSubmitStep = useCallback(
+    async (step: LessonStep | AssessmentStep, userInput: string) => {
+      try {
+        logger.info(
+          'handleSubmitStep called for step:',
+          step.id,
+          'Type:',
+          step.type,
+          'Input:',
+          userInput
+        );
+
+        // Pause listening and recording *before* processing the response
+        // This prevents capturing feedback audio or silence detection during processing
+        if (isListening) {
+          pauseListening();
+        }
+        if (isRecording) {
+          pauseRecording();
+        }
+
+        // Handle instruction, summary, feedback steps (Auto-advance logic)
+        if (
+          step.type === 'instruction' ||
+          step.type === 'summary' ||
+          step.type === 'feedback'
+        ) {
+          logger.info(
+            `Processing auto-advance for ${step.type} step: ${step.id}`
+          );
+          await onStepComplete(step, 'Acknowledged'); // Mark as seen
+
+          const nextStepIndex = currentStepIndex + 1;
+          logger.info(
+            'Next step index after auto-advance:',
+            nextStepIndex,
+            'Total steps:',
+            lesson.steps.length
+          );
+
+          if (nextStepIndex < lesson.steps.length) {
+            const nextStep = lesson.steps[nextStepIndex];
+            setCurrentStepIndex(nextStepIndex);
+
+            setChatHistory((prev) => [
+              ...prev,
+              // Optional: Add acknowledgment message if desired
+              // { type: 'response', content: 'OK, got it!' },
+              { type: 'prompt', content: nextStep.content },
+            ]);
+            setUserResponse(''); // Clear input for the next step
+            setShouldPlayAudio(true); // Queue audio for the next step
+
+            // --- IMPORTANT ---
+            // Do NOT automatically start listening/recording here.
+            // The audio 'ended' listener for the *new* step's audio will handle that.
+            logger.info(
+              `Advanced to step ${nextStepIndex}. Audio queued. Waiting for audio end to potentially start listening.`
+            );
+          } else {
+            // Last step was non-interactive, complete the lesson
+            logger.info('Last step was non-interactive. Completing lesson.');
+            stopRecordingCompletely(); // Stop recording fully
+            setLessonCompleted(true);
+            // Handle mock mode completion button display
+            if (isMockMode) {
+              setLessonReadyToComplete(true);
+              setChatHistory((prev) => [
+                ...prev,
+                { type: 'prompt', content: 'Lesson complete! (Mock Mode)' },
+              ]);
+            }
+            // Non-mock mode completion is handled by useEffect watching fullSessionRecording
+          }
+          return; // Exit early for non-interactive steps
+        }
+
+        // --- Handle interactive steps (practice, prompt, question, etc.) ---
+        logger.info(
+          `Processing interactive step: ${step.id}, User input: ${userInput}`
+        );
+        const updatedStep = await onStepComplete(step, userInput);
+        logger.info('Step completion result:', updatedStep);
+
+        // Add user response to chat history *before* checking correctness/advancing
+        // This ensures the user sees their submitted response immediately.
+        setChatHistory((prev) => [
+          ...prev,
+          { type: 'response', content: updatedStep.userResponse || userInput },
+        ]);
+        setUserResponse(''); // Clear input field immediately after submission
+
+        if (!updatedStep.correct) {
+          setFeedback('Try again!'); // Provide feedback for incorrect response
+          // Do NOT advance. Keep currentStepIndex the same.
+          // Set flag to replay audio for the *current* step if needed,
+          // or simply wait for user to try again (manual mic click or typing).
+          // Let's assume user needs to manually retry for now.
+          // setShouldPlayAudio(true); // Replay current step audio? Maybe too intrusive.
+          logger.info(`Step ${step.id} incorrect. Waiting for user retry.`);
+          // Re-enable listening/recording *if* needed for retry?
+          // For now, let's require manual re-activation via button click.
+          return; // Exit early if incorrect
+        }
+
+        // --- Correct Response Handling ---
+        setFeedback(''); // Clear feedback on correct
+
+        // Check if this was a forced correct due to max attempts
+        if (
+          updatedStep.attempts >= updatedStep.maxAttempts &&
+          updatedStep.correct
+        ) {
+          logger.info('Step completed via max attempts override');
+          // Queue the expected answer audio if available
+          const audioUrlToAdd = updatedStep.expectedAnswerAudioUrl;
+          if (audioUrlToAdd) {
+            setAudioQueue((prev) => [...prev, audioUrlToAdd]);
+            logger.info('Queued expected answer audio after max attempts.');
+          }
+        }
+
+        // Find the next step
+        const nextStepIndex = currentStepIndex + 1; // Calculate based on current index
+
+        if (nextStepIndex < lesson.steps.length) {
+          const nextStep = lesson.steps[nextStepIndex];
+          logger.info(
+            `Advancing to next step: ${nextStep.id} (Index: ${nextStepIndex})`
+          );
+          setCurrentStepIndex(nextStepIndex); // Advance the step index
+
+          // Add next prompt to chat history
+          setChatHistory((prev) => [
+            ...prev,
+            { type: 'prompt', content: nextStep.content },
+          ]);
+
+          // Set flag to play audio for the new step
+          setShouldPlayAudio(true);
+
+          // --- IMPORTANT ---
+          // Do NOT automatically start listening/recording here.
+          // The audio 'ended' listener for the *new* step's audio will handle that.
+          logger.info(
+            `Advanced to step ${nextStepIndex}. Audio queued. Waiting for audio end to potentially start listening.`
+          );
+        } else {
+          // Last step was interactive and correct, complete the lesson
+          logger.info(
+            'Last step was interactive and correct. Completing lesson.'
+          );
+          stopRecordingCompletely(); // Stop recording fully
+          setLessonCompleted(true);
+
+          // Handle mock mode completion button display
+          if (isMockMode) {
+            setLessonReadyToComplete(true);
+            setChatHistory((prev) => [
+              ...prev,
+              { type: 'prompt', content: 'Lesson complete! (Mock Mode)' },
+            ]);
+            logger.info('Lesson ready to complete in mock mode.');
+          }
+          // Non-mock mode completion is handled by useEffect watching fullSessionRecording
+        }
+      } catch (error) {
+        setFeedback('Error processing response');
+        logger.error('LessonChat: Error in handleSubmitStep', { error });
+        // Ensure listening/recording state is reset on error
+        if (isListening) pauseListening();
+        if (isRecording) pauseRecording(); // Use pause instead of stop completely on error? Maybe pause is better.
+      }
+    },
+    [
+      // Dependencies for handleSubmitStep
+      currentStepIndex,
+      lesson.steps,
+      onStepComplete,
+      isListening,
+      isRecording,
+      pauseListening,
+      pauseRecording,
+      stopRecordingCompletely,
+      isMockMode,
+      // Add other state setters used inside if they aren't stable refs/dispatchers
+      setChatHistory,
+      setUserResponse,
+      setShouldPlayAudio,
+      setFeedback,
+      setLessonCompleted,
+      setLessonReadyToComplete,
+      setAudioQueue, // Needed for max attempts audio queueing
+      setCurrentStepIndex,
+    ]
+  );
+
+  const startListening = useCallback(() => {
+    if (!recognitionRef.current || isListening) return;
+    try {
+      recognitionRef.current.start();
+      logger.info('LessonChat: Start listening triggered');
+      // setIsListening(true); // onstart handles this
+    } catch (error) {
+      logger.error('LessonChat: Error starting listening', { error });
+      // It might already be started, log a warning
+      if ((error as DOMException).name === 'InvalidStateError') {
+        logger.warn('LessonChat: Recognition already started');
+      } else {
+        setIsListening(false); // Ensure state is correct if start fails unexpectedly
+      }
+    }
+  }, [isListening]);
+
   // Rehydrate chat history
   useEffect(() => {
     if (
@@ -183,51 +473,115 @@ export default function LessonChat({
 
   // Audio playback
   useEffect(() => {
-    logger.info('lesson.steps useEffect', lesson.steps);
     const handleAudioEnded = () => {
+      const wasLastInQueue = audioQueue.length === 1; // Check *before* update
+
       // Remove the played audio from queue and reset playing state
       setAudioQueue((prevQueue) => prevQueue.slice(1));
       setIsPlayingAudio(false);
 
-      logger.info('audioQueue', audioQueue);
-      logger.info('initialUserInteractionDone', initialUserInteractionDone);
-      logger.info('currentStepIndex', currentStepIndex);
-      logger.info('lesson.steps', lesson.steps);
+      logger.info(
+        'Audio ended. Queue length was:',
+        wasLastInQueue ? 1 : audioQueue.length,
+        'Initial interaction done:',
+        initialUserInteractionDone
+      );
 
-      // const currentStep = lesson.steps[currentStepIndex];
-      // logger.info('currentStep type ', currentStep.type);
-      // Auto-advance for certain step types when audio finishes
-      if (
-        initialUserInteractionDone &&
-        !isPlayingAudio && // No more audio in queue
-        lesson.steps
-      ) {
-        const currentStep = lesson.steps[currentStepIndex];
-        logger.info('currentStep type 123 ', currentStep.type);
-        // Auto-advance non-interactive steps when audio finishes
-        if (
-          currentStep.type === 'instruction' ||
-          currentStep.type === 'summary' ||
-          currentStep.type === 'feedback'
-        ) {
+      if (initialUserInteractionDone && lesson.steps) {
+        // --- NEW LOGIC: Auto-start listening/recording for the NEXT interactive step ---
+        if (wasLastInQueue) {
+          // Only check if the queue for the *current* step is now empty
+          const nextStepIndex = currentStepIndex + 1;
           logger.info(
-            `Auto-advancing ${currentStep.type} step after audio playback`
+            'Checking next step for auto-start. Next index:',
+            nextStepIndex
           );
-          handleSubmitStep(currentStep, userResponse);
+
+          if (nextStepIndex < lesson.steps.length) {
+            const nextStep = lesson.steps[nextStepIndex];
+            logger.info('Next step type:', nextStep.type);
+
+            // Check if the *next* step requires interaction
+            if (
+              nextStep.type !== 'instruction' &&
+              nextStep.type !== 'summary' &&
+              nextStep.type !== 'feedback'
+            ) {
+              logger.info(
+                'Next step is interactive. Starting listening and recording automatically.'
+              );
+              // Start listening and recording if not already active
+              if (!isListening) {
+                startListening();
+              }
+              if (!isRecording) {
+                startRecording();
+              }
+            } else {
+              logger.info(
+                'Next step is non-interactive. Not starting listening/recording automatically.'
+              );
+              // Optional: Explicitly pause if needed, though should happen naturally when step advances
+              // if (isListening) pauseListening();
+              // if (isRecording) pauseRecording();
+            }
+          } else {
+            logger.info('No next step found (end of lesson).');
+            // End of lesson, recording should be stopped by completion logic
+          }
         }
+        // --- END NEW LOGIC ---
+
+        // --- ORIGINAL LOGIC: Auto-advance the *CURRENT* non-interactive step ---
+        // This should run regardless of the *next* step's type, but only if the current step's audio queue is empty
+        if (wasLastInQueue) {
+          const currentStep = lesson.steps[currentStepIndex];
+          logger.info(
+            'Checking current step for auto-advance. Type:',
+            currentStep.type
+          );
+          if (
+            currentStep.type === 'instruction' ||
+            currentStep.type === 'summary' ||
+            currentStep.type === 'feedback'
+          ) {
+            logger.info(
+              `Auto-advancing current ${currentStep.type} step after audio playback`
+            );
+            // Ensure handleSubmitStep is called correctly
+            handleSubmitStep(currentStep, userResponse || 'Acknowledged'); // Pass current userResponse or default
+          }
+        }
+        // --- END ORIGINAL LOGIC ---
       }
     };
 
-    if (audioRef.current) {
-      audioRef.current.addEventListener('ended', handleAudioEnded);
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      audioElement.addEventListener('ended', handleAudioEnded);
+      logger.info('Added audio ended listener');
     }
 
     return () => {
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('ended', handleAudioEnded);
+      if (audioElement) {
+        audioElement.removeEventListener('ended', handleAudioEnded);
+        logger.info('Removed audio ended listener');
       }
     };
-  }, [audioQueue, currentStepIndex, initialUserInteractionDone, lesson.steps]);
+  }, [
+    // Dependencies needed for the logic within handleAudioEnded:
+    audioQueue, // To check length *before* update
+    currentStepIndex,
+    initialUserInteractionDone,
+    lesson.steps,
+    isListening, // To check if already listening
+    isRecording, // To check if already recording
+    startListening, // Function ref
+    startRecording, // Function ref
+    handleSubmitStep, // Function ref for auto-advance
+    userResponse, // Needed for handleSubmitStep
+    // Removed pauseListening/pauseRecording as they aren't explicitly called here now
+  ]);
 
   // Audio playback
   useEffect(() => {
@@ -481,216 +835,25 @@ export default function LessonChat({
     };
   }, []);
 
-  // Start session recording function
-  const startRecording = () => {
-    try {
-      if (!mediaRecorderRef.current) {
-        logger.warn('Media recorder not initialized');
-        return;
-      }
-
-      if (mediaRecorderRef.current.state === 'inactive') {
-        recordingStartTimeRef.current = Date.now();
-        mediaRecorderRef.current.start(1000); // Collect data every second
-        setIsRecording(true);
-        logger.info('Recording started');
-      } else if (mediaRecorderRef.current.state === 'paused') {
-        mediaRecorderRef.current.resume();
-        recordingPausedTimeRef.current +=
-          Date.now() - recordingPausedTimeRef.current;
-        setIsRecording(true);
-        logger.info('Recording resumed');
-      }
-    } catch (error) {
-      logger.error('Error starting recording:', error);
-    }
-  };
-
-  // Pause recording function
-  const pauseRecording = () => {
-    try {
-      if (
-        mediaRecorderRef.current &&
-        mediaRecorderRef.current.state === 'recording'
-      ) {
-        mediaRecorderRef.current.pause();
-        recordingPausedTimeRef.current = Date.now();
-        setIsRecording(false);
-        logger.info('Recording paused');
-      }
-    } catch (error) {
-      logger.error('Error pausing recording:', error);
-    }
-  };
-  const stopRecordingCompletely = () => {
-    try {
-      if (
-        mediaRecorderRef.current &&
-        mediaRecorderRef.current.state !== 'inactive'
-      ) {
-        mediaRecorderRef.current.stop();
-        setIsRecording(false);
-        const recordingTime =
-          Date.now() -
-          recordingStartTimeRef.current -
-          recordingPausedTimeRef.current;
-        logger.info('Recording stopped completely', {
-          duration: recordingTime,
-        });
-      }
-    } catch (error) {
-      logger.error('Error stopping recording:', error);
-    }
-  };
-
-  const handleSubmitStep = async (
-    step: LessonStep | AssessmentStep,
-    userInput: string
-  ) => {
-    try {
-      // setFeedback('Processing...');
-      logger.info('Processing response:', userInput);
-
-      // For instruction and summary steps, just acknowledge them without requiring user response
-      if (
-        step.type === 'instruction' ||
-        step.type === 'summary' ||
-        step.type === 'feedback'
-      ) {
-        // Mark as seen/acknowledged
-        await onStepComplete(step, 'Acknowledged');
-
-        // Move to the next step
-        const nextStepIndex = currentStepIndex + 1;
-
-        logger.info('all steps ', lesson.steps);
-
-        if (nextStepIndex < lesson.steps.length) {
-          setCurrentStepIndex(nextStepIndex);
-          const nextStep = lesson.steps[nextStepIndex];
-
-          // Add acknowledgment and next prompt to chat history
-          setChatHistory((prev) => [
-            ...prev,
-            // { type: 'response', content: 'OK, got it!' },
-            { type: 'prompt', content: nextStep.content },
-          ]);
-
-          setUserResponse('');
-          setShouldPlayAudio(true);
-        } else {
-          // If this was the last step, complete the lesson
-          stopRecordingCompletely();
-          setLessonCompleted(true);
-
-          if (!isMockMode) {
-        
-            setLessonReadyToComplete(true);
-            stopRecordingCompletely();
-          }
-        }
-        return;
-      }
-
-      // Original handling for other step types...
-      const updatedStep = await onStepComplete(step, userInput);
-      if (!updatedStep.correct) {
-        setFeedback('');
-        setUserResponse('');
-        return;
-      }
-
-      // Check if this was a forced correct due to max attempts
-      if (
-        updatedStep.attempts >= updatedStep.maxAttempts &&
-        updatedStep.correct
-      ) {
-        logger.info('Step completed via max attempts override');
-        const audioUrlToAdd = updatedStep.expectedAnswerAudioUrl;
-        if (audioUrlToAdd) {
-          setAudioQueue((prev) => [...prev, audioUrlToAdd]);
-        }
-      }
-
-      // Use step.stepNumber instead of index for reliability
-      const nextStep = lesson.steps.find(
-        (s) => s.stepNumber === step.stepNumber + 1
-      );
-
-      if (nextStep) {
-        setCurrentStepIndex((prev) => prev + 1);
-        setUserResponse('');
-        // Add next prompt immediately
-        setChatHistory((prev) => [
-          ...prev,
-          { type: 'response', content: updatedStep.userResponse || userInput },
-          { type: 'prompt', content: nextStep.content },
-        ]);
-
-        // Set flag to play audio for the new step (will only play if user interaction happened)
-        setShouldPlayAudio(true);
-
-        startListening();
-      } else {
-        stopRecordingCompletely();
-        setLessonCompleted(true);
-
-        // Check if we're in mock mode
-        if (isMockMode) {
-          // Set state to show completion button instead of auto-completing
-          setLessonReadyToComplete(true);
-          logger.info('Lesson ready to complete');
-          setChatHistory((prev) => [
-            ...prev,
-            {
-              type: 'response',
-              content: updatedStep.userResponse || userInput,
-            },
-            {
-              type: 'prompt',
-              content:
-                'Lesson complete! You can now listen to your recording or continue.',
-            },
-          ]);
-        } else {
-        }
-      }
-    } catch (error) {
-      setFeedback('Error processing response');
-      logger.error('LessonChat: Error completing step', { error });
-    }
-  };
-
-  const startListening = () => {
-    if (!recognitionRef.current) return;
-    try {
-      recognitionRef.current.start();
-      logger.info('LessonChat: Start listening');
-    } catch (error) {
-      logger.error('LessonChat: Error starting listening', { error });
-      logger.warn('LessonChat: Recognition already started');
-    }
-  };
-
-  const pauseListening = () => {
-    if (!recognitionRef.current) return;
-    recognitionRef.current.stop();
-    logger.info('LessonChat: Paused listening');
-  };
-
   const toggleListening = () => {
-    // Set the user interaction flag to true
+    // Set the user interaction flag to true on the first manual click
     if (!initialUserInteractionDone) {
       setInitialUserInteractionDone(true);
+      // Trigger audio playback for the *current* step immediately after interaction
       setShouldPlayAudio(true);
+      logger.info(
+        'Initial user interaction detected. Enabling audio playback.'
+      );
     }
 
     if (isListening) {
+      logger.info('Manual pause triggered.');
       pauseListening();
-      pauseRecording();
+      pauseRecording(); // Also pause recording when manually pausing listening
     } else {
+      logger.info('Manual start triggered.');
       startListening();
-      startRecording();
+      startRecording(); // Also start recording when manually starting listening
     }
   };
 
@@ -698,10 +861,20 @@ export default function LessonChat({
   const handleSubmit = () => {
     if (!initialUserInteractionDone) {
       setInitialUserInteractionDone(true);
+      // Optionally trigger audio here too if Enter is the first interaction
+      // setShouldPlayAudio(true);
     }
 
-    const currentStep = lesson.steps[currentStepIndex] as LessonStep;
-    handleSubmitStep(currentStep, userResponse);
+    const currentStep = lesson.steps[currentStepIndex];
+    if (currentStep && userResponse.trim()) {
+      // Only submit if there's a response
+      logger.info('Manual submit triggered (e.g., Enter key)');
+      handleSubmitStep(currentStep, userResponse);
+    } else {
+      logger.warn(
+        'Manual submit attempted with no response or no current step.'
+      );
+    }
   };
 
   const handleMockResponse = (forStep: boolean) => {
@@ -776,14 +949,17 @@ export default function LessonChat({
     // Reset the ready state
     setLessonReadyToComplete(false);
     // Call onComplete ONLY when the button is clicked in mock mode
-    if (fullSessionRecording) { // Ensure recording is available
-        onComplete(fullSessionRecording);
+    if (fullSessionRecording) {
+      // Ensure recording is available
+      onComplete(fullSessionRecording);
     } else {
-        logger.warn("Complete Lesson clicked in mock mode, but no recording available yet.");
-        // Optionally call onComplete with null or handle differently
-        onComplete(null);
+      logger.warn(
+        'Complete Lesson clicked in mock mode, but no recording available yet.'
+      );
+      // Optionally call onComplete with null or handle differently
+      onComplete(null);
     }
-};
+  };
 
   // Add this useEffect to trigger onComplete when recording is ready
   useEffect(() => {
@@ -833,7 +1009,7 @@ export default function LessonChat({
             style={{
               width: `${((currentStepIndex + 1) / lesson.steps.length) * 100}%`,
             }}
-            data-testid="progress-bar-indicator" 
+            data-testid="progress-bar-indicator"
           ></div>
         </div>
 
@@ -851,7 +1027,7 @@ export default function LessonChat({
           onToggleListening={toggleListening}
           onSubmit={handleSubmit}
           disableSubmit={!userResponse || loading}
-          disableSkip={ loading}
+          disableSkip={loading}
           onUpdateResponse={handleUpdateResponse}
           onSkip={handleSkip}
         />

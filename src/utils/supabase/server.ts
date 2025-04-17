@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 import logger from '../logger';
 import { Session, SignInWithOAuthCredentials, SignInWithPasswordCredentials, SignUpWithPasswordCredentials, User } from '@supabase/supabase-js';
 
-const MOCK_USER_ID = 'mock-user-id-12345';
+const MOCK_USER_ID = 'mock-user-id';
 const MOCK_USER_EMAIL = 'dev@example.com';
 const mockUser: User = {
   id: MOCK_USER_ID,
