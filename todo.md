@@ -249,19 +249,25 @@ This list provides a detailed plan. Remember to handle loading states and errors
 
 
 
+
 # FIX
 - [ ] sign up is not working
 - [x] lesson chat refreeshes 
 - [x] speech recognition should never stop once initiated
 - [ ] button start listening is never disabled 
-- [ ] delay webspeech after audio queue is empty
-- [ ] speech recognition should not restart if the user manually stops it FINISH
-- [ ] media recorder fires only on start listening event 
+- [x] delay webspeech after audio queue is empty
+- [x] speech recognition should not restart if the user manually stops it FINISH
+- [x] media recorder fires only on start listening event and should be paused along with speech recognition
 - [x] on page rehydrating do not populate the user answer if the step is not interactive 
+- [x] only correct user answers gets added to the chat history 
+- [x] fix issue with leson generation : issue 1 
+- [ ] the lesson generation prompt is not properly constructed
+- [ ] user delete all data is not working properly
 
 ## test fixes
 - [ ] speech recognition should never stop once initiated
 - [ ] speech recognition should not restart if the user manually stops it FINISH
 - [ ] media recorder fires only on start listening event 
 - [ ] on page rehydrating do not populate the user answer if the step is not interactive 
-
+- [ ] only correct user answers gets added to the chat history 
+- [ ] user info request is being populated

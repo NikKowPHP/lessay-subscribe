@@ -42,12 +42,12 @@ class Logger {
   }
 
   debug(message: string, ...args: unknown[]): void {
-    if (!this.isProduction) {
+    // if (!this.isProduction) {
       console.debug(message, ...args);
-    } else {
+    // } else {
       // Optionally, warnings can also be logged to Supabase in a similar fashion if needed.
       console.log(`DEBUG : ${message}`, ...args);
-    }
+    // }
   }
 
   info(message: string, ...args: unknown[]): void {

@@ -15,7 +15,9 @@ export const MockLessonGeneratorService = {
     language: string = "English"
   ) {
     logger.info(`Generating audio for step and language: ${content} ${language}`);
-    return "/audio-test.mp3";
+    // 1-second silent audio in base64 WAV format
+    const base64Audio = 'UklGRiwAAABXQVZFZm10IBAAAAABAAEARKwAAIhUAAABAAgAZGF0YRIwAAAC';
+    return base64Audio
   },
   generateLesson: async function(topic: string, targetLanguage: string, difficultyLevel: string) {
     // Combined list of all lessons (initial + advanced)

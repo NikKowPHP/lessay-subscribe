@@ -312,7 +312,7 @@ export default class LessonService {
     return this.lessonRepository.deleteLesson(lessonId);
   }
 
-  private constructAdaptiveRequest(assessment: AssessmentLesson): any {
+  private constructAdaptiveRequest(assessment: AssessmentLesson, onboardingData: OnboardingModel): any {
     if (!assessment) {
       return undefined;
     }
@@ -326,6 +326,14 @@ export default class LessonService {
         summary: assessment.summary || '',
       };
     }
+    const userInfo = {
+      targetLanguage: onboardingData.targetLanguage || this.lessonConfig.defaultLanguage,
+      proficiencyLevel: onboardingData.proficiencyLevel?.toLowerCase() || this.lessonConfig.defaultProficiency,
+      learningPurpose: onboardingData.learningPurpose || this.lessonConfig.defaultPurpose,
+      sourceLanguage: onboardingData.nativeLanguage || 'English',
+    };
+// TODO: FINISH
+    logger.debug('constructAdaptiveRequest', { userInfo });
 
     const audioMetrics = assessment.audioMetrics;
     return {
@@ -347,6 +355,7 @@ export default class LessonService {
         suggestedTopics: audioMetrics.suggestedTopics,
         proficiencyLevel: audioMetrics.proficiencyLevel,
       },
+      userInfo,
       proposedTopics: assessment.proposedTopics || [],
       summary: assessment.summary || '',
     };
@@ -460,7 +469,7 @@ export default class LessonService {
     const languageConfig = this.getLanguageConfig(onboardingData);
 
     const assessmentTopics = assessment.proposedTopics || [];
-    const adaptiveRequest = this.constructAdaptiveRequest(assessment);
+    const adaptiveRequest = this.constructAdaptiveRequest(assessment, onboardingData);
     const learningPurposeTopics = this.getTopicsFromLearningPurpose(
       languageConfig.learningPurpose
     );

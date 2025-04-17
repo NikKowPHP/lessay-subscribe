@@ -44,7 +44,7 @@ export interface ILessonGeneratorService {
 
 class LessonGeneratorService implements ILessonGeneratorService {
   private aiService: IAIService;
-  private useMock: boolean;
+  private useLessonGeneratorMock: boolean;
   private useAudioGeneratorMock: boolean;
   private useAudioUploadMock: boolean;
   private ttsService: ITTS;
@@ -59,12 +59,12 @@ class LessonGeneratorService implements ILessonGeneratorService {
     this.ttsService = ttsService;
     this.uploadFunction = uploadFunction;
     
-    this.useMock = process.env.NEXT_PUBLIC_MOCK_LESSON_GENERATOR === 'true';
-    // this.useMock = false;
+    this.useLessonGeneratorMock = process.env.NEXT_PUBLIC_MOCK_LESSON_GENERATOR === 'true';
+    // this.useLessonGeneratorMock = false;
     this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR === 'true';
     this.useAudioUploadMock = process.env.NEXT_PUBLIC_USE_AUDIO_UPLOAD_MOCK === 'true';
     logger.info('LessonGeneratorService initialized', { 
-      useMock: this.useMock,
+      useLessonGeneratorMock: this.useLessonGeneratorMock,
       useAudioGeneratorMock: this.useAudioGeneratorMock,
       useAudioUploadMock: this.useAudioUploadMock
     });
@@ -80,10 +80,10 @@ class LessonGeneratorService implements ILessonGeneratorService {
   ): Promise<Record<string, unknown>> {
     // Derive effective values from adaptive request
     const effectiveTopic = adaptiveRequest?.focusTopic || topic;
-    const effectiveTargetLanguage = adaptiveRequest?.userInfo.targetLanguage || targetLanguage;
-    const effectiveSourceLanguage = adaptiveRequest?.userInfo.nativeLanguage || sourceLanguage;
+    const effectiveTargetLanguage = adaptiveRequest?.userInfo?.targetLanguage || targetLanguage;
+    const effectiveSourceLanguage = adaptiveRequest?.userInfo?.nativeLanguage || sourceLanguage;
     const effectiveDifficulty = adaptiveRequest?.overallProgress?.estimatedProficiencyLevel || 
-                              adaptiveRequest?.userInfo.proficiencyLevel || 
+                              adaptiveRequest?.userInfo?.proficiencyLevel || 
                               difficultyLevel;
 
     logger.info('Generating adaptive lesson', {
@@ -106,7 +106,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
 
     let aiResponse: Record<string, unknown> | Record<string, unknown>[] = [];
     try {
-      if (this.useMock) {
+      if (this.useLessonGeneratorMock) {
         logger.info('Using mock lesson generator for topic:', effectiveTopic);
         const mockLesson = await MockLessonGeneratorService.generateLesson(
           effectiveTopic,
@@ -138,7 +138,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
         lessonsArray.map((lesson) => this.validateLessonsResponse(lesson));
       } catch (error) {
         logger.error('Error validating lessons response:', { error });
-        if (!this.useMock) {
+        if (!this.useLessonGeneratorMock) {
           aiResponse = await retryOperation(() =>
             this.aiService.generateContent(
               '', // No file URI needed
@@ -530,7 +530,7 @@ class LessonGeneratorService implements ILessonGeneratorService {
     try {
       let aiResponse;
       
-      if (this.useMock) {
+      if (this.useLessonGeneratorMock) {
         logger.info('Using mock data for lesson completion results');
         // Mock results for testing
         aiResponse = {
