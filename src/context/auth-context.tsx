@@ -87,6 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }, [router, supabase]);
   
+    const checkErrorMessageAndGiveTheUserError = (errorMessage: string) => {
+      if (errorMessage.includes('Invalid login credentials') || errorMessage.includes('invalid_credentials')) {
+        return 'Invalid credentials. Please try again or sign up.';
+      }
+      return errorMessage;
+    }
 
     const login = async (email: string, password: string) => {
       // Check mount status at the beginning of async operations
@@ -96,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data, error: actionError } = await loginAction(email, password) // Rename error variable
         if (actionError) {
-          setError(actionError.message);
+          setError(checkErrorMessageAndGiveTheUserError(actionError.message));
         }
         if (isMounted.current) {
           setUser(data.user);
