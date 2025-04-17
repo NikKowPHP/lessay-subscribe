@@ -1,4 +1,5 @@
-// File: src/services/payment.service.ts
+// File 3: /src/services/payment.service.ts
+// (Existing imports and code...)
 import Stripe from 'stripe';
 import logger from '@/utils/logger';
 import { PaymentStatus, SubscriptionStatus, User } from '@prisma/client'; // Import necessary enums/types
@@ -27,13 +28,8 @@ export class PaymentService {
     this.paymentRepository = paymentRepository;
     // Stripe initialization check is handled above
   }
-  /**
-    * Creates a Stripe Checkout Session for initiating a subscription.
-    * Assumes the trial period (e.g., 7 days) is configured on the Stripe Price object.
-    * @param userId - The ID of the user subscribing.
-    * @param product - Details including the Stripe Price ID.
-    * @returns The session ID for redirecting the user to Stripe Checkout.
-    */
+
+  // --- Existing createCheckoutSession method ---
   async createCheckoutSession(userId: string, product: SubscriptionProductDetails): Promise<string> {
     logger.info(`Creating checkout session for user ${userId}, price ${product.stripePriceId}`);
 
@@ -96,6 +92,19 @@ export class PaymentService {
         }
       };
 
+      // --- Add Stripe Customer ID if it exists ---
+      if (user.stripeCustomerId) {
+        sessionParams.customer = user.stripeCustomerId;
+      } else {
+        // If no Stripe Customer ID, create one during checkout
+        sessionParams.customer_creation = 'always'; // Or 'if_required'
+        // Optionally add metadata to the customer
+        sessionParams.customer_update = {
+          metadata: { userId: userId }
+        };
+      }
+      // --- End Add Stripe Customer ID ---
+
       const session = await stripe.checkout.sessions.create(sessionParams);
       logger.info(`Stripe Checkout Session created: ${session.id} for user ${userId}`);
 
@@ -110,12 +119,7 @@ export class PaymentService {
     }
   }
 
-  /**
-   * Handles incoming Stripe webhooks related to subscriptions.
-   * @param payload - The raw request body from Stripe.
-   * @param signature - The value of the 'stripe-signature' header.
-   * @returns True if handled successfully, throws error otherwise.
-   */
+  // --- Existing handleWebhook method ---
   async handleWebhook(payload: Buffer | string, signature: string | string[] | undefined): Promise<boolean> {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
@@ -142,13 +146,14 @@ export class PaymentService {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.client_reference_id;
       const subscriptionId = session.subscription;
+      const stripeCustomerId = session.customer; // Get customer ID
 
       if (session.mode !== 'subscription' || !userId || !subscriptionId || typeof subscriptionId !== 'string') {
         logger.warn(`Ignoring checkout.session.completed: Invalid mode, missing userId, or subscriptionId.`, { sessionId: session.id });
         return true; // Acknowledge but don't process invalid data
       }
 
-      logger.info(`Checkout session completed for user ${userId}, subscription ${subscriptionId}, payment status ${session.payment_status}`);
+      logger.info(`Checkout session completed for user ${userId}, subscription ${subscriptionId}, customer ${stripeCustomerId}, payment status ${session.payment_status}`);
 
       try {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
@@ -156,7 +161,8 @@ export class PaymentService {
           userId,
           subscriptionId,
           subscription.status, // Will be 'trialing' or 'active'
-          subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null
+          subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+          typeof stripeCustomerId === 'string' ? stripeCustomerId : null // Pass customer ID
         );
 
         // Optional: Create Payment record for initial setup/payment if applicable
@@ -187,6 +193,7 @@ export class PaymentService {
       const invoice = event.data.object as Stripe.Invoice;
       const subscriptionId = invoice.subscription;
       const userId = await this.getUserIdFromInvoice(invoice);
+      const stripeCustomerId = invoice.customer; // Get customer ID
 
       if (!subscriptionId || typeof subscriptionId !== 'string' || !userId) {
         logger.warn('Webhook invoice.payment_succeeded missing subscription ID or userId', { invoiceId: invoice.id });
@@ -205,7 +212,8 @@ export class PaymentService {
           userId,
           subscriptionId,
           subscription.status, // Should be 'active'
-          subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null
+          subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+          typeof stripeCustomerId === 'string' ? stripeCustomerId : null // Pass customer ID
         );
 
         // Optional: Create Payment record for this recurring payment
@@ -236,6 +244,7 @@ export class PaymentService {
       const invoice = event.data.object as Stripe.Invoice;
       const subscriptionId = invoice.subscription;
       const userId = await this.getUserIdFromInvoice(invoice);
+      const stripeCustomerId = invoice.customer; // Get customer ID
 
       if (!subscriptionId || typeof subscriptionId !== 'string' || !userId) {
         logger.warn('Webhook invoice.payment_failed missing subscription ID or userId', { invoiceId: invoice.id });
@@ -250,7 +259,8 @@ export class PaymentService {
           userId,
           subscriptionId,
           subscription.status,
-          subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null // Keep end date for potential reactivation
+          subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null, // Keep end date for potential reactivation
+          typeof stripeCustomerId === 'string' ? stripeCustomerId : null // Pass customer ID
         );
         // Optionally create a FAILED payment record
         if (invoice.payment_intent && typeof invoice.payment_intent === 'string') {
@@ -276,6 +286,7 @@ export class PaymentService {
     if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as Stripe.Subscription;
       const userId = await this.getUserIdFromSubscription(subscription);
+      const stripeCustomerId = subscription.customer; // Get customer ID
 
       if (!userId) {
         logger.warn(`Webhook ${event.type} could not determine userId`, { subscriptionId: subscription.id });
@@ -290,7 +301,13 @@ export class PaymentService {
           ? new Date(subscription.canceled_at * 1000)
           : (subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null); // Otherwise use period end
 
-        await this.updateUserSubscriptionStatus(userId, subscription.id, stripeStatus, endDate);
+        await this.updateUserSubscriptionStatus(
+            userId,
+            subscription.id,
+            stripeStatus,
+            endDate,
+            typeof stripeCustomerId === 'string' ? stripeCustomerId : null // Pass customer ID
+        );
       } catch (error) {
         logger.error(`Error processing ${event.type} for sub ${subscription.id}:`, error);
         return true; // Acknowledge
@@ -342,6 +359,17 @@ export class PaymentService {
       }
     }
 
+    // 4. Fallback: Query User table by stripeCustomerId if available
+    if (invoice.customer && typeof invoice.customer === 'string') {
+        try {
+            const user = await prisma.user.findUnique({ where: { stripeCustomerId: invoice.customer } });
+            if (user) return user.id;
+        } catch (dbError) {
+            logger.error(`DB error looking up user by stripeCustomerId ${invoice.customer}`, dbError);
+        }
+    }
+
+
     logger.warn(`Could not determine userId for invoice ${invoice.id}`);
     return null;
   }
@@ -361,6 +389,17 @@ export class PaymentService {
         logger.warn(`Could not retrieve customer ${subscription.customer} during userId lookup for subscription ${subscription.id}`, error);
       }
     }
+
+    // 3. Fallback: Query User table by stripeCustomerId if available
+    if (subscription.customer && typeof subscription.customer === 'string') {
+        try {
+            const user = await prisma.user.findUnique({ where: { stripeCustomerId: subscription.customer } });
+            if (user) return user.id;
+        } catch (dbError) {
+            logger.error(`DB error looking up user by stripeCustomerId ${subscription.customer}`, dbError);
+        }
+    }
+
     logger.warn(`Could not determine userId for subscription ${subscription.id}`);
     return null;
   }
@@ -368,18 +407,21 @@ export class PaymentService {
 
   /**
    * Updates the user's subscription details in the database based on Stripe status.
+   * Also updates the stripeCustomerId if provided.
    */
   private async updateUserSubscriptionStatus(
     userId: string,
     stripeSubscriptionId: string,
     stripeStatus: Stripe.Subscription.Status | 'deleted',
-    periodEndDate?: Date | null
+    periodEndDate?: Date | null,
+    stripeCustomerId?: string | null // Added stripeCustomerId
   ): Promise<void> {
-    logger.info(`Updating subscription status for user ${userId}, sub ${stripeSubscriptionId} to Stripe status ${stripeStatus}`);
+    logger.info(`Updating subscription status for user ${userId}, sub ${stripeSubscriptionId} to Stripe status ${stripeStatus}, customer ${stripeCustomerId}`);
 
     let appStatus: SubscriptionStatus;
     let finalEndDate: Date | null = periodEndDate || null;
     let finalSubscriptionId: string | null = stripeSubscriptionId;
+    let finalStripeCustomerId: string | null | undefined = stripeCustomerId || undefined; // Use undefined to avoid overwriting with null if not provided
 
     switch (stripeStatus) {
       case 'active':
@@ -403,17 +445,20 @@ export class PaymentService {
         appStatus = SubscriptionStatus.NONE; // Treat as if no subscription exists
         finalEndDate = null;
         finalSubscriptionId = null;
+        finalStripeCustomerId = undefined; // Don't clear customer ID here, might be needed later
         break;
       case 'deleted': // Subscription removed entirely in Stripe
         appStatus = SubscriptionStatus.NONE; // Or CANCELED if you prefer
         finalEndDate = null;
         finalSubscriptionId = null;
+        finalStripeCustomerId = undefined; // Don't clear customer ID here
         break;
       default:
         logger.warn(`Unknown Stripe subscription status encountered: ${stripeStatus}. Setting status to NONE.`);
         appStatus = SubscriptionStatus.NONE;
         finalEndDate = null;
         finalSubscriptionId = null;
+        finalStripeCustomerId = undefined;
     }
 
     // If status indicates termination, ensure end date is cleared
@@ -433,11 +478,80 @@ export class PaymentService {
           subscriptionStatus: appStatus,
           subscriptionId: finalSubscriptionId, // Use potentially nulled ID
           subscriptionEndDate: finalEndDate,
+          // Only update stripeCustomerId if a valid one was provided
+          ...(finalStripeCustomerId && { stripeCustomerId: finalStripeCustomerId }),
         },
       });
-      logger.info(`Successfully updated user ${userId} subscription status in DB to ${appStatus}, EndDate: ${finalEndDate}, SubId: ${finalSubscriptionId}`);
+      logger.info(`Successfully updated user ${userId} subscription status in DB to ${appStatus}, EndDate: ${finalEndDate}, SubId: ${finalSubscriptionId}, CustId: ${finalStripeCustomerId ?? 'unchanged'}`);
     } catch (error) {
       logger.error(`Failed to update user subscription status in DB for user ${userId}`, { error });
     }
   }
-}
+
+  // +++ NEW METHOD +++
+  /**
+   * Creates a Stripe Billing Portal Session for a user to manage their subscription.
+   * @param userId - The ID of the user.
+   * @returns The URL of the Billing Portal session.
+   */
+  async createBillingPortalSession(userId: string): Promise<string> {
+    logger.info(`Creating billing portal session for user ${userId}`);
+
+    if (!userId) {
+      throw new Error('User ID is required to create a billing portal session.');
+    }
+
+    // 1. Retrieve the user's Stripe Customer ID from your database
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true }, // Only select the needed field
+    });
+
+    if (!user) {
+      throw new Error(`User not found: ${userId}`);
+    }
+
+    const stripeCustomerId = user.stripeCustomerId;
+    if (!stripeCustomerId) {
+      logger.error(`User ${userId} does not have a Stripe Customer ID. Cannot create billing portal session.`);
+      // Provide a user-friendly error
+      throw new Error('Subscription management is not available for this account yet.');
+    }
+
+    // 2. Define the return URL (where the user goes after leaving the portal)
+    // Ensure this URL is configured in your Stripe settings as well.
+    const returnUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/app/settings`; // Adjust path as needed
+
+    if (!returnUrl) {
+        logger.error("NEXT_PUBLIC_BASE_URL environment variable is not set.");
+        throw new Error("Application configuration error.");
+    }
+
+    try {
+      // 3. Create the Billing Portal session using the Stripe API
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: stripeCustomerId,
+        return_url: returnUrl,
+      });
+
+      logger.info(`Stripe Billing Portal Session created for user ${userId}: ${portalSession.id}`);
+
+      // 4. Return the session URL
+      if (!portalSession.url) {
+        throw new Error('Failed to create Stripe Billing Portal Session: No URL returned.');
+      }
+      return portalSession.url;
+
+    } catch (error: any) {
+      logger.error('Error creating Stripe Billing Portal Session:', {
+        errorMessage: error.message,
+        userId: userId,
+        stripeCustomerId: stripeCustomerId,
+      });
+      // Re-throw a more generic error to the user
+      throw new Error(`Failed to open subscription management: ${error.message}`);
+    }
+  }
+  // +++ END NEW METHOD +++
+
+} // End of PaymentService class
