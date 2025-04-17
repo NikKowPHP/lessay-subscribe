@@ -64,6 +64,7 @@
     "@types/node": "^20",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19",
+    "@types/stripe": "^8.0.417",
     "babel-jest": "^29.7.0",
     "babel-plugin-module-resolver": "^5.0.2",
     "eslint": "^9",
