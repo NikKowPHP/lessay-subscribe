@@ -6,6 +6,7 @@ import { UserProfileModel } from '@/models/AppAllModels.model';
 import logger from '@/utils/logger';
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/utils/supabase/server';
+import { Prisma } from '@prisma/client';
 
 function createUserService() {
   const repository = new UserRepository();
@@ -38,6 +39,12 @@ export async function createUserProfileAction(profile: Partial<UserProfileModel>
     return await userService.createUserProfile(profile);
   } catch (error) {
     logger.error('Error in createUserProfileAction:', error);
+
+    // If it was a unique‐constraint‐on‐email, try to return the existing row:
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      logger.warn('createUserProfileAction: duplicate email, fetching existing');
+      return await getUserProfileAction(profile.userId!);
+    }
     throw error;
   }
 }

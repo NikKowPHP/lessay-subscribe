@@ -146,44 +146,45 @@ export class UserRepository implements IUserRepository {
       // Create the user with minimal information
       const user = await prisma.user.create({
         data: {
-          id: userId,
-          email,
-          subscriptionStatus: SubscriptionStatus.NONE, // Default status
+          id: profile.userId!,
+          email: profile.email!,
+          subscriptionStatus: SubscriptionStatus.NONE,
           subscriptionEndDate: null,
-
           onboarding: {
-            create: {
-              steps: {},
-              completed: false,
-              // All other fields will be null/undefined until onboarding
-            },
+            create: { steps: {}, completed: false },
           },
         },
-        include: {
-          onboarding: true,
-        },
+        include: { onboarding: true },
       });
 
       // Return a valid UserProfileModel with defaults for missing fields
       return {
         id: user.id,
         userId: user.id,
-        email: user.email || '',
-        // name: user.name || null,
-        // nativeLanguage: null,
-        // targetLanguage: null,
-        // proficiencyLevel: null,
-        // learningPurpose: null,
-
+        email: user.email!,
         onboardingCompleted: false,
         initialAssessmentCompleted: false,
+        subscriptionStatus: user.subscriptionStatus,
+        subscriptionEndDate: user.subscriptionEndDate,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt || new Date(),
-        subscriptionStatus: user.subscriptionStatus, // Include default status
-        subscriptionEndDate: user.subscriptionEndDate, // Include default end date
+        updatedAt: user.updatedAt,
       };
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error creating user profile:', error);
+
+      // If Prisma says “P2002 unique constraint on email” → fetch the existing record
+      if (
+        error.code === 'P2002' &&
+        Array.isArray(error.meta?.target) &&
+        (error.meta.target as string[]).includes('email')
+      ) {
+        logger.warn(
+          'UserRepository.createUserProfile: email already exists—fetching existing profile'
+        );
+        // fetch by userId (or by email)
+        return (await this.getUserProfile(profile.userId!))!;
+      }
+
       throw error;
     }
   }
