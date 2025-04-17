@@ -50,9 +50,9 @@ implementing the monthly/yearly subscription with a trial plan
     *   `npx prisma migrate dev --name add_subscription_fields` (or similar)
     *   `npx prisma generate`
 
-**II. Backend Services & Repositories**
+* **II. Backend Services & Repositories**
 
-*   **[x] Payment Service (`services/payment.service.ts`):** (Verified in File 4)
+ *   **[x] Payment Service (`services/payment.service.ts`):** (Verified in File 4)
     *   [x] Implement `createCheckoutSession` method: (Verified in File 4)
         *   [x] Accept `userId` and `planType` ('monthly' or 'yearly'). *(Implemented via product object)*
         *   [x] Fetch the corresponding Stripe Price ID based on `planType`. *(Implemented via product object)*
@@ -90,10 +90,10 @@ implementing the monthly/yearly subscription with a trial plan
         *   [x] Get `userId` from session. *(Implemented)*
         *   [x] Call `paymentService.createCheckoutSession`. *(Implemented)*
         *   [x] Return `{ sessionId: string | null, error: string | null }`. *(Implemented)*
-    *   [ ] Create `createBillingPortalSessionAction()`: *(Action not found in File 3)*
-        *   Get `userId` from session.
-        *   Call `paymentService.createBillingPortalSession`.
-        *   Return `{ portalUrl: string | null, error: string | null }`.
+    *   [x] Create `createBillingPortalSessionAction()`: *(Action not found in File 3)*
+        *   [x] Get `userId` from session.
+        *   [x] Call `paymentService.createBillingPortalSession`.
+        *   [x] Return `{ portalUrl: string | null, error: string | null }`.
 *   **[x] User Actions (`lib/server-actions/user-actions.ts`):** (Verified in File 2)
     *   [x] Ensure `getUserProfileAction` returns the full profile including subscription details. *(Partially done - depends on underlying service/repo which are also partial - Verified in File 2)*
 
@@ -108,7 +108,7 @@ implementing the monthly/yearly subscription with a trial plan
     *   [x] Call `paymentService.handleWebhook(rawBody, signature)`. *(Implemented)*
     *   [x] Return appropriate responses (200 for success, 400/500 for errors). *(Implemented)*,
       
-**V. Frontend UI & Context** *(Files mostly not provided)*
+**V. Frontend UI & Context** *(Files mostly not provided)* (using the tailwind existing components (microsoft fluint 2 ui))
 
 *   **[ ] Pricing Page/Component (New):** *(Cannot verify)*
     *   [ ] Create a page/component to display Monthly and Yearly plans.

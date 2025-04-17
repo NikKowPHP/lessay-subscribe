@@ -140,6 +140,7 @@ export interface UserProfileModel {
     overallScore?: number | null;
     learningTrajectory: LearningTrajectory;
   }
+  // --- Subscription Fields ---
   subscriptionStatus: SubscriptionStatus;
   subscriptionId?: string | null;
   subscriptionPlan?: string | null;
@@ -149,8 +150,8 @@ export interface UserProfileModel {
   subscriptionEndDate?: Date | null;
   billingCycle?: string | null;
   paymentMethodId?: string | null;
-  stripeCustomerId?: string | null;
-  cancelAtPeriodEnd?: boolean;
+  stripeCustomerId?: string | null; // Added
+  cancelAtPeriodEnd?: boolean;      // Added (default false handled by Prisma)
 }
 
 // Add a type guard for assessment metrics

@@ -1,7 +1,9 @@
+// File: /src/app/app/profile/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link' // Import Link
 import { useAuth } from '@/context/auth-context'
 import { useUserProfile } from '@/context/user-profile-context'
 import { deleteUserProfileAction } from '@/lib/server-actions/user-actions'
@@ -73,13 +75,17 @@ export default function ProfilePage() {
         } finally {
           setProgressLoading(false)
         }
+      } else {
+        // If no user ID, don't attempt to load progress
+        setProgressLoading(false);
       }
     }
     fetchProgress()
   }, [user?.id])
 
   // Helper to calculate proficiency progress
-  const getProficiencyProgress = (level: ProficiencyLevel) => {
+  const getProficiencyProgress = (level: ProficiencyLevel | undefined) => {
+    if (!level) return 0; // Handle undefined case
     switch(level) {
       case ProficiencyLevel.beginner: return 33
       case ProficiencyLevel.intermediate: return 66
@@ -98,19 +104,28 @@ export default function ProfilePage() {
 
   if (!profile) {
     // This might happen briefly or if there's an issue creating the profile initially
-    return <div className="p-4">Profile not found.</div>
+    return <div className="p-4">Profile not found. Please wait or try logging in again.</div>
   }
 
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">User Profile</h1>
-        <Button
-          variant="outline"
-          onClick={() => router.push('/app/lessons')}
-        >
-          Back to Lessons
-        </Button>
+        {/* Wrap buttons for spacing */}
+        <div className="flex space-x-2">
+          {/* Added Settings Link/Button */}
+          <Link href="/app/profile/settings/pricing" passHref>
+            <Button variant="outline">
+              pricing
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            onClick={() => router.push('/app/lessons')}
+          >
+            Back to Lessons
+          </Button>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg p-6 mb-6">
@@ -137,29 +152,29 @@ export default function ProfilePage() {
             <div>
               <div className="flex justify-between mb-1">
                 <span className="text-sm font-medium">Proficiency Level</span>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 capitalize"> {/* Added capitalize */}
                   {learningProgress.estimatedProficiencyLevel}
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-600 rounded-full h-2.5" 
+                <div
+                  className="bg-blue-600 rounded-full h-2.5 transition-width duration-500 ease-in-out" // Added transition
                   style={{ width: `${getProficiencyProgress(learningProgress.estimatedProficiencyLevel)}%` }}
                 ></div>
               </div>
             </div>
 
-            {learningProgress.overallScore !== null && (
+            {learningProgress.overallScore !== null && learningProgress.overallScore !== undefined && ( // Check for undefined too
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-sm font-medium">Overall Score</span>
                   <span className="text-sm text-gray-500">
-                    {learningProgress.overallScore}%
+                    {learningProgress.overallScore.toFixed(0)}% {/* Format score */}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div 
-                    className="bg-green-600 rounded-full h-2.5" 
+                  <div
+                    className="bg-green-600 rounded-full h-2.5 transition-width duration-500 ease-in-out" // Added transition
                     style={{ width: `${learningProgress.overallScore}%` }}
                   ></div>
                 </div>
@@ -167,7 +182,7 @@ export default function ProfilePage() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100"> {/* Added border */}
                 <h3 className="font-semibold mb-2 text-blue-800">Strengths</h3>
                 {learningProgress.strengths?.length > 0 ? (
                   <ul className="list-disc pl-4 space-y-1">
@@ -180,7 +195,7 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <div className="p-4 bg-orange-50 rounded-lg">
+              <div className="p-4 bg-orange-50 rounded-lg border border-orange-100"> {/* Added border */}
                 <h3 className="font-semibold mb-2 text-orange-800">Areas to Improve</h3>
                 {learningProgress.weaknesses?.length > 0 ? (
                   <ul className="list-disc pl-4 space-y-1">

@@ -14,8 +14,8 @@ export interface SubscriptionProductDetails {
   stripePriceId: string; // The ID of the Price object in Stripe (e.g., price_123...)
   type: 'subscription';
   name: string; // e.g., "Premium Monthly Plan"
+  price: string; // e.g., "$5/month"
 }
-
 
 // Helper to get current user ID securely within the action
 async function getCurrentUserId(): Promise<string> {
