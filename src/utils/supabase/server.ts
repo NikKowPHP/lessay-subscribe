@@ -144,6 +144,16 @@ export async function createSupabaseServerClient(request?: NextRequest) {
          // Simulate successful sign out
          return { error: null };
        },
+       // Add mock admin deleteUser to support deletion
+       admin: {
+         deleteUser: async (userId: string) => {
+           logger.debug('MOCK AUTH: admin.deleteUser() called', { userId });
+           if (userId === MOCK_USER_ID) {
+             return { data: null, error: null };
+           }
+           return { data: null, error: { message: 'User not found' } };
+         }
+       },
         // Optionally mock other auth methods if they cause issues
         // signOut: async () => { return { error: null }; },
       },

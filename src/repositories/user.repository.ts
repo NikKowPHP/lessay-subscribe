@@ -272,17 +272,49 @@ export class UserRepository implements IUserRepository {
 
       logger.warn(`Starting deletion for user: ${userId}`);
 
-      // Step 1: Delete from database
-      logger.info(`Deleting user data from DB: ${userId}`);
-      await prisma.user.delete({ where: { id: userId } });
+      // Step 1: Delete all user-related data first
+      await prisma.$transaction([
+        // Delete lesson steps first
+        prisma.lessonStep.deleteMany({
+          where: {
+            lesson: {
+              userId: userId
+            }
+          }
+        }),
+        // Then delete lessons
+        prisma.lesson.deleteMany({
+          where: {
+            userId: userId
+          }
+        }),
+        // Delete onboarding data
+        prisma.onboarding.deleteMany({
+          where: {
+            userId: userId
+          }
+        }),
+        // Finally delete the user
+        prisma.user.delete({
+          where: { id: userId }
+        })
+      ]);
+
       logger.info(`DB deletion complete: ${userId}`);
 
       // Step 2: Delete auth user (server-side only)
       if (typeof window === 'undefined' && this.getSupabaseClient) {
         const supabase = await this.getSupabaseClient();
         if (!supabase) {
-          throw new Error('No auth service available')
+          throw new Error('No auth service available');
         }
+        
+        // Handle mock user deletion differently
+        // if (userId === 'mock-user-id') {
+        //   logger.warn('Bypassing auth deletion for mock user');
+        //   return;
+        // }
+
         // Use admin API for user deletion
         const { error: authError } = await supabase.auth.admin.deleteUser(
           userId
