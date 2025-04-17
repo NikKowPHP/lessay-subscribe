@@ -1594,5 +1594,221 @@ describe('LessonChat Component', () => {
         screen.queryByRole('button', { name: 'Complete Lesson' })
       ).not.toBeInTheDocument();
     });
+
+
   });
+  describe.only('Auto-starting listening/recording after audio ends', () => {
+    // Helper function to simulate initial interaction and wait for mocks
+    const simulateInitialInteractionAndWaitForMocks = async (micButton: HTMLElement) => {
+      await act(async () => {
+        userEvent.click(micButton);
+      });
+      // Wait for interaction flag and for mocks to be initialized by the component's useEffect
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await waitFor(() => {
+        expect(mockAudioPlay).toHaveBeenCalled(); // Wait for audio side-effect
+        // Crucially, wait for the mock instances to be defined
+        expect(mockRecognitionInstance).toBeDefined();
+        expect(mockMediaRecorderInstance).toBeDefined();
+      });
+      // Clear the initial play call for subsequent checks if needed
+      mockAudioPlay.mockClear();
+      // Clear start mocks *after* ensuring instances exist
+      mockRecognitionInstance.start.mockClear();
+      mockMediaRecorderInstance.start.mockClear();
+    };
+
+    it('should auto-start listening and recording if audio ends and the NEXT step is interactive', async () => {
+      // Arrange: Lesson where step 2 (practice) follows step 1 (instruction)
+      const lessonWithInteractiveNext: LessonModel = {
+        ...mockLesson,
+        steps: [
+          mockStep1, // instruction (current step after interaction)
+          mockStep2, // practice (next step - interactive)
+          mockStep3, // summary
+        ],
+      };
+
+      render(
+        <LessonChat
+          lesson={lessonWithInteractiveNext}
+          onComplete={mockOnComplete}
+          onStepComplete={mockOnStepComplete}
+          loading={false}
+          targetLanguage="English"
+        />
+      );
+
+      const micButton = screen.getByRole('button', { name: 'Start Listening' });
+
+      // 1. Simulate initial user interaction & wait for mocks
+      await simulateInitialInteractionAndWaitForMocks(micButton);
+      expect(mockAudioSrc).toBe(mockStep1.contentAudioUrl); // Audio for step 1 should play
+
+      // 2. Simulate audio ending for step 1 (instruction)
+      act(() => {
+        simulateAudioEnded();
+      });
+
+      // 3. Wait for step 1 to auto-advance
+      await waitFor(() => {
+        expect(mockOnStepComplete).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'step-1' }),
+          'Acknowledged'
+        );
+        expect(screen.getByText(mockStep2.content)).toBeInTheDocument();
+      });
+
+      // 4. Wait for audio of step 2 (content) to start playing
+      await waitFor(() => {
+        expect(mockAudioPlay).toHaveBeenCalledTimes(1);
+        expect(mockAudioSrc).toBe(mockStep2.contentAudioUrl);
+      });
+      mockAudioPlay.mockClear();
+
+      // 5. Simulate audio ending for step 2's *content* audio
+      act(() => {
+        simulateAudioEnded();
+      });
+
+      // 6. Wait for step 2's *expected answer* audio to play
+      await waitFor(() => {
+        expect(mockAudioPlay).toHaveBeenCalledTimes(1);
+        expect(mockAudioSrc).toBe(mockStep2.expectedAnswerAudioUrl);
+      });
+
+      // 7. Simulate audio ending for step 2's *expected answer* audio (last in its queue)
+      //    The *next* step (step 3 - summary) is NON-interactive.
+      //    So, listening/recording should NOT auto-start here.
+      //    Clear mocks *before* the action that might trigger them
+      mockRecognitionInstance.start.mockClear();
+      mockMediaRecorderInstance.start.mockClear();
+      act(() => {
+        simulateAudioEnded();
+      });
+
+      // Assert: Listening/Recording should NOT have started automatically
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(mockRecognitionInstance.start).not.toHaveBeenCalled();
+      expect(mockMediaRecorderInstance.start).not.toHaveBeenCalled();
+    });
+
+
+    it('should NOT auto-start listening/recording if audio ends and the NEXT step is non-interactive', async () => {
+      // Arrange: Lesson where step 3 (summary) follows step 2 (practice)
+      const lessonWithNonInteractiveNext: LessonModel = {
+        ...mockLesson,
+        steps: [
+          { ...mockStep1, userResponse: 'Ack', correct: true }, // Step 1 done
+          mockStep2, // practice (current step)
+          mockStep3, // summary (next step - non-interactive)
+        ],
+      };
+
+      render(
+        <LessonChat
+          lesson={lessonWithNonInteractiveNext} // Starts effectively at step 2 (index 1)
+          onComplete={mockOnComplete}
+          onStepComplete={mockOnStepComplete}
+          loading={false}
+          targetLanguage="English"
+        />
+      );
+
+      const micButton = screen.getByRole('button', { name: 'Start Listening' });
+
+      // 1. Simulate initial user interaction & wait for mocks
+      await simulateInitialInteractionAndWaitForMocks(micButton);
+      // Audio for step 2 should play (content first)
+      expect(mockAudioSrc).toBe(mockStep2.contentAudioUrl);
+
+      // 2. Simulate audio ending for step 2's *content* audio
+      act(() => {
+        simulateAudioEnded();
+      });
+
+      // 3. Wait for step 2's *expected answer* audio to play
+      await waitFor(() => {
+        expect(mockAudioPlay).toHaveBeenCalledTimes(1);
+        expect(mockAudioSrc).toBe(mockStep2.expectedAnswerAudioUrl);
+      });
+
+      // 4. Simulate audio ending for step 2's *expected answer* audio (last in its queue)
+      //    The *next* step (step 3 - summary) is NON-interactive.
+      //    Clear mocks *before* the action
+      mockRecognitionInstance.start.mockClear();
+      mockMediaRecorderInstance.start.mockClear();
+      act(() => {
+        simulateAudioEnded();
+      });
+
+      // Assert: Listening/Recording should NOT have started automatically
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(mockRecognitionInstance.start).not.toHaveBeenCalled();
+      expect(mockMediaRecorderInstance.start).not.toHaveBeenCalled();
+    });
+
+     it('should NOT auto-start listening/recording if audio ends for the LAST step', async () => {
+        // Arrange: Lesson where step 3 (summary) is the last step
+        const lessonAtLastStep: LessonModel = {
+          ...mockLesson,
+          steps: [
+            { ...mockStep1, userResponse: 'Ack', correct: true },
+            { ...mockStep2, userResponse: 'Hello', correct: true },
+            mockStep3, // summary (current and last step)
+          ],
+        };
+
+        render(
+          <LessonChat
+            lesson={lessonAtLastStep} // Starts effectively at step 3 (index 2)
+            onComplete={mockOnComplete}
+            onStepComplete={mockOnStepComplete}
+            loading={false}
+            targetLanguage="English"
+          />
+        );
+
+        const micButton = screen.getByRole('button', { name: 'Start Listening' });
+
+        // 1. Simulate initial user interaction & wait for mocks
+        await simulateInitialInteractionAndWaitForMocks(micButton);
+        // Audio for step 3 should play
+        expect(mockAudioSrc).toBe(mockStep3.contentAudioUrl);
+
+        // 2. Simulate audio ending for step 3 (last in queue and last step)
+        //    Clear mocks *before* the action
+        mockRecognitionInstance.start.mockClear();
+        mockMediaRecorderInstance.start.mockClear();
+        act(() => {
+          simulateAudioEnded();
+        });
+
+        // 3. Wait for step 3 (summary) to auto-advance (which triggers completion)
+        await waitFor(() => {
+          expect(mockOnStepComplete).toHaveBeenCalledWith(
+            expect.objectContaining({ id: 'step-3' }),
+            'Acknowledged'
+          );
+        });
+
+        // Assert: Listening/Recording should NOT have started automatically as it's the end
+        await new Promise(resolve => setTimeout(resolve, 100));
+        expect(mockRecognitionInstance.start).not.toHaveBeenCalled();
+        expect(mockMediaRecorderInstance.start).not.toHaveBeenCalled();
+
+        // Assert: Recording should have been stopped by completion logic
+        await waitFor(() => {
+            // Ensure stop was called *after* confirming start wasn't
+            expect(mockMediaRecorderInstance.stop).toHaveBeenCalled();
+        });
+     });
+
+  });
+
+
+
+
+
+
 });

@@ -91,7 +91,7 @@ implementing the monthly/yearly subscription with a trial plan
     *   `npx prisma generate`
 
 **II. Backend Services & Repositories**
-
+TODO: TO CHECK !
 *   **[ ] Payment Service (`services/payment.service.ts` - requires uncommenting/creating):**
     *   [ ] Implement `createCheckoutSession` method:
         *   Accept `userId` and `planType` ('monthly' or 'yearly').
@@ -246,3 +246,12 @@ implementing the monthly/yearly subscription with a trial plan
 *   **[ ] Trial Logic:** Ensure trial periods start and end correctly, and conversion to paid status works via webhooks.
 
 This list provides a detailed plan. Remember to handle loading states and errors gracefully throughout the UI and backend.
+
+
+
+# FIX
+- [ ] sign up is not working
+- [ ] lesson chat refreeshes 
+- [ ] speech recognition should never stop once initiated
+- [ ] button start listening is never disabled 
+- [ ] delay webspeech after audio queue is empty
