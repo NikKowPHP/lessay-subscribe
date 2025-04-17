@@ -251,7 +251,17 @@ This list provides a detailed plan. Remember to handle loading states and errors
 
 # FIX
 - [ ] sign up is not working
-- [ ] lesson chat refreeshes 
-- [ ] speech recognition should never stop once initiated
+- [x] lesson chat refreeshes 
+- [x] speech recognition should never stop once initiated
 - [ ] button start listening is never disabled 
 - [ ] delay webspeech after audio queue is empty
+- [ ] speech recognition should not restart if the user manually stops it FINISH
+- [ ] media recorder fires only on start listening event 
+- [x] on page rehydrating do not populate the user answer if the step is not interactive 
+
+## test fixes
+- [ ] speech recognition should never stop once initiated
+- [ ] speech recognition should not restart if the user manually stops it FINISH
+- [ ] media recorder fires only on start listening event 
+- [ ] on page rehydrating do not populate the user answer if the step is not interactive 
+

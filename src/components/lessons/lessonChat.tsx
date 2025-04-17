@@ -421,9 +421,12 @@ export default function LessonChat({
       for (let i = 0; i <= lastCompletedIndex; i++) {
         const step = lesson.steps[i];
         initialHistory.push({ type: 'prompt', content: step.content });
-        if (step.userResponse) {
-          initialHistory.push({ type: 'response', content: step.userResponse });
-        }
+        if (step.userResponse && 
+          step.type !== 'instruction' && 
+          step.type !== 'summary' && 
+          step.type !== 'feedback') {
+        initialHistory.push({ type: 'response', content: step.userResponse });
+      }
       }
 
       // Add only the next uncompleted prompt
