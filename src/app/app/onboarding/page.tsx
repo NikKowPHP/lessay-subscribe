@@ -46,7 +46,7 @@ export default function OnboardingPage() {
   const [assessmentLesson, setAssessmentLesson] =
     useState<AssessmentLesson | null>(null);
   const [assessmentLoading, setAssessmentLoading] = useState<boolean>(false);
-  // REMOVED: const [areMetricsGenerated, setAreMetricsGenerated] = useState<boolean>(false);
+  const [areMetricsGenerated, setAreMetricsGenerated] = useState<boolean>(false);
 
   // Rehydrate state from onboarding session
   useEffect(() => {
@@ -169,7 +169,7 @@ export default function OnboardingPage() {
       throw new Error('Assessment lesson not found');
     }
     try {
-      // REMOVED: setAreMetricsGenerated(false);
+      setAreMetricsGenerated(false);
       const LessonWithMetrics = await completeAssessmentLesson(
         assessmentLesson?.id,
         'Assessment completed'
@@ -181,7 +181,7 @@ export default function OnboardingPage() {
       logger.error('Error completing assessment lesson:', error);
       // Optionally reset state or show error
     } finally {
-      // REMOVED: setAreMetricsGenerated(true);
+      setAreMetricsGenerated(true);
       // No need to set a flag here, the UI will react to assessmentLesson update
     }
   };
@@ -244,12 +244,12 @@ export default function OnboardingPage() {
       case 'assessment':
         return (
           <AssessmentStep
+            areMetricsGenerated={areMetricsGenerated}
             onAssessmentComplete={handleOnAssessmentComplete} // Renamed for clarity
             loading={assessmentLoading || loading} // Combine loading states if needed
             targetLanguage={formData.targetLanguage}
             lesson={assessmentLesson}
             onGoToLessonsButtonClick={handleGoToLessonsButtonClick}
-            // REMOVED: areMetricsGenerated={areMetricsGenerated}
             processAssessmentLessonRecording={onProcessAssessmentLessonRecording}
           />
         );
