@@ -119,6 +119,11 @@ export default function ProfilePage() {
               pricing
             </Button>
           </Link>
+          <Link href="/app/profile/settings/pricing" passHref>
+            <Button variant="outline">
+              settings
+            </Button>
+          </Link>
           <Button
             variant="outline"
             onClick={() => router.push('/app/lessons')}

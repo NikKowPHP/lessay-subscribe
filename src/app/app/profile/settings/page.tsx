@@ -1,187 +1,225 @@
-// File: /src/app/app/settings/pricing/page.tsx
+// File: /src/app/app/settings/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { loadStripe, Stripe } from '@stripe/stripe-js';
-import { Button } from '@/components/ui/button'; // Assuming a Button component exists
-import { createCheckoutSessionAction, SubscriptionProductDetails } from '@/lib/server-actions/payment-actions';
-import toast from 'react-hot-toast';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useUserProfile } from '@/context/user-profile-context';
+import { createBillingPortalSessionAction } from '@/lib/server-actions/payment-actions';
 import logger from '@/utils/logger';
+import { Button } from '@/components/ui/button'; // Assuming you have a Button component
+import { toast } from 'react-hot-toast';
+import { SubscriptionStatus } from '@prisma/client'; // Import enum for comparison
 
-// Ensure your Stripe publishable key is set in environment variables
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
-
-// --- Define a type for Display Plans ---
-// This includes fields needed for the UI *and* the fields needed for the action
-interface DisplayPlanDetails extends SubscriptionProductDetails {
-  priceDisplay: string; // Renamed from 'price' to avoid conflict if needed, or keep if SubscriptionProductDetails doesn't have price
-  features: string[];
-  trialInfo?: string; // Optional trial info string
-}
-// --- --- --- --- --- --- ---
-
-// --- Define Your Plans using the Display Type ---
-// IMPORTANT: Replace placeholder stripePriceId values with your ACTUAL Stripe Price IDs
-// Ensure the 7-day trial is configured ON THE PRICE object in your Stripe Dashboard.
-const plans: DisplayPlanDetails[] = [
-  {
-    id: 'premium_monthly', // Your internal ID
-    stripePriceId: 'price_replace_with_your_monthly_price_id', // ACTUAL STRIPE PRICE ID
-    type: 'subscription',
-    name: 'Premium Monthly',
-    price: '$10/month', // Price for the action (if needed by SubscriptionProductDetails)
-    priceDisplay: '$10/month', // Price for display
-    features: ['Feature A', 'Feature B', 'Monthly Updates'],
-    trialInfo: '7-day free trial',
-  },
-  {
-    id: 'premium_yearly', // Your internal ID
-    stripePriceId: 'price_replace_with_your_yearly_price_id', // ACTUAL STRIPE PRICE ID
-    type: 'subscription',
-    name: 'Premium Yearly',
-    price: '$100/year', // Price for the action (if needed by SubscriptionProductDetails)
-    priceDisplay: '$100/year', // Price for display (e.g., Save $20)
-    features: ['Feature A', 'Feature B', 'Yearly Updates', 'Priority Support'],
-    trialInfo: '7-day free trial',
-  },
-];
-// --- --- --- --- --- --- ---
-
-export default function PricingPage() {
-  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [stripe, setStripe] = useState<Stripe | null>(null);
-
-  useEffect(() => {
-    stripePromise.then(stripeInstance => {
-      if (stripeInstance) {
-        setStripe(stripeInstance);
-      } else {
-        logger.error("Failed to initialize Stripe.");
-        setError("Payment system could not be loaded. Please refresh the page.");
-      }
-    }).catch(err => {
-        logger.error("Error loading Stripe:", err);
-        setError("Payment system failed to load. Please refresh the page.");
+// Helper function to format dates nicely
+const formatDate = (date: Date | string | null | undefined): string => {
+  if (!date) return 'N/A';
+  try {
+    return new Date(date).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
-  }, []);
+  } catch (e) {
+    return 'Invalid Date';
+  }
+};
 
-  const handleSubscribe = async (plan: DisplayPlanDetails) => { // Use DisplayPlanDetails here
-    setError(null);
-    if (!stripe) {
-        toast.error("Payment system is not ready. Please wait or refresh.");
-        logger.error("handleSubscribe called before Stripe loaded.");
-        return;
+// Helper function to map status enum to display string
+const getStatusDisplay = (status: SubscriptionStatus): string => {
+  switch (status) {
+    case SubscriptionStatus.ACTIVE: return 'Active';
+    case SubscriptionStatus.TRIAL: return 'Trial';
+    case SubscriptionStatus.CANCELED: return 'Canceled';
+    case SubscriptionStatus.PAST_DUE: return 'Past Due';
+    case SubscriptionStatus.EXPIRED: return 'Expired';
+    case SubscriptionStatus.NONE: return 'None';
+    default: return 'Unknown';
+  }
+};
+
+// Component to handle search params logic - needs to be inside Suspense
+function SettingsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { profile, loading: profileLoading, error: profileError } = useUserProfile();
+  const [isPortalLoading, setIsPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
+
+  // Handle redirect messages from Stripe Checkout/Portal
+  useEffect(() => {
+    const subscriptionStatus = searchParams.get('subscription');
+    const sessionId = searchParams.get('session_id'); // Optional
+
+    if (subscriptionStatus === 'success') {
+      toast.success('Subscription action successful!');
+      logger.info('Stripe redirect success detected.', { sessionId });
+      // Clear query params
+      router.replace('/app/settings', { scroll: false });
+    } else if (subscriptionStatus === 'canceled') {
+      toast.error('Subscription process canceled.');
+      logger.info('Stripe redirect cancel detected.');
+      // Clear query params
+      router.replace('/app/settings', { scroll: false });
     }
-     if (!plan.stripePriceId || plan.stripePriceId.startsWith('price_replace')) {
-        toast.error("Pricing configuration error. Please contact support.");
-        logger.error("Attempted to subscribe with placeholder Price ID:", plan);
-        setError("This plan is not available right now. Please contact support.");
-        return;
-    }
+  }, [searchParams, router]);
 
-    setLoadingPlanId(plan.id);
-    logger.info(`Attempting to create checkout session for plan: ${plan.id} (${plan.stripePriceId})`);
-
-    // --- Create the object strictly matching SubscriptionProductDetails for the action ---
-    const subscriptionProductDetails: SubscriptionProductDetails = {
-        id: plan.id,
-        stripePriceId: plan.stripePriceId,
-        type: plan.type,
-        name: plan.name,
-        price: plan.price, // Include price if it's part of the interface
-    };
-    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  const handleManageSubscription = async () => {
+    setIsPortalLoading(true);
+    setPortalError(null);
+    logger.info('Attempting to create Stripe Billing Portal session...');
 
     try {
-      // Pass the correctly typed object to the action
-      const result = await createCheckoutSessionAction(subscriptionProductDetails);
+      const result = await createBillingPortalSessionAction();
 
       if (result.error) {
-        logger.error(`Error creating checkout session for plan ${plan.id}:`, result.error);
+        logger.error('Error creating billing portal session:', result.error);
         toast.error(result.error);
-        setError(result.error);
-      } else if (result.sessionId) {
-        logger.info(`Checkout session created: ${result.sessionId}. Redirecting to Stripe...`);
-        toast.loading('Redirecting to secure checkout...');
-
-        const { error: stripeError } = await stripe.redirectToCheckout({
-          sessionId: result.sessionId,
-        });
-
-        if (stripeError) {
-          logger.error('Stripe redirectToCheckout error:', stripeError);
-          toast.dismiss();
-          toast.error(stripeError.message || 'Failed to redirect to checkout. Please try again.');
-          setError(stripeError.message || 'Failed to redirect to checkout. Please try again.');
-        }
+        setPortalError(result.error);
+      } else if (result.portalUrl) {
+        logger.info('Billing portal session created. Redirecting...');
+        toast.loading('Redirecting to manage subscription...');
+        // Redirect to the Stripe Billing Portal
+        window.location.href = result.portalUrl;
       } else {
-         logger.error(`Checkout session creation returned no error and no session ID for plan ${plan.id}`);
-         toast.error('Could not initiate subscription. Please try again.');
-         setError('An unexpected error occurred. Please try again.');
+         logger.error('Billing portal session creation returned no error and no URL.');
+         toast.error('Could not open subscription management. Please try again.');
+         setPortalError('An unexpected error occurred.');
       }
     } catch (err: any) {
-      logger.error(`Unhandled exception during subscription for plan ${plan.id}:`, err);
+      logger.error('Unhandled exception during billing portal creation:', err);
       toast.error('An unexpected error occurred. Please try again.');
-      setError('An unexpected error occurred. Please try again.');
+      setPortalError('An unexpected error occurred.');
     } finally {
-      setLoadingPlanId(null);
+      // Only set loading to false if we didn't redirect
+      // If redirection happens, the page unloads anyway.
+      // Check if portalUrl exists in the result (if successful redirect)
+      // This check might be tricky if the action doesn't return the URL on success in some cases
+      // A simple approach is to just set it false, toast.loading handles the message until redirect.
+       setIsPortalLoading(false);
     }
   };
 
-  return (
-    <div className="container mx-auto p-4 md:p-8 max-w-4xl">
-      <h1 className="text-3xl font-bold text-center mb-8 text-neutral-9">Choose Your Plan</h1>
+  // --- Display Logic ---
 
-      {error && (
-        <div className="mb-6 p-4 bg-error/10 text-error border border-error/30 rounded-md text-center">
-          {error}
+  if (profileLoading) {
+    return <div className="text-center p-6">Loading account details...</div>;
+  }
+
+  if (profileError) {
+    return <div className="p-6 bg-error/10 text-error border border-error/30 rounded-md text-center">Error loading profile: {profileError}</div>;
+  }
+
+  if (!profile) {
+    return <div className="text-center p-6">Could not load user profile.</div>;
+  }
+
+  // Determine which date to show based on status
+  let relevantDateLabel = '';
+  let relevantDateValue: Date | string | null | undefined = null;
+
+  if (profile.subscriptionStatus === SubscriptionStatus.TRIAL && profile.trialEndDate) {
+    relevantDateLabel = 'Trial Ends On';
+    relevantDateValue = profile.trialEndDate;
+  } else if (profile.subscriptionStatus === SubscriptionStatus.ACTIVE && profile.subscriptionEndDate) {
+    relevantDateLabel = profile.cancelAtPeriodEnd ? 'Subscription Ends On' : 'Next Billing Date';
+    relevantDateValue = profile.subscriptionEndDate;
+  } else if (profile.subscriptionStatus === SubscriptionStatus.CANCELED && profile.subscriptionEndDate) {
+    relevantDateLabel = 'Subscription Ends On';
+    relevantDateValue = profile.subscriptionEndDate;
+  } else if (profile.subscriptionStatus === SubscriptionStatus.PAST_DUE && profile.subscriptionEndDate) {
+    relevantDateLabel = 'Payment Due / Renews On';
+    relevantDateValue = profile.subscriptionEndDate;
+  }
+
+  // Decide whether to show the "Manage Subscription" button
+  // Show if user has a Stripe Customer ID OR if status is Active/Trial/PastDue/Canceled (with future end date)
+  // The action itself checks for stripeCustomerId, so relying on status is reasonable.
+  const canManageSubscription = profile.subscriptionStatus !== SubscriptionStatus.NONE && profile.subscriptionStatus !== SubscriptionStatus.EXPIRED;
+
+
+  return (
+    <div className="bg-neutral-1 border border-neutral-4 rounded-lg shadow-md p-6">
+      <h2 className="text-xl font-semibold text-neutral-9 mb-4">Subscription Details</h2>
+      <div className="space-y-3">
+        <div>
+          <span className="font-medium text-neutral-8">Status:</span>
+          <span className={`ml-2 px-2 py-0.5 rounded text-sm font-medium ${
+            profile.subscriptionStatus === SubscriptionStatus.ACTIVE || profile.subscriptionStatus === SubscriptionStatus.TRIAL ? 'bg-success/10 text-success' :
+            profile.subscriptionStatus === SubscriptionStatus.CANCELED ? 'bg-warning/10 text-warning' :
+            profile.subscriptionStatus === SubscriptionStatus.PAST_DUE ? 'bg-error/10 text-error' :
+            'bg-neutral-3 text-neutral-8'
+          }`}>
+            {getStatusDisplay(profile.subscriptionStatus)}
+          </span>
+          {profile.cancelAtPeriodEnd && profile.subscriptionStatus === SubscriptionStatus.ACTIVE && (
+             <span className="ml-2 text-sm text-warning">(Set to cancel at period end)</span>
+          )}
+        </div>
+        <div>
+          <span className="font-medium text-neutral-8">Current Plan:</span>
+          <span className="ml-2 text-neutral-9">{profile.subscriptionPlan || 'N/A'}</span>
+        </div>
+        {relevantDateLabel && (
+          <div>
+            <span className="font-medium text-neutral-8">{relevantDateLabel}:</span>
+            <span className="ml-2 text-neutral-9">{formatDate(relevantDateValue)}</span>
+          </div>
+        )}
+      </div>
+
+      {portalError && (
+        <div className="mt-4 p-3 bg-error/10 text-error border border-error/30 rounded-md text-sm">
+          {portalError}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Use DisplayPlanDetails properties for rendering */}
-        {plans.map((plan) => (
-          <div key={plan.id} className="bg-neutral-1 border border-neutral-4 rounded-lg shadow-md p-6 flex flex-col">
-            <h2 className="text-xl font-semibold text-neutral-9 mb-2">{plan.name}</h2>
-            <p className="text-2xl font-bold text-accent-8 mb-4">{plan.priceDisplay}</p> {/* Use priceDisplay */}
-
-            {plan.trialInfo && (
-              <p className="text-sm text-success mb-4 font-medium">{plan.trialInfo}</p>
+      {canManageSubscription && (
+        <div className="mt-6 pt-4 border-t border-neutral-3">
+          <Button
+            onClick={handleManageSubscription}
+            disabled={isPortalLoading}
+            className="w-full md:w-auto bg-accent-6 hover:bg-accent-7 text-neutral-1 py-2 px-4 rounded-md transition duration-150 ease-in-out disabled:opacity-50"
+          >
+            {isPortalLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Opening Portal...
+              </span>
+            ) : (
+              'Manage Subscription'
             )}
+          </Button>
+          <p className="text-xs text-neutral-7 mt-2">
+            You will be redirected to our payment partner (Stripe) to manage your billing details, view invoices, change plans, or cancel your subscription.
+          </p>
+        </div>
+      )}
 
-            <ul className="space-y-2 text-neutral-8 mb-6 flex-grow">
-              {plan.features.map((feature, index) => ( // Use features
-                <li key={index} className="flex items-center">
-                  <svg className="w-4 h-4 mr-2 text-success flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-
-            <Button
-              onClick={() => handleSubscribe(plan)} // Pass the full display plan object
-              disabled={loadingPlanId === plan.id || !stripe}
-              className="w-full mt-auto bg-accent-6 hover:bg-accent-7 text-neutral-1 py-2 px-4 rounded-md transition duration-150 ease-in-out disabled:opacity-50"
-            >
-              {loadingPlanId === plan.id ? (
-                 <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing...
-                </span>
-              ) : (
-                plan.trialInfo ? 'Start Free Trial' : 'Subscribe'
-              )}
+       {!canManageSubscription && profile.subscriptionStatus === SubscriptionStatus.NONE && (
+         <div className="mt-6 pt-4 border-t border-neutral-3 text-center">
+            <p className="text-neutral-8 mb-3">You do not have an active subscription.</p>
+            <Button onClick={() => router.push('/app/settings/pricing')} variant="outline">
+                View Pricing Plans
             </Button>
-          </div>
-        ))}
-      </div>
-       <p className="text-center text-neutral-7 text-sm mt-8">
-         Manage your existing subscription in your <a href="/app/settings" className="text-accent-6 hover:underline">Account Settings</a>.
-       </p>
+         </div>
+       )}
     </div>
   );
+}
+
+
+// Main Page Component using Suspense for searchParams
+export default function SettingsPage() {
+    return (
+      <div className="container mx-auto p-4 md:p-8 max-w-2xl">
+        <h1 className="text-3xl font-bold text-center mb-8 text-neutral-9">Account Settings</h1>
+        {/* Wrap the content in Suspense to allow useSearchParams */}
+        <Suspense fallback={<div className="text-center p-6">Loading settings...</div>}>
+          <SettingsContent />
+        </Suspense>
+      </div>
+    );
 }
