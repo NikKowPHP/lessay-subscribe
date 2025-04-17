@@ -100,3 +100,4 @@ async function getCurrentUserId(): Promise<string> {
   }
   return session.user.id;
 }
+

@@ -30,23 +30,23 @@
 
 
 implementing the monthly/yearly subscription with a trial plan
-**I. Database Schema (Prisma)**
+* **I. Database Schema (Prisma)**
 
-*   **[ ] Update `User` model (`schema.prisma`):**
-    *   [x] Add `subscriptionStatus` enum field (e.g., `NONE`, `TRIAL`, `ACTIVE`, `CANCELED`, `PAST_DUE`). *Already present*
-    *   [x] Add `subscriptionId` (String?, unique) to store the Stripe Subscription ID. *Already present*
-    *   [x] Add `subscriptionPlan` (String?) to store the identifier of the subscribed plan (e.g., 'monthly', 'yearly'). *Already present*
-    *   [x] Add `trialStartDate` (DateTime?). *Already present*
-    *   [x] Add `trialEndDate` (DateTime?). *Already present*
-    *   [x] Add `subscriptionStartDate` (DateTime?) for when the paid subscription begins (after trial or immediately). *Already present*
-    *   [x] Add `subscriptionEndDate` (DateTime?) for the end of the current billing cycle or cancellation date. *Already present*
-    *   [x] Add `stripeCustomerId` (String?, unique) to store the Stripe Customer ID (useful for managing billing portal, etc.).
-    *   [x] Consider adding `cancelAtPeriodEnd` (Boolean, default: false) if you want to track user-initiated cancellations that are still active until the period end.
-    *   [x] Consider `billingCycle` (String?) if needed (e.g., 'monthly', 'yearly'). *Already present*
-    *   [x] Consider `paymentMethodId` (String?). *Already present*
-*   **[x] Update `SubscriptionStatus` enum (`schema.prisma`):**
-    *   [x] Ensure it includes `NONE`, `TRIAL`, `ACTIVE`, `CANCELED`, `PAST_DUE`, `EXPIRED`. *Already present*
-*   **[x] Run Prisma migrations:**
+  *   **[x] Update `User` model (`schema.prisma`):**
+      *   [x] Add `subscriptionStatus` enum field (e.g., `NONE`, `TRIAL`, `ACTIVE`, `CANCELED`, `PAST_DUE`). *Already present*
+      *   [x] Add `subscriptionId` (String?, unique) to store the Stripe Subscription ID. *Already present*
+      *   [x] Add `subscriptionPlan` (String?) to store the identifier of the subscribed plan (e.g., 'monthly', 'yearly'). *Already present*
+      *   [x] Add `trialStartDate` (DateTime?). *Already present*
+      *   [x] Add `trialEndDate` (DateTime?). *Already present*
+      *   [x] Add `subscriptionStartDate` (DateTime?) for when the paid subscription begins (after trial or immediately). *Already present*
+      *   [x] Add `subscriptionEndDate` (DateTime?) for the end of the current billing cycle or cancellation date. *Already present*
+      *   [x] Add `stripeCustomerId` (String?, unique) to store the Stripe Customer ID (useful for managing billing portal, etc.).
+      *   [x] Consider adding `cancelAtPeriodEnd` (Boolean, default: false) if you want to track user-initiated cancellations that are still active until the period end.
+      *   [x] Consider `billingCycle` (String?) if needed (e.g., 'monthly', 'yearly'). *Already present*
+      *   [x] Consider `paymentMethodId` (String?). *Already present*
+  *   **[x] Update `SubscriptionStatus` enum (`schema.prisma`):**
+      *   [x] Ensure it includes `NONE`, `TRIAL`, `ACTIVE`, `CANCELED`, `PAST_DUE`, `EXPIRED`. *Already present*
+  *   **[x] Run Prisma migrations:**
     *   `npx prisma migrate dev --name add_subscription_fields` (or similar)
     *   `npx prisma generate`
 
@@ -76,7 +76,7 @@ implementing the monthly/yearly subscription with a trial plan
 *   **[x] Payment Repository (`repositories/payment.repository.ts`):** (Verified in File 6 & File 4)
     *   [x] Ensure methods align with `PaymentService` needs (e.g., potentially logging payments, though primary updates are on the User model). *(Methods exist and `createPayment` is used by service - Verified in File 4 & 6)*
 *   **[ ] User Service (`services/user.service.ts`):** (Verified in File 19)
-    *   [ ] Add method `getUserSubscriptionStatus(userId: string)` to fetch relevant subscription fields from the User record. *(Method not found in File 19)*
+    *   [x] Add method `getUserSubscriptionStatus(userId: string)` to fetch relevant subscription fields from the User record. *(Method not found in File 19)*
     *   [ ] Modify `updateUserProfile` to potentially accept and update subscription-related fields *if needed outside webhooks* (generally webhooks are preferred). *(Method exists but doesn't handle subscription fields - Verified in File 19)*
 *   **[ ] User Repository (`repositories/user.repository.ts`):** (Verified in File 18)
     *   [ ] Ensure `getUserProfile` returns *all* new subscription fields. *(Partially done in File 18 - returns status/endDate but not ID, plan, stripeCustomerId etc.)*
@@ -94,8 +94,8 @@ implementing the monthly/yearly subscription with a trial plan
         *   Get `userId` from session.
         *   Call `paymentService.createBillingPortalSession`.
         *   Return `{ portalUrl: string | null, error: string | null }`.
-*   **[ ] User Actions (`lib/server-actions/user-actions.ts`):** (Verified in File 2)
-    *   [ ] Ensure `getUserProfileAction` returns the full profile including subscription details. *(Partially done - depends on underlying service/repo which are also partial - Verified in File 2)*
+*   **[x] User Actions (`lib/server-actions/user-actions.ts`):** (Verified in File 2)
+    *   [x] Ensure `getUserProfileAction` returns the full profile including subscription details. *(Partially done - depends on underlying service/repo which are also partial - Verified in File 2)*
 
 **IV. API Routes**
 
@@ -190,6 +190,38 @@ implementing the monthly/yearly subscription with a trial plan
 *   **[ ] UI Flow:** Manually test the subscription flow (view plans, subscribe via test card, check status, manage via portal). *(Cannot verify)*
 *   **[ ] Content Gating:** Verify that non-subscribed users are correctly blocked/prompted. *(Cannot verify)*
 *   **[ ] Trial Logic:** Ensure trial periods start and end correctly, and conversion to paid status works via webhooks. *(Cannot verify)*
+
+---
+**VIII. App-Managed Trial Flow (Alternative/Add-on)**
+*(Consider implementing this alongside or instead of the Stripe-managed trial)*
+
+*   **[ ] Backend Logic (User Service/Action):**
+    *   [ ] Implement a function/action `startAppManagedTrial(userId)`.
+    *   [ ] Inside the function:
+        *   [ ] Check if user is eligible (e.g., not already subscribed, hasn't had a trial).
+        *   [ ] Update User record in DB:
+            *   Set `subscriptionStatus` to `TRIAL`.
+            *   Set `trialStartDate` to `new Date()`.
+            *   Calculate and set `trialEndDate` (e.g., `new Date() + 7 days`).
+            *   Ensure `subscriptionId` and other Stripe-related fields remain null.
+*   **[ ] Frontend UI:**
+    *   [ ] Add a "Start Free Trial" button (e.g., on signup, dashboard) that *does not* trigger Stripe Checkout.
+    *   [ ] On button click, call the `startAppManagedTrial` action.
+    *   [ ] Display trial status and end date clearly to the user (e.g., in settings, header).
+*   **[ ] Trial Expiration Handling:**
+    *   [ ] Implement robust logic (e.g., middleware, component checks, scheduled task) to check `trialEndDate` against the current date.
+    *   [ ] If trial is expired and `subscriptionStatus` is still `TRIAL`:
+        *   [ ] Update `subscriptionStatus` to `EXPIRED` or `NONE`.
+        *   [ ] Restrict access to premium features / redirect to pricing page.
+*   **[ ] Trial Conversion Flow:**
+    *   [ ] Prompt users *before* the trial ends to add payment details.
+    *   [ ] Provide a clear path/button for users on this app-managed trial to convert to a paid plan.
+    *   [ ] This conversion path *must* initiate the Stripe Checkout flow (`createCheckoutSessionAction`) to collect payment details and create a Stripe subscription.
+    *   [ ] Ensure the `checkout.session.completed` webhook correctly updates the user's status from `TRIAL` to `ACTIVE` and populates Stripe fields (`subscriptionId`, `stripeCustomerId`, etc.).
+*   **[ ] Content Gating:**
+    *   [ ] Ensure existing content gating logic (`hasActiveSubscription` or similar checks) correctly handles the `TRIAL` status and respects the `trialEndDate`.
+
+---
 
 
 

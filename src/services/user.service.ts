@@ -1,5 +1,5 @@
 import { IUserRepository } from '@/repositories/user.repository'
-import { UserProfileModel } from '@/models/AppAllModels.model'
+import { UserProfileModel, UserSubscriptionDetails } from '@/models/AppAllModels.model'
 import logger from '@/utils/logger'
 
 export default class UserService {
@@ -58,4 +58,42 @@ export default class UserService {
       throw error;
     }
   }
+ /**
+   * Fetches relevant subscription details for a given user.
+   * @param userId The ID of the user.
+   * @returns An object containing key subscription details, or null if the user profile is not found.
+   */
+ async getUserSubscriptionStatus(userId: string): Promise<UserSubscriptionDetails | null> {
+  logger.debug(`UserService: Getting subscription status for user ${userId}`);
+  try {
+    // We rely on getUserProfile fetching all necessary fields for now.
+    // Ideally, the repository would have a method to fetch only selected fields.
+    const profile = await this.userRepository.getUserProfile(userId);
+
+    if (!profile) {
+      logger.warn(`UserService: User profile not found for subscription status check (userId: ${userId})`);
+      return null;
+    }
+
+    // Extract the relevant subscription fields from the full profile
+    const subscriptionDetails: UserSubscriptionDetails = {
+      status: profile.subscriptionStatus,
+      plan: profile.subscriptionPlan ?? null,
+      endDate: profile.subscriptionEndDate ?? null,
+      trialEndDate: profile.trialEndDate ?? null,
+      // Ensure stripeCustomerId and cancelAtPeriodEnd are included in UserProfileModel
+      // Add default values if they might be missing from the profile model temporarily
+      stripeCustomerId: profile.stripeCustomerId ?? null,
+      cancelAtPeriodEnd: profile.cancelAtPeriodEnd ?? false,
+    };
+
+    logger.debug(`UserService: Retrieved subscription status for user ${userId}`, subscriptionDetails);
+    return subscriptionDetails;
+
+  } catch (error) {
+    logger.error(`Error in UserService.getUserSubscriptionStatus for user ${userId}:`, error);
+    // Re-throw to allow the caller to handle it
+    throw error;
+  }
+}
 }

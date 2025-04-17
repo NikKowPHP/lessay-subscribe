@@ -6,7 +6,7 @@ import {
   UserProfileModel,
 } from '@/models/AppAllModels.model';
 import prisma from '@/lib/prisma';
-import { SubscriptionStatus } from '@prisma/client';
+import { Prisma, SubscriptionStatus } from '@prisma/client';
 import { createSupabaseServerClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -34,13 +34,13 @@ export class UserRepository implements IUserRepository {
       // Create a helper method to get the client when needed
       this.getSupabaseClient = async () => {
         if (!this.supabase) {
-          this.supabase = await createSupabaseServerClient() as SupabaseClient | null;
+          this.supabase =
+            (await createSupabaseServerClient()) as SupabaseClient | null;
         }
         return this.supabase;
       };
     }
     // For client-side usage, use the passed authService
-  
   }
 
   private getSupabaseClient?: () => Promise<SupabaseClient | null>;
@@ -50,7 +50,7 @@ export class UserRepository implements IUserRepository {
     if (typeof window === 'undefined' && this.getSupabaseClient) {
       const supabase = await this.getSupabaseClient();
       if (!supabase) {
-        throw new Error('No auth service available')
+        throw new Error('No auth service available');
       }
       const {
         data: { session },
@@ -61,7 +61,7 @@ export class UserRepository implements IUserRepository {
       }
       return session;
     }
-   
+
     throw new Error('No auth service available');
   }
 
@@ -82,25 +82,46 @@ export class UserRepository implements IUserRepository {
         return null;
       }
 
-      return {
+      const userProfile: UserProfileModel = {
         id: user.id,
-        userId: user.id,
-        email: user.email || '',
-        name: user.name || undefined,
-        nativeLanguage: user.onboarding?.nativeLanguage || undefined,
-        targetLanguage: user.onboarding?.targetLanguage || undefined,
-        proficiencyLevel: user.onboarding?.proficiencyLevel || undefined,
-        learningPurpose: user.onboarding?.learningPurpose || undefined,
-        onboardingCompleted: user.onboarding?.completed || false,
-        createdAt: user.createdAt,
+        userId: user.id, // Assuming userId in model is same as id
+        email: user.email, // Assuming email is always present
+        name: user.name ?? undefined, // Use nullish coalescing for optional fields
+
+        // Onboarding related fields (from included relation)
+        nativeLanguage: user.onboarding?.nativeLanguage ?? undefined,
+        targetLanguage: user.onboarding?.targetLanguage ?? undefined,
+        proficiencyLevel: user.onboarding?.proficiencyLevel ?? undefined, // Ensure enum matches
+        learningPurpose: user.onboarding?.learningPurpose ?? undefined,
+        onboardingCompleted: user.onboarding?.completed ?? false,
         initialAssessmentCompleted:
-          user.onboarding?.initialAssessmentCompleted || false,
+          user.onboarding?.initialAssessmentCompleted ?? false,
+
+        // Subscription fields (directly from User model)
         subscriptionStatus: user.subscriptionStatus,
-        subscriptionEndDate: user.subscriptionEndDate || null,
+        subscriptionId: user.subscriptionId ?? null,
+        subscriptionPlan: user.subscriptionPlan ?? null,
+        trialStartDate: user.trialStartDate ?? null,
+        trialEndDate: user.trialEndDate ?? null,
+        subscriptionStartDate: user.subscriptionStartDate ?? null,
+        subscriptionEndDate: user.subscriptionEndDate ?? null,
+        billingCycle: user.billingCycle ?? null,
+        paymentMethodId: user.paymentMethodId ?? null,
+        stripeCustomerId: user.stripeCustomerId ?? null,
+        cancelAtPeriodEnd: user.cancelAtPeriodEnd ?? false,
+
+        // Timestamps
+        createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+
+        // Placeholder for Learning Progress Summary (if needed later)
+        // learningProgressSummary: undefined, // Or fetch if required by model
       };
+
+      return userProfile;
     } catch (error) {
-      logger.error('Error fetching user profile:', error);
+      logger.error(`Error fetching user profile for userId ${userId}:`, error);
+      // Re-throw the error to be handled by the service/action layer
       throw error;
     }
   }
@@ -143,45 +164,44 @@ export class UserRepository implements IUserRepository {
         );
       }
 
-      // Create the user with minimal information
-      const user = await prisma.user.create({
-        data: {
-          id: userId,
-          email,
-          subscriptionStatus: SubscriptionStatus.NONE, // Default status
-          subscriptionEndDate: null,
-
-          onboarding: {
-            create: {
-              steps: {},
-              completed: false,
-              // All other fields will be null/undefined until onboarding
-            },
-          },
+   // Create the user with default subscription values
+   const user = await prisma.user.create({
+    data: {
+      id: userId,
+      email,
+      name: profile.name ?? null, // Add name if provided
+      // Default subscription fields
+      subscriptionStatus: SubscriptionStatus.NONE,
+      subscriptionId: null,
+      subscriptionEndDate: null,
+      subscriptionPlan: null,
+      trialStartDate: null,
+      trialEndDate: null,
+      subscriptionStartDate: null,
+      billingCycle: null,
+      paymentMethodId: null,
+      stripeCustomerId: null,
+      cancelAtPeriodEnd: false,
+      // Create related onboarding record
+      onboarding: {
+        create: {
+          steps: {},
+          completed: false,
+          nativeLanguage: profile.nativeLanguage ?? null,
+          targetLanguage: profile.targetLanguage ?? null,
+          proficiencyLevel: profile.proficiencyLevel ?? null,
+          learningPurpose: profile.learningPurpose ?? null,
+          initialAssessmentCompleted: false,
         },
-        include: {
-          onboarding: true,
-        },
-      });
+      },
+    },
+    include: {
+      onboarding: true,
+    },
+  });
 
-      // Return a valid UserProfileModel with defaults for missing fields
-      return {
-        id: user.id,
-        userId: user.id,
-        email: user.email || '',
-        // name: user.name || null,
-        // nativeLanguage: null,
-        // targetLanguage: null,
-        // proficiencyLevel: null,
-        // learningPurpose: null,
-
-        onboardingCompleted: false,
-        initialAssessmentCompleted: false,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt || new Date(),
-        subscriptionStatus: user.subscriptionStatus, // Include default status
-        subscriptionEndDate: user.subscriptionEndDate, // Include default end date
-      };
+  // Map the created user back to the UserProfileModel
+  return await this.getUserProfile(user.id) as UserProfileModel; // Re-fetch to ensure consistency
     } catch (error) {
       logger.error('Error creating user profile:', error);
       throw error;
@@ -193,71 +213,92 @@ export class UserRepository implements IUserRepository {
     profile: Partial<UserProfileModel>
   ): Promise<UserProfileModel> {
     try {
-      // First ensure the user is authorized to update this profile
       const session = await this.getSession();
       if (session.user.id !== userId) {
         throw new Error('Unauthorized to update this profile');
       }
 
-      // Extract onboarding specific fields
-      const onboardingData: any = {};
+      const userData: Prisma.UserUpdateInput = {};
+      const onboardingData: Prisma.OnboardingUpdateInput = {};
 
-      if ('nativeLanguage' in profile)
-        onboardingData.nativeLanguage = profile.nativeLanguage;
-      if ('targetLanguage' in profile)
-        onboardingData.targetLanguage = profile.targetLanguage;
-      if ('proficiencyLevel' in profile)
-        onboardingData.proficiencyLevel = profile.proficiencyLevel;
-      if ('learningPurpose' in profile)
-        onboardingData.learningPurpose = profile.learningPurpose;
-      if ('onboardingCompleted' in profile)
-        onboardingData.completed = profile.onboardingCompleted;
-      if ('initialAssessmentCompleted' in profile)
-        onboardingData.initialAssessmentCompleted =
-          profile.initialAssessmentCompleted;
+      // User fields
+      if ('name' in profile && profile.name !== undefined) userData.name = profile.name;
+      // IMPORTANT: Exclude direct updates to subscription fields managed by webhooks
+      const {
+          subscriptionStatus, subscriptionId, subscriptionEndDate, subscriptionPlan,
+          trialStartDate, trialEndDate, subscriptionStartDate, billingCycle,
+          paymentMethodId, stripeCustomerId, cancelAtPeriodEnd,
+          // Onboarding fields handled below
+          nativeLanguage, targetLanguage, proficiencyLevel, learningPurpose,
+          onboardingCompleted, initialAssessmentCompleted,
+          // Other fields
+          id, userId: profileUserId, email, createdAt, updatedAt, learningProgressSummary,
+          ...restOfUserData
+      } = profile;
 
-      // Update the user and their onboarding data
+      // Onboarding fields
+      if ('nativeLanguage' in profile && profile.nativeLanguage !== undefined) onboardingData.nativeLanguage = profile.nativeLanguage;
+      if ('targetLanguage' in profile && profile.targetLanguage !== undefined) onboardingData.targetLanguage = profile.targetLanguage;
+      if ('proficiencyLevel' in profile && profile.proficiencyLevel !== undefined) onboardingData.proficiencyLevel = profile.proficiencyLevel;
+      if ('learningPurpose' in profile && profile.learningPurpose !== undefined) onboardingData.learningPurpose = profile.learningPurpose;
+      if ('onboardingCompleted' in profile && profile.onboardingCompleted !== undefined) onboardingData.completed = profile.onboardingCompleted;
+      if ('initialAssessmentCompleted' in profile && profile.initialAssessmentCompleted !== undefined) onboardingData.initialAssessmentCompleted = profile.initialAssessmentCompleted;
+
+      const hasUserUpdates = Object.keys(userData).length > 0;
+      const hasOnboardingUpdates = Object.keys(onboardingData).length > 0;
+
+      if (!hasUserUpdates && !hasOnboardingUpdates) {
+         logger.warn(`updateUserProfile called for user ${userId} with no fields to update.`);
+         const currentProfile = await this.getUserProfile(userId);
+         if (!currentProfile) throw new Error(`User profile ${userId} not found.`);
+         return currentProfile;
+      }
+
+      // Perform the update
       const user = await prisma.user.update({
         where: { id: userId },
         data: {
-          name: profile.name,
-          onboarding: {
-            upsert: {
-              create: {
-                ...onboardingData,
-                steps: {},
-              },
-              update: onboardingData,
-            },
-          },
+          ...userData, // Update user fields
+          // Upsert onboarding data only if there are onboarding updates
+          ...(hasOnboardingUpdates && {
+             onboarding: {
+               upsert: {
+                 where: { userId: userId }, // Condition for update
+                 create: { // Data for creation if onboarding doesn't exist
+                   // REMOVED userId: userId, // Prisma handles this link automatically
+                   steps: {}, // Default empty steps
+                   completed: profile.onboardingCompleted ?? false,
+                   initialAssessmentCompleted: profile.initialAssessmentCompleted ?? false,
+                   nativeLanguage: profile.nativeLanguage ?? null,
+                   targetLanguage: profile.targetLanguage ?? null,
+                   proficiencyLevel: profile.proficiencyLevel ?? null,
+                   learningPurpose: profile.learningPurpose ?? null,
+                 },
+                 update: onboardingData, // Data for update if onboarding exists
+               },
+             },
+          }),
         },
         include: {
-          onboarding: true,
+          onboarding: true, // Include the updated/created onboarding data
         },
       });
 
-      return {
-        id: user.id,
-        userId: user.id,
-        email: user.email || '',
-        // name: user.name || null,
-        // nativeLanguage: user.onboarding?.nativeLanguage || null,
-        // targetLanguage: user.onboarding?.targetLanguage || null,
-        // proficiencyLevel: user.onboarding?.proficiencyLevel || null,
-        // learningPurpose: user.onboarding?.learningPurpose || null,
-        onboardingCompleted: user.onboarding?.completed || false,
-        initialAssessmentCompleted:
-          user.onboarding?.initialAssessmentCompleted || false,
-        subscriptionStatus: user.subscriptionStatus,
-        subscriptionEndDate: user.subscriptionEndDate || null,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      };
+      // Map the updated user back to the UserProfileModel
+      const fetchedProfile = await this.getUserProfile(user.id);
+       if (!fetchedProfile) {
+         // This should not happen if update was successful
+         throw new Error("Failed to retrieve updated user profile.");
+      }
+      return fetchedProfile;
+
     } catch (error) {
-      logger.error('Error updating user profile:', error);
+      logger.error(`Error updating user profile for userId ${userId}:`, error);
       throw error;
     }
   }
+
+
 
   async deleteUserProfile(userId: string): Promise<void> {
     try {
@@ -270,37 +311,26 @@ export class UserRepository implements IUserRepository {
         throw new Error('Unauthorized: You can only delete your own profile.');
       }
 
-      logger.warn(`Starting deletion for user: ${userId}`);
+      logger.warn(`Starting DB deletion for user: ${userId}`);
 
-      // Step 1: Delete all user-related data first
-      await prisma.$transaction([
-        // Delete lesson steps first
-        prisma.lessonStep.deleteMany({
-          where: {
-            lesson: {
-              userId: userId
-            }
-          }
-        }),
-        // Then delete lessons
-        prisma.lesson.deleteMany({
-          where: {
-            userId: userId
-          }
-        }),
-        // Delete onboarding data
-        prisma.onboarding.deleteMany({
-          where: {
-            userId: userId
-          }
-        }),
-        // Finally delete the user
-        prisma.user.delete({
-          where: { id: userId }
-        })
-      ]);
+      // Use a transaction to ensure atomicity
+      await prisma.$transaction(async (tx) => {
+         // Delete dependent records first in the correct order
+         await tx.payment.deleteMany({ where: { userId: userId } });
+         await tx.audioMetrics.deleteMany({ where: { OR: [{ lesson: { userId: userId } }, { assessmentLesson: { userId: userId } }] } });
+         await tx.lessonStep.deleteMany({ where: { lesson: { userId: userId } } });
+         await tx.lesson.deleteMany({ where: { userId: userId } });
+         await tx.assessmentStep.deleteMany({ where: { assessment: { userId: userId } } });
+         await tx.assessmentLesson.deleteMany({ where: { userId: userId } });
+         await tx.wordProgress.deleteMany({ where: { learningProgress: { userId: userId } } });
+         await tx.topicProgress.deleteMany({ where: { learningProgress: { userId: userId } } });
+         await tx.learningProgress.deleteMany({ where: { userId: userId } });
+         await tx.onboarding.deleteMany({ where: { userId: userId } });
+         // Finally, delete the user
+         await tx.user.delete({ where: { id: userId } });
+      });
 
-      logger.info(`DB deletion complete: ${userId}`);
+      logger.info(`DB deletion complete for user: ${userId}`);
 
       // Step 2: Delete auth user (server-side only)
       if (typeof window === 'undefined' && this.getSupabaseClient) {
@@ -308,79 +338,47 @@ export class UserRepository implements IUserRepository {
         if (!supabase) {
           throw new Error('No auth service available');
         }
-        
-        // Handle mock user deletion differently
-        // if (userId === 'mock-user-id') {
-        //   logger.warn('Bypassing auth deletion for mock user');
-        //   return;
-        // }
 
+        logger.warn(`Starting Auth Provider deletion for user: ${userId}`);
         // Use admin API for user deletion
         const { error: authError } = await supabase.auth.admin.deleteUser(
           userId
         );
 
         if (authError) {
-          logger.error(`Auth deletion failed: ${authError.message}`, {
-            userId,
+          // Log the error but don't necessarily throw if DB deletion succeeded
+          // It might be an orphaned auth user or other issue.
+          logger.error(`Auth Provider deletion failed for user ${userId}: ${authError.message}`, {
+             userId, code: (authError as any).code, status: (authError as any).status
           });
-          throw new Error('Failed to delete auth user');
+           // Optionally re-throw if auth deletion failure is critical
+           // throw new Error(`Failed to delete auth user: ${authError.message}`);
+        } else {
+           logger.info(`Auth Provider user deleted successfully: ${userId}`);
         }
-        logger.info(`Auth user deleted: ${userId}`);
       }
 
-      logger.warn(`Deletion completed for: ${userId}`);
+      logger.warn(`Full deletion process completed for user: ${userId}`);
     } catch (error: any) {
-      logger.error(`Error during user profile deletion for userId: ${userId}`, {
-        code: error.code,
+      logger.error(`Error during user profile deletion transaction for userId: ${userId}`, {
         message: error.message,
         stack: error.stack,
+        code: error.code, // Include Prisma error code if available
       });
 
-      // Handle specific Prisma errors
+      // Handle specific Prisma errors like P2025 (Record to delete not found)
       if (error.code === 'P2025') {
-        // Record to delete not found
         logger.warn(
-          `User profile not found in DB for deletion (userId: ${userId}). Might have been already deleted.`
+          `User profile or related record not found in DB during deletion (userId: ${userId}). Might have been already deleted.`
         );
-        // Consider this a success case as the user is gone from DB.
-        // Still attempt Auth deletion just in case.
-        try {
-          logger.info(
-            `Attempting Auth Provider deletion for potentially orphaned user: ${userId}`
-          );
-          if (typeof window === 'undefined' && this.getSupabaseClient) {
-            const supabase = await this.getSupabaseClient();
-            if (!supabase) {
-              throw new Error('No auth service available')
-            }
-            const { error: authError } = await supabase.auth.admin.deleteUser(
-              userId
-            );
-
-            if (authError) {
-              logger.error(
-                `Failed to delete potentially orphaned user ${userId} from Auth Provider: ${
-                  authError.message || authError
-                }`
-              );
-            } else {
-              logger.info(
-                `Successfully deleted potentially orphaned user ${userId} from Auth Provider.`
-              );
-            }
-          }
-        } catch (authCatchError: any) {
-          logger.error(
-            `Exception during Auth Provider deletion for potentially orphaned user ${userId}:`,
-            authCatchError
-          );
-        }
-        return; // Exit successfully
+        // Consider this potentially successful if the goal is user removal.
+        // Optionally, still attempt Auth deletion.
+        return;
       }
 
       // Re-throw other database or unexpected errors
       throw new Error(`Failed to delete user profile: ${error.message}`);
     }
   }
+
 }

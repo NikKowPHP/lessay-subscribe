@@ -481,3 +481,12 @@ export interface PaymentModel {
 }
 
 
+// Define a specific type for the return value
+export interface UserSubscriptionDetails {
+  status: SubscriptionStatus;
+  plan: string | null;
+  endDate: Date | null;
+  trialEndDate: Date | null;
+  stripeCustomerId: string | null;
+  cancelAtPeriodEnd: boolean;
+}
