@@ -87,6 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }, [router, supabase]);
   
+    const checkErrorMessageAndGiveTheUserError = (errorMessage: string) => {
+      if (errorMessage.includes('Invalid login credentials') || errorMessage.includes('invalid_credentials')) {
+        return 'Invalid credentials. Please try again or sign up.';
+      }
+      return errorMessage;
+    }
 
     const login = async (email: string, password: string) => {
       // Check mount status at the beginning of async operations
@@ -96,19 +102,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data, error: actionError } = await loginAction(email, password) // Rename error variable
         if (actionError) {
-          setError(actionError.message);
+          setError(checkErrorMessageAndGiveTheUserError(actionError.message));
         }
         if (isMounted.current) {
           setUser(data.user);
           setSession(data.session);
-          if (data.user) {
-            router.push('/app/lessons');
-          }
         }
       } catch (caughtError: any) {
           if (isMounted.current) {
               const message = caughtError?.message ? caughtError.message : 'Failed to login';
-              setError(message);
+              // setError(message);
+              throw new Error(message);
           }
       } finally {
         if (isMounted.current) {
@@ -129,14 +133,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (isMounted.current) {
           setUser(data.user);
           setSession(data.session);
-          if (data.user) {
-            router.push('/app/onboarding'); // Redirect to onboarding instead of lessons
-          }
         }
       } catch (caughtError: any) {
           if (isMounted.current) {
               const message = caughtError?.message ? caughtError.message : 'Registration failed';
-              setError(message);
+              // setError(message);
+              throw new Error(message);
           }
       } finally {
         if (isMounted.current) {
@@ -159,7 +161,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (caughtError: any) {
           if (isMounted.current) {
               const message = caughtError?.message ? caughtError.message : 'Google login failed';
-              setError(message);
+              // setError(message);
+              throw new Error(message);
           }
       } finally {
         if (isMounted.current) {
@@ -186,7 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (caughtError: any) { 
           if (isMounted.current) {
-              setError(caughtError instanceof Error ? caughtError.message : 'Logout failed');
+              // setError(caughtError instanceof Error ? caughtError.message : 'Logout failed');
+              throw new Error(caughtError instanceof Error ? caughtError.message : 'Logout failed');
           }
       }
     }

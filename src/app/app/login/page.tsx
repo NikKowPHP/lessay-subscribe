@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
-  const { login, register, loginWithGoogle, error, loading, user, clearError } = useAuth()
+  const { login, register,  error, loading, user, clearError } = useAuth()
 
   useEffect(() => {
     console.log('user', user)
@@ -44,15 +44,15 @@ export default function LoginPage() {
     }
   }
 
-  const handleGoogleLogin = async () => {
-    clearError()
-    try {
-      await loginWithGoogle()
-      // Redirect is handled by Supabase OAuth
-    } catch (error) {
-      logger.log('Google login failed:', error)
-    }
-  }
+  // const handleGoogleLogin = async () => {
+  //   clearError()
+  //   try {
+  //     await loginWithGoogle()
+  //     // Redirect is handled by Supabase OAuth
+  //   } catch (error) {
+  //     logger.log('Google login failed:', error)
+  //   }
+  // }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -116,7 +116,7 @@ export default function LoginPage() {
             </div>
           </div>
           
-          <div>
+          {/* <div>
             <button
               type="button"
               onClick={handleGoogleLogin}
@@ -133,7 +133,7 @@ export default function LoginPage() {
               </svg>
               Sign in with Google
             </button>
-          </div>
+          </div> */}
           
           <div className="text-sm text-center text-gray-600">
             Enter your email and password to continue. If you don&apos;t have an account yet, we&apos;ll create one for you.
