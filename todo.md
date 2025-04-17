@@ -77,8 +77,8 @@ implementing the monthly/yearly subscription with a trial plan
     *   [x] Ensure methods align with `PaymentService` needs (e.g., potentially logging payments, though primary updates are on the User model). *(Methods exist and `createPayment` is used by service - Verified in File 4 & 6)*
 *   **[ ] User Service (`services/user.service.ts`):** (Verified in File 19)
     *   [x] Add method `getUserSubscriptionStatus(userId: string)` to fetch relevant subscription fields from the User record. *(Method not found in File 19)*
-    *   [ ] Modify `updateUserProfile` to potentially accept and update subscription-related fields *if needed outside webhooks* (generally webhooks are preferred). *(Method exists but doesn't handle subscription fields - Verified in File 19)*
-*   **[ ] User Repository (`repositories/user.repository.ts`):** (Verified in File 18)
+    *   [x] Modify `updateUserProfile` to potentially accept and update subscription-related fields *if needed outside webhooks* (generally webhooks are preferred). *(Method exists but doesn't handle subscription fields - Verified in File 19)*
+*   **[x] User Repository (`repositories/user.repository.ts`):** (Verified in File 18)
     *   [x] Ensure `getUserProfile` returns *all* new subscription fields. *(Partially done in File 5 - returns status/endDate but not ID, plan, stripeCustomerId etc.)* -> **Needs update**
     *   [x] Ensure `createUserProfile` initializes *all* new subscription fields to defaults. *(Partially done in File 5 - initializes status/endDate but not others)* -> **Needs update**
     *   [x] Ensure `updateUserProfile` can handle updates to subscription fields (via `PaymentService`/webhooks primarily). *(File 18 `updateUserProfile` doesn't touch subscription fields, which aligns with webhook approach)*

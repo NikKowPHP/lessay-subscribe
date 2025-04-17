@@ -87,3 +87,45 @@ export async function createCheckoutSessionAction(
     return { sessionId: null, error: userErrorMessage };
   }
 }
+
+
+/**
+ * Server Action to create a Stripe Billing Portal Session.
+ * @returns An object containing the portalUrl or an error message.
+ */
+export async function createBillingPortalSessionAction(): Promise<{ portalUrl: string | null; error: string | null }> {
+  try {
+    // 1. Authenticate the user
+    const userId = await getCurrentUserId();
+    logger.info(`createBillingPortalSessionAction: Initiated by user ${userId}`);
+
+    // 2. Instantiate the Payment Service
+    const paymentService = createPaymentService();
+
+    // 3. Call the service method to create the billing portal session
+    const portalUrl = await paymentService.createBillingPortalSession(userId);
+
+    logger.info(`createBillingPortalSessionAction: Successfully created portal session for user ${userId}`);
+    return { portalUrl: portalUrl, error: null };
+
+  } catch (error: any) {
+    logger.error('Error in createBillingPortalSessionAction:', {
+      errorMessage: error.message,
+      userId: 'hidden', // Avoid logging userId directly in error
+    });
+
+    let userErrorMessage = 'Failed to open subscription management. Please try again.';
+    if (error.message.includes('Authentication required')) {
+      userErrorMessage = 'Authentication required. Please log in.';
+    } else if (error.message.includes('User not found')) {
+      userErrorMessage = 'User account not found.';
+    } else if (error.message.includes('Subscription management is not available')) {
+        userErrorMessage = error.message; // Pass specific message from service
+    } else if (error.message.includes('does not have a Stripe Customer ID')) {
+        userErrorMessage = 'Subscription management is not available for this account yet.'; // User-friendly version
+    }
+
+
+    return { portalUrl: null, error: userErrorMessage };
+  }
+}
