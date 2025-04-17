@@ -16,7 +16,7 @@ import {
 import logger from '@/utils/logger';
 import { AssessmentLesson, AssessmentStep, OnboardingModel } from '@/models/AppAllModels.model';
 import toast from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useUpload } from '@/hooks/use-upload';
 import { useAuth } from './auth-context';
@@ -68,10 +68,10 @@ export function OnboardingProvider({
   const [onboarding, setOnboarding] = useState<OnboardingModel | null>(null);
   const router = useRouter();
 
-  const { user } = useAuth();
+  const { user , loading: authLoading} = useAuth();
   const { profile } = useUserProfile();
   const { uploadFile } = useUpload();
-
+  const pathname = usePathname();
   // Helper method to handle async operations with loading and error states
   const withLoadingAndErrorHandling = async <T,>(
     operation: () => Promise<T>
@@ -220,27 +220,39 @@ export function OnboardingProvider({
 
 
   useEffect(() => {
-   
-    const initializeOnboarding = async () => {
-      if (!user) return;
-      if(!profile) return;
-      try {
-        const isComplete = await checkOnboardingStatus();
-        if (isComplete) {
-          // Redirect to lessons if onboarding is complete
-          router.push('/app/lessons');
-        } else {
-          await startOnboarding();
-          router.push('/app/onboarding');
-        }
-      } catch (error) {
-        logger.error('Failed to initialize onboarding:', error);
-      }
-    };
-    if(!user) router.replace('/app/login');
+    // 1) wait until AuthProvider has resolved the session
+    if (authLoading) return;
 
-    initializeOnboarding();
-  }, [user, router, profile]);
+    // 2) if still no user, send them to /app/login (only if we aren’t already there)
+    if (!user) {
+      if (pathname !== '/app/login') {
+        router.replace('/app/login');
+      }
+      return;
+    }
+
+    // 3) we have a user—now wait for a profile to exist, otherwise bail
+    if (!profile) return;
+
+    // 4) finally, check onboarding status
+    (async () => {
+      const isComplete = await getStatusAction();
+
+      if (isComplete) {
+        // send to lessons if not already there
+        if (pathname !== '/app/lessons') {
+          router.replace('/app/lessons');
+        }
+      } else {
+        // first time through? create an onboarding record
+        await createOnboardingAction();
+        // then send to the onboarding wizard
+        if (pathname !== '/app/onboarding') {
+          router.replace('/app/onboarding');
+        }
+      }
+    })();
+  }, [authLoading, user, profile, pathname, router]);
 
   return (
     <OnboardingContext.Provider
