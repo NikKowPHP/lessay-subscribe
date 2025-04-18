@@ -9,22 +9,43 @@ function getSupabaseClient() {
   return createSupabaseServerClient();
 }
 
-export async function loginAction(email: string, password: string): Promise<{ data: { user: User | null; session: Session | null }, error: AuthError | null }> {
-  const supabase = await getSupabaseClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  if (error) {
-    // if (error.message.includes('Invalid login credentials') || error.code === 'invalid_credentials') {
-    //   logger.info('Login failed with invalid credentials, attempting registration...');
-    //   return registerAction(email, password);
-    // }
-    
-    logger.error('Login error:', error);
-    return { data: { user: null, session: null }, error };
+
+export type AuthResult = {
+  data: { user: User | null; session: Session | null };
+  error: AuthError | null;
+};
+
+export async function loginAction(
+  email: string,
+  password: string
+): Promise<AuthResult> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    // fall back to a server‑side registration, if you like:
+    if (error?.code === 'invalid_credentials') {
+      const { data: regData, error: regErr } = await supabase.auth.signUp({ email, password });
+      return { data: regData, error: regErr };
+    }
+
+    return {
+      data: {
+        user: data.user,
+        session: data.session,
+      },
+      error,
+    };
+  } catch (err: any) {
+    // network or unexpected
+    return {
+      data: { user: null, session: null },
+      error: { message: err.message, status: 500, name: 'ServerError' } as AuthError,
+    };
   }
-  return { data, error: null };
 }
 
 export async function registerAction(email: string, password: string): Promise<{ data: { user: User | null; session: Session | null }, error: AuthError | null }> {

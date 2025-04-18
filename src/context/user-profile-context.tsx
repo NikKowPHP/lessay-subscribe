@@ -32,19 +32,23 @@ export function UserProfileProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<UserProfileModel | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
 
   // Load user profile when auth user changes
   useEffect(() => {
+    // don’t touch anything until auth has finished checking
+    if (authLoading) return;
+
     if (user?.id && user.email) {
       fetchUserProfile(user.id);
     } else {
       setProfile(null);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   const fetchUserProfile = async (userId: string) => {
     setLoading(true);
