@@ -151,19 +151,28 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   // initial redirect logic (auth → onboarding vs lessons)
   // --------------------------------------------------------------------------
   useEffect(() => {
+    // 1) still waiting on auth/profile?
     if (authLoading || profileLoading) return;
 
+    // 2) if no user, force to login
     if (!user) {
       setInitializing(false);
       if (pathname !== '/app/login') router.replace('/app/login');
       return;
     }
 
+    // 3) allow any /app/profile* routes — do not redirect away
+    if (pathname.startsWith('/app/profile')) {
+      setInitializing(false);
+      return;
+    }
+
+    // 4) now decide onboarding vs. lessons
     (async () => {
       try {
         const complete = await callAction(() => getStatusAction());
         setIsOnboardingComplete(complete);
-        if (complete && pathname !== '/app/lessons') {
+        if (complete && !pathname.startsWith('/app/lessons')) {
           router.replace('/app/lessons');
         } else if (!complete && pathname !== '/app/onboarding') {
           await callAction(() => createOnboardingAction());
