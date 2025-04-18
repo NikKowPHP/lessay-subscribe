@@ -254,12 +254,6 @@ export default function AssessmentStep({
                     {metrics.grammarScore || 0}%
                   </p>
                 </div>
-                <div className="bg-neutral-2 p-4 rounded-lg border border-neutral-4 text-center">
-                  <p className="text-sm text-neutral-7">Pronunciation</p>
-                  <p className="text-2xl font-bold text-accent-8">
-                    {metrics.pronunciationScore || 0}%
-                  </p>
-                </div>
               </div>
             )}
 
