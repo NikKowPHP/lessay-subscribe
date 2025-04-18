@@ -11,6 +11,7 @@ import LessonGeneratorService from '@/services/lesson-generator.service';
 import AIService from '@/services/ai.service';
 import { GoogleTTS } from '@/services/google-tts.service';
 import { uploadFile } from '@/utils/vercel_blob-upload';
+import { withServerErrorHandling, Result } from './_withErrorHandling'
 
 // TODO: Convert to container
 function createLessonService() {
@@ -22,13 +23,11 @@ function createLessonService() {
   );
 }
 
-export async function getLessonsAction() {
-  const lessonService = createLessonService();
-  try {
-    return await lessonService.getLessons();
-  } catch (error) {
-    throw error;
-  }
+export async function getLessonsAction(): Promise<Result<LessonModel[]>> {
+  return withServerErrorHandling(async () => {
+    const svc = createLessonService()
+    return await svc.getLessons()
+  })
 }
 
 export async function getLessonByIdAction(lessonId: string) {

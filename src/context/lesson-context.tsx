@@ -97,14 +97,19 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const getLessons = async () => {
-    return withLoadingAndErrorHandling(async () => {
-      setInitialized(false);
-      const fetchedLessons = await getLessonsAction();
-      setLessons(fetchedLessons);
-      return fetchedLessons;
-    });
-  };
+  async function getLessons(): Promise<LessonModel[] | undefined> {
+    setLoading(true)
+    const { data, error } = await getLessonsAction()
+    setLoading(false)
+  
+    if (error) {
+      setError(error)
+      toast.error(error)
+      return
+    }
+    setLessons(data!)
+    return data
+  }
 
   const getLessonById = async (lessonId: string) => {
     return withLoadingAndErrorHandling(async () => {
