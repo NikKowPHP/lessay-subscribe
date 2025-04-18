@@ -42,3 +42,5 @@ yarn-error.log*
 next-env.d.ts
 # Google Cloud Credentials
 config/google-credentials.json
+
+project_snapshot.txt
