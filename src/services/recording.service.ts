@@ -6,7 +6,11 @@ import { retryOperation } from '@/utils/retryWithOperation';
 import { LanguageDetectionResponse } from '@/models/Language-detection.model';
 import { IUploadableAIService } from '@/interfaces/ai-service.interface';
 import { DetailedAIResponse } from '@/models/AiResponse.model';
-import { AssessmentLesson, LessonModel } from '@/models/AppAllModels.model';
+import {
+  AssessmentLesson,
+  AudioMetrics,
+  LessonModel,
+} from '@/models/AppAllModels.model';
 
 class RecordingService {
   private aiService: IUploadableAIService;
@@ -19,8 +23,6 @@ class RecordingService {
     this.metricsService = new MetricsService();
   }
 
- 
-
   async uploadFile(
     audioBuffer: Buffer,
     mimeType: string,
@@ -32,34 +34,50 @@ class RecordingService {
 
   async submitRecording(
     userIP: string,
-    fileUri: string,  // File URI returned from the upload
+    fileUri: string, // File URI returned from the upload
     recordingTime: number,
     recordingSize: number,
     isDeepAnalysis: boolean
   ): Promise<Record<string, unknown>> {
     try {
-
       // Generate content using AI service with retry logic.
       const startTime = Date.now();
 
-      const detectedTargetLanguage = await retryOperation(() => this.detectTargetLanguage(fileUri));
+      const detectedTargetLanguage = await retryOperation(() =>
+        this.detectTargetLanguage(fileUri)
+      );
 
-      logger.log("Detected Target Language:", detectedTargetLanguage);
+      logger.log('Detected Target Language:', detectedTargetLanguage);
 
-      const personalizedPrompts = this.messageGenerator.generatePersonalizedPrompts(detectedTargetLanguage, isDeepAnalysis);
+      const personalizedPrompts =
+        this.messageGenerator.generatePersonalizedPrompts(
+          detectedTargetLanguage,
+          isDeepAnalysis
+        );
 
-      logger.log("Personalized Prompts:", personalizedPrompts);
+      logger.log('Personalized Prompts:', personalizedPrompts);
 
       let aiResponse: Record<string, unknown>;
       try {
-
         aiResponse = await retryOperation(() =>
-          this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_5_pro_exp)
+          this.aiService.generateContent(
+            fileUri,
+            personalizedPrompts.userPrompt,
+            personalizedPrompts.systemPrompt,
+            models.gemini_2_5_pro_exp
+          )
         );
-        logger.log("AI Response:", aiResponse);
+        logger.log('AI Response:', aiResponse);
       } catch (error) {
-        logger.error("Error generating content with the error:", error);
-        aiResponse = await retryOperation(() => this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_0_flash));
+        logger.error('Error generating content with the error:', error);
+        aiResponse = await retryOperation(() =>
+          this.aiService.generateContent(
+            fileUri,
+            personalizedPrompts.userPrompt,
+            personalizedPrompts.systemPrompt,
+            models.gemini_2_0_flash
+          )
+        );
       }
 
       const endTime = Date.now();
@@ -80,59 +98,77 @@ class RecordingService {
 
       return aiResponse;
     } catch (error) {
-      logger.error("Error submitting recording:", error);
+      logger.error('Error submitting recording:', error);
       throw error;
     }
   }
 
-    async submitLessonRecordingSession(
-    fileUri: string,  
+  async submitLessonRecordingSession(
+    fileUri: string,
     recordingTime: number,
-      recordingSize: number, 
-      languages: { targetLanguage: string, nativeLanguage: string },
-      lessonData: LessonModel | AssessmentLesson
+    recordingSize: number,
+    languages: { targetLanguage: string; nativeLanguage: string },
+    lessonData: LessonModel | AssessmentLesson
   ): Promise<Record<string, unknown>> {
     try {
-
       // Generate content using AI service with retry logic.
       const startTime = Date.now();
 
-
-
       // detailed analysis
-      const personalizedPrompts = this.messageGenerator.generateLessonRecordingAnalysisPrompts(languages.targetLanguage, languages.nativeLanguage, lessonData);
+      const personalizedPrompts =
+        this.messageGenerator.generateLessonRecordingAnalysisPrompts(
+          languages.targetLanguage,
+          languages.nativeLanguage,
+          lessonData
+        );
 
-      logger.log("Personalized Prompts:", personalizedPrompts);
+      logger.log('Personalized Prompts:', personalizedPrompts);
 
       let aiResponse: Record<string, unknown>;
       try {
-
         aiResponse = await retryOperation(() =>
-          this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_0_flash)
+          this.aiService.generateContent(
+            fileUri,
+            personalizedPrompts.userPrompt,
+            personalizedPrompts.systemPrompt,
+            models.gemini_2_0_flash
+          )
         );
-        logger.log("AI Response:", aiResponse);
+        logger.log(
+          'AI Response in submitLessonRecordingSession:',
+          JSON.stringify(aiResponse)
+        );
       } catch (error) {
-        logger.error("Error generating content with the error:", error);
-        aiResponse = await retryOperation(() => this.aiService.generateContent(fileUri, personalizedPrompts.userPrompt, personalizedPrompts.systemPrompt, models.gemini_2_0_flash));
+        logger.error('Error generating content with the error:', error);
+        aiResponse = await retryOperation(() =>
+          this.aiService.generateContent(
+            fileUri,
+            personalizedPrompts.userPrompt,
+            personalizedPrompts.systemPrompt,
+            models.gemini_2_0_flash
+          )
+        );
       }
-
-     
 
       return aiResponse;
     } catch (error) {
-      logger.error("Error submitting recording:", error);
+      logger.error('Error submitting recording:', error);
       throw error;
     }
-    }
-  
-
-  private async detectTargetLanguage(fileUri: string): Promise<LanguageDetectionResponse> {
-    const { userPrompt, systemPrompt } = this.messageGenerator.generateTargetLanguageDetectionPrompt();
-    const response = await this.aiService.generateContent(fileUri, userPrompt, systemPrompt, models.gemini_2_0_flash);
-    return response as unknown as LanguageDetectionResponse;
   }
 
-
- 
+  private async detectTargetLanguage(
+    fileUri: string
+  ): Promise<LanguageDetectionResponse> {
+    const { userPrompt, systemPrompt } =
+      this.messageGenerator.generateTargetLanguageDetectionPrompt();
+    const response = await this.aiService.generateContent(
+      fileUri,
+      userPrompt,
+      systemPrompt,
+      models.gemini_2_0_flash
+    );
+    return response as unknown as LanguageDetectionResponse;
+  }
 }
 export default RecordingService;

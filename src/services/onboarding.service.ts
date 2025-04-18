@@ -10,7 +10,13 @@ import {
   LessonModel,
   OnboardingModel,
 } from '@/models/AppAllModels.model';
-import { IOnboardingRepository } from '@/lib/interfaces/all-interfaces';
+import {
+  AiAdaptiveSuggestions,
+  AiLessonAnalysisResponse,
+  AiPerformanceMetrics,
+  AiProgressTracking,
+  IOnboardingRepository,
+} from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
 import LessonService from './lesson.service';
 import { IAssessmentGeneratorService } from './assessment-generator.service';
@@ -29,7 +35,6 @@ import { LearningProgressRepository } from '@/repositories/learning-progress.rep
 import LearningProgressService from './learning-progress.service';
 import { randomUUID } from 'crypto';
 
-
 export default class OnboardingService {
   private onboardingRepository: IOnboardingRepository;
   private lessonService: LessonService;
@@ -46,7 +51,9 @@ export default class OnboardingService {
     this.assessmentGeneratorService = assessmentGeneratorService;
     this.recordingService = new RecordingService();
     const progressRepository = new LearningProgressRepository();
-    this.learningProgressService = new LearningProgressService(progressRepository); // Instantiate it here
+    this.learningProgressService = new LearningProgressService(
+      progressRepository
+    ); // Instantiate it here
   }
 
   getOnboarding = async (): Promise<OnboardingModel | null> => {
@@ -56,19 +63,22 @@ export default class OnboardingService {
   };
 
   createOnboarding = async (): Promise<OnboardingModel> => {
-
     return this.onboardingRepository.createOnboarding();
   };
 
-  updateOnboarding = async (step: string, formData: any): Promise<OnboardingModel> => {
+  updateOnboarding = async (
+    step: string,
+    formData: any
+  ): Promise<OnboardingModel> => {
     return this.onboardingRepository.updateOnboarding(step, formData);
   };
 
-  markOnboardingAsCompleteAndGenerateLessons = async (): Promise<OnboardingModel> => {
-    const onboarding = await this.onboardingRepository.completeOnboarding();
-    await this.lessonService.generateInitialLessons();
-    return onboarding;
-  };
+  markOnboardingAsCompleteAndGenerateLessons =
+    async (): Promise<OnboardingModel> => {
+      const onboarding = await this.onboardingRepository.completeOnboarding();
+      await this.lessonService.generateInitialLessons();
+      return onboarding;
+    };
 
   deleteOnboarding = async (): Promise<void> => {
     return this.onboardingRepository.deleteOnboarding();
@@ -90,7 +100,11 @@ export default class OnboardingService {
       // Get onboarding data to get language preferences
       const onboarding = await this.onboardingRepository.getOnboarding();
 
-      if (!onboarding?.targetLanguage || !onboarding?.nativeLanguage || !onboarding?.proficiencyLevel) {
+      if (
+        !onboarding?.targetLanguage ||
+        !onboarding?.nativeLanguage ||
+        !onboarding?.proficiencyLevel
+      ) {
         throw new Error('Missing required parameters');
       }
 
@@ -104,7 +118,6 @@ export default class OnboardingService {
 
       logger.info(`Generated ${steps} assessment steps without audio`);
 
-
       const audioSteps =
         await this.assessmentGeneratorService.generateAudioForSteps(
           steps,
@@ -113,12 +126,11 @@ export default class OnboardingService {
         );
       logger.info('generated audio steps', audioSteps);
 
-
-
       const assessmentLesson = {
         userId: onboarding?.userId,
-        description: `Comprehensive ${onboarding?.targetLanguage || 'German'
-          } language assessment`,
+        description: `Comprehensive ${
+          onboarding?.targetLanguage || 'German'
+        } language assessment`,
         completed: false,
         sourceLanguage: onboarding?.nativeLanguage || 'English',
         targetLanguage: onboarding?.targetLanguage || 'German',
@@ -161,14 +173,12 @@ export default class OnboardingService {
 
     const results =
       await this.assessmentGeneratorService.generateAssessmentResult(
-        assessmentLesson,
+        assessmentLesson
       );
-
 
     assessmentLesson.metrics = results.metrics;
     assessmentLesson.summary = results.summary;
     assessmentLesson.proposedTopics = results.proposedTopics;
-
 
     logger.info(`Assessment lesson: ${JSON.stringify(assessmentLesson)}`);
 
@@ -183,13 +193,17 @@ export default class OnboardingService {
         }
       );
 
-    this.learningProgressService.updateProgressAfterAssessment(completedLesson.userId, completedLesson)
-      .catch(err => {
-        logger.error('Failed to update learning progress after assessment completion', {
-          userId: completedLesson.userId,
-          assessmentId: completedLesson.id,
-          error: err
-        });
+    this.learningProgressService
+      .updateProgressAfterAssessment(completedLesson.userId, completedLesson)
+      .catch((err) => {
+        logger.error(
+          'Failed to update learning progress after assessment completion',
+          {
+            userId: completedLesson.userId,
+            assessmentId: completedLesson.id,
+            error: err,
+          }
+        );
       });
 
     const completedOnboarding =
@@ -223,18 +237,14 @@ export default class OnboardingService {
         logger.info('Maximum attempts reached', {
           stepId,
           attempts: step.attempts,
-          maxAttempts: step.maxAttempts
+          maxAttempts: step.maxAttempts,
         });
 
         // Record the attempt but mark as incorrect, preserving user response
-        return this.onboardingRepository.recordStepAttempt(
-          lessonId,
-          stepId,
-          {
-            userResponse: step.expectedAnswer || '',
-            correct: true, // to proceed on the frontend
-          }
-        );
+        return this.onboardingRepository.recordStepAttempt(lessonId, stepId, {
+          userResponse: step.expectedAnswer || '',
+          correct: true, // to proceed on the frontend
+        });
       }
 
       // Validate user response for most step types
@@ -261,7 +271,7 @@ export default class OnboardingService {
           if (step.expectedAnswer) {
             logger.info('step.expectedAnswer', step.expectedAnswer);
             logger.info('userResponse', userResponse);
-            if(userResponse.toLowerCase().includes('skip')){
+            if (userResponse.toLowerCase().includes('skip')) {
               correct = true;
               break;
             }
@@ -393,10 +403,8 @@ export default class OnboardingService {
     logger.info('Uploading recording file', {
       fileName,
       mimeType,
-      size: buffer.length
+      size: buffer.length,
     });
-
-
 
     const fileUri = await this.recordingService.uploadFile(
       buffer,
@@ -410,7 +418,7 @@ export default class OnboardingService {
     // send recording to AI
     let aiResponse: Record<string, unknown>;
     if (false) {
-      // if (process.env.MOCK_AI_RESPONSE === 'true') {
+      // if (process.env.NEXT_PUBLIC_MOCK_RECORDING_AI_ANALYSIS === 'true') {
       aiResponse = mockAudioMetrics;
     } else {
       aiResponse = await this.recordingService.submitLessonRecordingSession(
@@ -425,6 +433,7 @@ export default class OnboardingService {
     // 3. convert ai  response to audioMetrics model.
     const audioMetrics = this.convertAiResponseToAudioMetrics(aiResponse);
 
+    logger.debug('audioMetrics in recording ai response', audioMetrics);
     // 4. update lesson with sessionRecordingMetrics, lesson should have a foreign key to audioMetrics
     return this.onboardingRepository.updateOnboardingAssessmentLesson(
       lesson.id,
@@ -433,46 +442,63 @@ export default class OnboardingService {
   }
 
   private convertAiResponseToAudioMetrics(
-    aiResponse: Record<string, unknown>
+    aiResponse: AiLessonAnalysisResponse // Use the specific interface type
   ): AudioMetrics {
-    // Extract top-level metrics with defaults if not present
+    logger.debug(
+      '>>> convertAiResponseToAudioMetrics INPUT:',
+      JSON.stringify(aiResponse, null, 2)
+    );
+
+    // Safely access nested objects
+    const performanceMetrics: AiPerformanceMetrics | undefined =
+      aiResponse.performance_metrics;
+    const progressTracking: AiProgressTracking | undefined =
+      aiResponse.progress_tracking;
+    const adaptiveSuggestions: AiAdaptiveSuggestions | undefined =
+      aiResponse.adaptive_learning_suggestions;
+
+    // Extract top-level metrics safely, providing defaults if objects or properties are missing
     const pronunciationScore =
-      typeof aiResponse.pronunciationScore === 'number'
-        ? aiResponse.pronunciationScore
+      typeof performanceMetrics?.pronunciation_score === 'number'
+        ? performanceMetrics.pronunciation_score
         : 0;
     const fluencyScore =
-      typeof aiResponse.fluencyScore === 'number' ? aiResponse.fluencyScore : 0;
+      typeof performanceMetrics?.fluency_score === 'number'
+        ? performanceMetrics.fluency_score
+        : 0;
     const grammarScore =
-      typeof aiResponse.grammarScore === 'number' ? aiResponse.grammarScore : 0;
+      typeof performanceMetrics?.grammar_accuracy === 'number' // Use correct source key
+        ? performanceMetrics.grammar_accuracy
+        : 0;
     const vocabularyScore =
-      typeof aiResponse.vocabularyScore === 'number'
-        ? aiResponse.vocabularyScore
+      typeof performanceMetrics?.vocabulary_score === 'number'
+        ? performanceMetrics.vocabulary_score
         : 0;
     const overallPerformance =
-      typeof aiResponse.overallPerformance === 'number'
-        ? aiResponse.overallPerformance
+      typeof performanceMetrics?.overall_performance === 'number'
+        ? performanceMetrics.overall_performance
         : 0;
-
 
     const id = randomUUID();
 
-    // Extract CEFR level and learning trajectory
+    // Extract CEFR level and learning trajectory safely
     const proficiencyLevel =
-      typeof aiResponse.proficiencyLevel === 'string'
-        ? aiResponse.proficiencyLevel
-        : 'A1';
+      typeof progressTracking?.estimated_proficiency_level === 'string'
+        ? progressTracking.estimated_proficiency_level
+        : 'A1'; // Default
 
-    // Safely convert learning trajectory to enum value
-    let learningTrajectory: LearningTrajectory = 'steady';
-    if (aiResponse.learningTrajectory === 'accelerating') {
+    let learningTrajectory: LearningTrajectory = 'steady'; // Default
+    const trajectoryFromAI = progressTracking?.learning_trajectory;
+    if (trajectoryFromAI === 'accelerating') {
       learningTrajectory = 'accelerating';
-    } else if (aiResponse.learningTrajectory === 'plateauing') {
+    } else if (trajectoryFromAI === 'plateauing') {
       learningTrajectory = 'plateauing';
     }
 
-    // Extract detailed assessment data using our type guard helpers
+    // Extract detailed assessment data - Pass the correct top-level objects
+    // Use optional chaining `?.` in case the assessment object itself is missing
     const pronunciationAssessment = getPronunciationAssessment(
-      aiResponse.pronunciationAssessment as JsonValue
+      aiResponse?.pronunciation_assessment as JsonValue
     ) || {
       overall_score: pronunciationScore,
       native_language_influence: {
@@ -486,7 +512,7 @@ export default class OnboardingService {
     };
 
     const fluencyAssessment = getFluencyAssessment(
-      aiResponse.fluencyAssessment as JsonValue
+      aiResponse?.fluency_assessment as JsonValue
     ) || {
       overall_score: fluencyScore,
       speech_rate: {
@@ -506,7 +532,7 @@ export default class OnboardingService {
     };
 
     const grammarAssessment = getGrammarAssessment(
-      aiResponse.grammarAssessment as JsonValue
+      aiResponse?.grammar_assessment as JsonValue
     ) || {
       overall_score: grammarScore,
       error_patterns: [],
@@ -515,7 +541,7 @@ export default class OnboardingService {
     };
 
     const vocabularyAssessment = getVocabularyAssessment(
-      aiResponse.vocabularyAssessment as JsonValue
+      aiResponse?.vocabulary_assessment as JsonValue
     ) || {
       overall_score: vocabularyScore,
       range: 'adequate' as VocabularyRange,
@@ -525,14 +551,14 @@ export default class OnboardingService {
     };
 
     const exerciseCompletion = getExerciseCompletion(
-      aiResponse.exerciseCompletion as JsonValue
+      aiResponse?.exercise_completion as JsonValue
     ) || {
       overall_score: 0,
       exercises_analyzed: [],
       comprehension_level: 'fair' as ComprehensionLevel,
     };
 
-    // Extract string arrays safely
+    // Helper to extract string arrays safely
     const extractStringArray = (value: unknown): string[] => {
       if (Array.isArray(value)) {
         return value.filter((item) => typeof item === 'string') as string[];
@@ -540,27 +566,42 @@ export default class OnboardingService {
       return [];
     };
 
-    const suggestedTopics = extractStringArray(aiResponse.suggestedTopics);
-    const grammarFocusAreas = extractStringArray(aiResponse.grammarFocusAreas);
-    const vocabularyDomains = extractStringArray(aiResponse.vocabularyDomains);
-    const nextSkillTargets = extractStringArray(aiResponse.nextSkillTargets);
-    const preferredPatterns = extractStringArray(aiResponse.preferredPatterns);
+    // Extract learning suggestions safely using optional chaining
+    const suggestedTopics = extractStringArray(
+      adaptiveSuggestions?.suggested_topics
+    );
+    const grammarFocusAreas = extractStringArray(
+      adaptiveSuggestions?.grammar_focus_areas
+    );
+    const vocabularyDomains = extractStringArray(
+      adaptiveSuggestions?.vocabulary_domains
+    );
+    const nextSkillTargets = extractStringArray(
+      adaptiveSuggestions?.next_skill_targets
+    );
+    // Handle potential nesting within learning_style_observations or direct access
+    const preferredPatterns = extractStringArray(
+      adaptiveSuggestions?.preferred_patterns ||
+        adaptiveSuggestions?.learning_style_observations?.preferred_patterns
+    );
     const effectiveApproaches = extractStringArray(
-      aiResponse.effectiveApproaches
+      adaptiveSuggestions?.effective_approaches ||
+        adaptiveSuggestions?.learning_style_observations?.effective_approaches
     );
 
-    // Extract metadata
+    // Extract metadata safely
     const audioRecordingUrl =
-      typeof aiResponse.audioRecordingUrl === 'string'
+      typeof aiResponse?.audioRecordingUrl === 'string'
         ? aiResponse.audioRecordingUrl
         : null;
     const recordingDuration =
-      typeof aiResponse.recordingDuration === 'number'
+      typeof aiResponse?.recordingDuration === 'number'
         ? aiResponse.recordingDuration
         : null;
 
     // Construct and return the AudioMetrics object
-    return {
+    const finalAudioMetrics: AudioMetrics = {
+      // Explicitly type the final object
       id,
       pronunciationScore,
       fluencyScore,
@@ -585,5 +626,11 @@ export default class OnboardingService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+
+    logger.debug(
+      '<<< convertAiResponseToAudioMetrics OUTPUT:',
+      JSON.stringify(finalAudioMetrics, null, 2)
+    );
+    return finalAudioMetrics;
   }
 }

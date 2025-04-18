@@ -49,3 +49,52 @@ export interface RecordingBlob extends Blob {
   recordingSize?: number;
   lastModified?: number;
 }
+
+
+
+// Add these interfaces (adjust types like number/string/array as needed based on AI response)
+export interface AiPerformanceMetrics {
+  pronunciation_score?: number;
+  fluency_score?: number;
+  grammar_accuracy?: number; // Note the different name
+  vocabulary_score?: number;
+  overall_performance?: number;
+  strengths?: string[];
+  weaknesses?: string[];
+}
+
+export interface AiProgressTracking {
+  improvement_since_last_assessment?: any; // Type appropriately if used
+  learning_trajectory?: string;
+  estimated_proficiency_level?: string;
+  time_to_next_level_estimate?: string;
+}
+
+export interface AiAdaptiveSuggestions {
+  suggested_topics?: string[];
+  grammar_focus_areas?: string[];
+  vocabulary_domains?: string[];
+  next_skill_targets?: string[];
+  learning_style_observations?: {
+    preferred_patterns?: string[];
+    effective_approaches?: string[];
+  };
+  // Add preferred_patterns and effective_approaches directly if they are top-level in suggestions
+  preferred_patterns?: string[];
+  effective_approaches?: string[];
+}
+
+// You might also want a top-level interface for the whole AI response
+export interface AiLessonAnalysisResponse {
+  pronunciation_assessment?: any; // Use more specific type if defined
+  fluency_assessment?: any;
+  grammar_assessment?: any;
+  vocabulary_assessment?: any;
+  exercise_completion?: any;
+  performance_metrics?: AiPerformanceMetrics;
+  adaptive_learning_suggestions?: AiAdaptiveSuggestions;
+  progress_tracking?: AiProgressTracking;
+  // Add other potential top-level fields if necessary
+  audioRecordingUrl?: string;
+  recordingDuration?: number;
+}

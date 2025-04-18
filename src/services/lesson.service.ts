@@ -15,6 +15,10 @@ import {
 } from '@/models/AppAllModels.model';
 
 import {
+  AiAdaptiveSuggestions,
+  AiLessonAnalysisResponse,
+  AiPerformanceMetrics,
+  AiProgressTracking,
   ILessonRepository,
   IOnboardingRepository,
 } from '@/lib/interfaces/all-interfaces';
@@ -312,7 +316,10 @@ export default class LessonService {
     return this.lessonRepository.deleteLesson(lessonId);
   }
 
-  private constructAdaptiveRequest(assessment: AssessmentLesson, onboardingData: OnboardingModel): any {
+  private constructAdaptiveRequest(
+    assessment: AssessmentLesson,
+    onboardingData: OnboardingModel
+  ): any {
     if (!assessment) {
       return undefined;
     }
@@ -327,12 +334,16 @@ export default class LessonService {
       };
     }
     const userInfo = {
-      targetLanguage: onboardingData.targetLanguage || this.lessonConfig.defaultLanguage,
-      proficiencyLevel: onboardingData.proficiencyLevel?.toLowerCase() || this.lessonConfig.defaultProficiency,
-      learningPurpose: onboardingData.learningPurpose || this.lessonConfig.defaultPurpose,
+      targetLanguage:
+        onboardingData.targetLanguage || this.lessonConfig.defaultLanguage,
+      proficiencyLevel:
+        onboardingData.proficiencyLevel?.toLowerCase() ||
+        this.lessonConfig.defaultProficiency,
+      learningPurpose:
+        onboardingData.learningPurpose || this.lessonConfig.defaultPurpose,
       sourceLanguage: onboardingData.nativeLanguage || 'English',
     };
-// TODO: FINISH
+    // TODO: FINISH
     logger.debug('constructAdaptiveRequest', { userInfo });
 
     const audioMetrics = assessment.audioMetrics;
@@ -469,7 +480,10 @@ export default class LessonService {
     const languageConfig = this.getLanguageConfig(onboardingData);
 
     const assessmentTopics = assessment.proposedTopics || [];
-    const adaptiveRequest = this.constructAdaptiveRequest(assessment, onboardingData);
+    const adaptiveRequest = this.constructAdaptiveRequest(
+      assessment,
+      onboardingData
+    );
     const learningPurposeTopics = this.getTopicsFromLearningPurpose(
       languageConfig.learningPurpose
     );
@@ -631,7 +645,7 @@ export default class LessonService {
           logger.info('step.expectedAnswer', step.expectedAnswer);
           logger.info('userResponse', userResponse);
 
-          if(userResponse.toLowerCase().includes('skip')){
+          if (userResponse.toLowerCase().includes('skip')) {
             correct = true;
             break;
           }
@@ -691,10 +705,14 @@ export default class LessonService {
       default:
         correct = false;
     }
-    const updatedStep = await this.lessonRepository.recordStepAttempt(lessonId, stepId, {
-      userResponse,
-      correct,
-    });
+    const updatedStep = await this.lessonRepository.recordStepAttempt(
+      lessonId,
+      stepId,
+      {
+        userResponse,
+        correct,
+      }
+    );
     logger.info('updatedStep', { updatedStep });
     return { ...updatedStep, userResponse: step.expectedAnswer || '' };
   }
@@ -1332,46 +1350,63 @@ export default class LessonService {
   }
 
   private convertAiResponseToAudioMetrics(
-    aiResponse: Record<string, unknown>
+    aiResponse: AiLessonAnalysisResponse // Use the specific interface type
   ): AudioMetrics {
-    // Extract top-level metrics with defaults if not present
+    logger.debug(
+      '>>> convertAiResponseToAudioMetrics INPUT:',
+      JSON.stringify(aiResponse, null, 2)
+    );
+
+    // Safely access nested objects
+    const performanceMetrics: AiPerformanceMetrics | undefined =
+      aiResponse.performance_metrics;
+    const progressTracking: AiProgressTracking | undefined =
+      aiResponse.progress_tracking;
+    const adaptiveSuggestions: AiAdaptiveSuggestions | undefined =
+      aiResponse.adaptive_learning_suggestions;
+
+    // Extract top-level metrics safely, providing defaults if objects or properties are missing
     const pronunciationScore =
-      typeof aiResponse.pronunciationScore === 'number'
-        ? aiResponse.pronunciationScore
+      typeof performanceMetrics?.pronunciation_score === 'number'
+        ? performanceMetrics.pronunciation_score
         : 0;
     const fluencyScore =
-      typeof aiResponse.fluencyScore === 'number' ? aiResponse.fluencyScore : 0;
+      typeof performanceMetrics?.fluency_score === 'number'
+        ? performanceMetrics.fluency_score
+        : 0;
     const grammarScore =
-      typeof aiResponse.grammarScore === 'number' ? aiResponse.grammarScore : 0;
+      typeof performanceMetrics?.grammar_accuracy === 'number' // Use correct source key
+        ? performanceMetrics.grammar_accuracy
+        : 0;
     const vocabularyScore =
-      typeof aiResponse.vocabularyScore === 'number'
-        ? aiResponse.vocabularyScore
+      typeof performanceMetrics?.vocabulary_score === 'number'
+        ? performanceMetrics.vocabulary_score
         : 0;
     const overallPerformance =
-      typeof aiResponse.overallPerformance === 'number'
-        ? aiResponse.overallPerformance
+      typeof performanceMetrics?.overall_performance === 'number'
+        ? performanceMetrics.overall_performance
         : 0;
 
-    // Generate a unique ID for the metrics
     const id = randomUUID();
 
-    // Extract CEFR level and learning trajectory
+    // Extract CEFR level and learning trajectory safely
     const proficiencyLevel =
-      typeof aiResponse.proficiencyLevel === 'string'
-        ? aiResponse.proficiencyLevel
-        : 'A1';
+      typeof progressTracking?.estimated_proficiency_level === 'string'
+        ? progressTracking.estimated_proficiency_level
+        : 'A1'; // Default
 
-    // Safely convert learning trajectory to enum value
-    let learningTrajectory: LearningTrajectory = 'steady';
-    if (aiResponse.learningTrajectory === 'accelerating') {
+    let learningTrajectory: LearningTrajectory = 'steady'; // Default
+    const trajectoryFromAI = progressTracking?.learning_trajectory;
+    if (trajectoryFromAI === 'accelerating') {
       learningTrajectory = 'accelerating';
-    } else if (aiResponse.learningTrajectory === 'plateauing') {
+    } else if (trajectoryFromAI === 'plateauing') {
       learningTrajectory = 'plateauing';
     }
 
-    // Extract detailed assessment data using our type guard helpers
+    // Extract detailed assessment data - Pass the correct top-level objects
+    // Use optional chaining `?.` in case the assessment object itself is missing
     const pronunciationAssessment = getPronunciationAssessment(
-      aiResponse.pronunciationAssessment as JsonValue
+      aiResponse?.pronunciation_assessment as JsonValue
     ) || {
       overall_score: pronunciationScore,
       native_language_influence: {
@@ -1385,7 +1420,7 @@ export default class LessonService {
     };
 
     const fluencyAssessment = getFluencyAssessment(
-      aiResponse.fluencyAssessment as JsonValue
+      aiResponse?.fluency_assessment as JsonValue
     ) || {
       overall_score: fluencyScore,
       speech_rate: {
@@ -1405,7 +1440,7 @@ export default class LessonService {
     };
 
     const grammarAssessment = getGrammarAssessment(
-      aiResponse.grammarAssessment as JsonValue
+      aiResponse?.grammar_assessment as JsonValue
     ) || {
       overall_score: grammarScore,
       error_patterns: [],
@@ -1414,7 +1449,7 @@ export default class LessonService {
     };
 
     const vocabularyAssessment = getVocabularyAssessment(
-      aiResponse.vocabularyAssessment as JsonValue
+      aiResponse?.vocabulary_assessment as JsonValue
     ) || {
       overall_score: vocabularyScore,
       range: 'adequate' as VocabularyRange,
@@ -1424,14 +1459,14 @@ export default class LessonService {
     };
 
     const exerciseCompletion = getExerciseCompletion(
-      aiResponse.exerciseCompletion as JsonValue
+      aiResponse?.exercise_completion as JsonValue
     ) || {
       overall_score: 0,
       exercises_analyzed: [],
       comprehension_level: 'fair' as ComprehensionLevel,
     };
 
-    // Extract string arrays safely
+    // Helper to extract string arrays safely
     const extractStringArray = (value: unknown): string[] => {
       if (Array.isArray(value)) {
         return value.filter((item) => typeof item === 'string') as string[];
@@ -1439,27 +1474,42 @@ export default class LessonService {
       return [];
     };
 
-    const suggestedTopics = extractStringArray(aiResponse.suggestedTopics);
-    const grammarFocusAreas = extractStringArray(aiResponse.grammarFocusAreas);
-    const vocabularyDomains = extractStringArray(aiResponse.vocabularyDomains);
-    const nextSkillTargets = extractStringArray(aiResponse.nextSkillTargets);
-    const preferredPatterns = extractStringArray(aiResponse.preferredPatterns);
+    // Extract learning suggestions safely using optional chaining
+    const suggestedTopics = extractStringArray(
+      adaptiveSuggestions?.suggested_topics
+    );
+    const grammarFocusAreas = extractStringArray(
+      adaptiveSuggestions?.grammar_focus_areas
+    );
+    const vocabularyDomains = extractStringArray(
+      adaptiveSuggestions?.vocabulary_domains
+    );
+    const nextSkillTargets = extractStringArray(
+      adaptiveSuggestions?.next_skill_targets
+    );
+    // Handle potential nesting within learning_style_observations or direct access
+    const preferredPatterns = extractStringArray(
+      adaptiveSuggestions?.preferred_patterns ||
+        adaptiveSuggestions?.learning_style_observations?.preferred_patterns
+    );
     const effectiveApproaches = extractStringArray(
-      aiResponse.effectiveApproaches
+      adaptiveSuggestions?.effective_approaches ||
+        adaptiveSuggestions?.learning_style_observations?.effective_approaches
     );
 
-    // Extract metadata
+    // Extract metadata safely
     const audioRecordingUrl =
-      typeof aiResponse.audioRecordingUrl === 'string'
+      typeof aiResponse?.audioRecordingUrl === 'string'
         ? aiResponse.audioRecordingUrl
         : null;
     const recordingDuration =
-      typeof aiResponse.recordingDuration === 'number'
+      typeof aiResponse?.recordingDuration === 'number'
         ? aiResponse.recordingDuration
         : null;
 
     // Construct and return the AudioMetrics object
-    return {
+    const finalAudioMetrics: AudioMetrics = {
+      // Explicitly type the final object
       id,
       pronunciationScore,
       fluencyScore,
@@ -1484,5 +1534,11 @@ export default class LessonService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+
+    logger.debug(
+      '<<< convertAiResponseToAudioMetrics OUTPUT:',
+      JSON.stringify(finalAudioMetrics, null, 2)
+    );
+    return finalAudioMetrics;
   }
 }
