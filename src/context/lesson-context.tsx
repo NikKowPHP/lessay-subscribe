@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import {
   getLessonsAction,
   getLessonByIdAction,
@@ -23,12 +23,14 @@ import {
 import toast from 'react-hot-toast';
 import { useUpload } from '@/hooks/use-upload';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
+import { useAuth } from '@/context/auth-context';
 
 interface LessonContextType {
   currentLesson: LessonModel | null;
   lessons: LessonModel[];
   loading: boolean;
   error: string | null;
+  initialized: boolean;
   clearError: () => void;
   getLessons: () => Promise<LessonModel[] | undefined>;
   getLessonById: (lessonId: string) => Promise<LessonModel | null>;
@@ -68,11 +70,13 @@ const LessonContext = createContext<LessonContextType | undefined>(undefined);
 
 export function LessonProvider({ children }: { children: React.ReactNode }) {
   const { uploadFile } = useUpload();
+  const { user } = useAuth();
 
   const [currentLesson, setCurrentLesson] = useState<LessonModel | null>(null);
   const [lessons, setLessons] = useState<LessonModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   // Helper method to handle async operations with loading and error states
   const withLoadingAndErrorHandling = async <T,>(
@@ -95,23 +99,10 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
 
   const getLessons = async () => {
     return withLoadingAndErrorHandling(async () => {
-      try {
-        const fetchedLessons = await getLessonsAction();
-        setLessons(fetchedLessons);
-        return fetchedLessons;
-      } catch (error) {
-        logger.error('Error getting lessons', error);
-        if(error instanceof Error && error.message.includes('Initial assessment not completed')) {
-          toast.error('Please complete the onboarding process to generate lessons');
-          window.location.href = '/onboarding';
-        } else {
-          toast.error('An error occurred while fetching lessons');
-          logger.error('Error getting lessons', error);
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
-        }
-      }
+      setInitialized(false);
+      const fetchedLessons = await getLessonsAction();
+      setLessons(fetchedLessons);
+      return fetchedLessons;
     });
   };
 
@@ -313,6 +304,16 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     [uploadFile]
   );
 
+  // Auto-fetch when user becomes available:
+  useEffect(() => {
+    if (!user) return;
+    getLessons()
+      .then(() => setInitialized(true))
+      .catch(() => {
+        /* swallow here; error already handled in withLoading... */
+      });
+  }, [user]);
+
   return (
     <LessonContext.Provider
       value={{
@@ -320,6 +321,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
         lessons,
         loading,
         error,
+        initialized,
         clearError,
         getLessons,
         getLessonById,
