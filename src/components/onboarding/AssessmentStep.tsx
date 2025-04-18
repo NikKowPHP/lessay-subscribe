@@ -406,7 +406,7 @@ export default function AssessmentStep({
                           focus:outline-none focus:ring-2 focus:ring-accent-8 focus:ring-offset-2 disabled:opacity-50
                           text-sm font-medium"
               >
-                {loading || isCompleting ? (
+                {loading || isCompleting || lessonAudioMetricsLoading ? (
                   <span className="flex items-center">
                     <svg
                       className="animate-spin -ml-1 mr-2 h-4 w-4 text-neutral-1"
