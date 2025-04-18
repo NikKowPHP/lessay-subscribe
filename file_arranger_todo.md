@@ -11,10 +11,10 @@ This script will scan a Git workspace, extract text file contents and image file
 
 ## 2. Identify Git Workspace Root
 
--   [ ] Use `git rev-parse --show-toplevel` to find the root directory of the current Git repository.
--   [ ] Store this path in a variable (e.g., `PROJECT_ROOT`).
--   [ ] Add error handling: Check if the command succeeded. If not, print an error message (e.g., "Error: Not inside a Git repository.") and exit.
--   [ ] Change the current directory to the `PROJECT_ROOT` using `cd "$PROJECT_ROOT"` so that all subsequent paths are relative to the root.
+-   [x] Use `git rev-parse --show-toplevel` to find the root directory of the current Git repository.
+-   [x] Store this path in a variable (e.g., `PROJECT_ROOT`).
+-   [x] Add error handling: Check if the command succeeded. If not, print an error message (e.g., "Error: Not inside a Git repository.") and exit.
+-   [x] Change the current directory to the `PROJECT_ROOT` using `cd "$PROJECT_ROOT"` so that all subsequent paths are relative to the root.
 
 ## 3. Define Ignored Directories and Output File
 
