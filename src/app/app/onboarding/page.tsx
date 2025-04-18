@@ -14,6 +14,7 @@ import ProficiencyStep from '@/components/onboarding/ProficiencyStep';
 import AssessmentStep from '@/components/onboarding/AssessmentStep';
 import { AssessmentLesson } from '@/models/AppAllModels.model';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
+import { useError } from '@/hooks/useError';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -36,7 +37,6 @@ export default function OnboardingPage() {
     learningPurpose: '',
     proficiencyLevel: '',
   });
-
 
 
   useEffect(() => {
@@ -155,13 +155,11 @@ export default function OnboardingPage() {
     try {
       const lesson = await getAssessmentLesson();
       if (!lesson) {
-        toast.error('Failed to load assessment lesson');
         return;
       }
       setAssessmentLesson(lesson);
     } catch (error) {
       logger.error('Error generating assessment lesson:', error);
-      toast.error('Error generating assessment lesson');
     } finally {
       setAssessmentLoading(false);
     }
@@ -170,7 +168,6 @@ export default function OnboardingPage() {
   // complete assessment lesson (generates text-based metrics)
   const handleOnAssessmentComplete = async () => {
     if (!assessmentLesson) {
-      toast.error('No assessment lesson to complete');
       return;
     }
     setAreMetricsGenerated(false);
@@ -180,14 +177,12 @@ export default function OnboardingPage() {
         'Assessment completed'
       );
       if (!lessonWithMetrics) {
-        toast.error('Failed to complete assessment');
         return;
       }
       setAssessmentLesson(prev => ({ ...prev, ...lessonWithMetrics }));
       logger.info('LessonWithMetrics (Text-based)', lessonWithMetrics);
     } catch (error) {
       logger.error('Error completing assessment lesson:', error);
-      toast.error('Error completing assessment');
     } finally {
       setAreMetricsGenerated(true);
     }
@@ -204,7 +199,6 @@ export default function OnboardingPage() {
     try {
       const lessonWithAudioMetrics = await processAssessmentLessonRecording(sessionRecording, lesson, recordingTime, recordingSize);
       if (!lessonWithAudioMetrics) {
-        toast.error('Failed to process pronunciation');
         return;
       }
       setAssessmentLesson(prev => ({ ...prev, ...lessonWithAudioMetrics }));
@@ -212,7 +206,6 @@ export default function OnboardingPage() {
       return lessonWithAudioMetrics;
     } catch (error) {
       logger.error('Error processing assessment recording on page:', error);
-      toast.error('Error processing assessment recording');
       return;
     }
   };

@@ -80,7 +80,6 @@ export default function LessonDetailPage() {
 
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
-          toast.error('Failed to process pronunciation');
         } finally {
           setPronunciationResultsLoading(false);
         }

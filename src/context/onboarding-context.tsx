@@ -22,6 +22,7 @@ import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useAuth } from './auth-context';
 import { useUserProfile } from './user-profile-context';
 import { Result } from '@/lib/server-actions/_withErrorHandling';
+import { useError } from '@/hooks/useError';
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;
@@ -78,7 +79,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
-
+  const {showError} = useError();
   // --------------------------------------------------------------------------
   // helper: unwrap Result<T>, manage loading + errors + toasts
   // --------------------------------------------------------------------------
@@ -96,7 +97,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       if (msg) {
         // surface the error in your UI
         setError(msg);
-        toast.error(msg);
+        toast.  error(msg);
       } else {
         result = data!;
       }
@@ -104,7 +105,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       const message =
         err instanceof Error ? err.message : String(err);
       setError(message);
-      toast.error(message);
+      showError(message);
     } finally {
       setLoading(false);
     }

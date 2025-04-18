@@ -27,6 +27,7 @@ import { useAuth } from '@/context/auth-context';
 import { Result } from '@/lib/server-actions/_withErrorHandling';
 import { usePathname } from 'next/navigation';
 import { useOnboarding } from './onboarding-context';
+import { useError } from '@/hooks/useError';
 
 interface LessonContextType {
   currentLesson: LessonModel | null;
@@ -82,13 +83,14 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   const prevIsOnboardingComplete = useRef<boolean>(isOnboardingComplete); 
+  const { showError } = useError();
   const callAction = useCallback(async <T,>(action: () => Promise<Result<T>>): Promise<T> => {
     setLoading(true);
     try {
       const { data, error } = await action();
       if (error) {
         setError(error);
-        toast.error(error);
+        showError(error);
         throw new Error(error);
       }
       return data! as T;

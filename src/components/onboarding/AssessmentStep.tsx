@@ -12,6 +12,7 @@ import LessonChat from '@/components/lessons/lessonChat';
 import router from 'next/router';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
+import { useError } from '@/hooks/useError';
 
 interface AssessmentStepProps {
   areMetricsGenerated: boolean;
@@ -54,7 +55,6 @@ export default function AssessmentStep({
   ): Promise<AssessmentStepModel | LessonStep> => {
     try {
       if (!lesson) {
-        toast.error('Lesson is not loaded');
         return step;
       }
       // Record the step attempt, similar to how lessons work
@@ -64,7 +64,6 @@ export default function AssessmentStep({
         userResponse
      );
       if (!updatedStep) {
-        toast.error('Failed to record assessment response');
         return step;
       }
       return updatedStep;
@@ -72,7 +71,6 @@ export default function AssessmentStep({
       // Update local state if needed
       // (This matches how the lesson page updates local lesson state)
     } catch (error) {
-      toast.error('Failed to record assessment response');
       return step;
     }
   };
@@ -82,7 +80,6 @@ export default function AssessmentStep({
     setIsCompleting(true);
     try {
       if (!lesson) {
-        toast.error('Lesson is not loaded');
         setIsCompleting(false);
         return;
       }
@@ -92,7 +89,6 @@ export default function AssessmentStep({
       await onAssessmentComplete();
       // After completion, show results instead of immediately navigating
     } catch (error) {
-      toast.error('Something went wrong completing your assessment');
     } finally {
       setIsCompleting(false);
     }
@@ -127,18 +123,15 @@ export default function AssessmentStep({
             recordingSize
           );
           if (!lessonWithAudioMetrics) {
-            toast.error('Pronunciation analysis failed.');
             return;
           }
           if (!lessonWithAudioMetrics.audioMetrics) {
-            toast.error('No audio metrics returned.');
             return;
           }
           logger.info('lessonWithAudioMetrics', lessonWithAudioMetrics);
           
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
-          toast.error('Failed to process pronunciation');
         } finally {
           setLessonAudioMetricsLoading(false);
         }

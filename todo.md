@@ -21,7 +21,8 @@
 - [ ] too many toaster messages 'initial assessment is not completed'
 - [ ] Analyzing pronunciation and fluency should also disable the go to lessons
 - [x] in the profile provider we should make it more robust, if profile does not exist but we have the authed user then we should create the profile
-## test fixes
+- [ ] move most of the provider  logic to the backend (identify areas that can be processed on the backend and modify it, more about the provider data initialization, not the flow of the lesson or onboarding.  )
+- ## test fixes
 - [ ] speech recognition should never stop once initiated
 - [ ] speech recognition should not restart if the user manually stops it FINISH
 - [ ] media recorder fires only on start listening event 
