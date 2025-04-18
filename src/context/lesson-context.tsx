@@ -25,6 +25,7 @@ import { useUpload } from '@/hooks/use-upload';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useAuth } from '@/context/auth-context';
 import { Result } from '@/lib/server-actions/_withErrorHandling';
+import { usePathname } from 'next/navigation';
 
 interface LessonContextType {
   currentLesson: LessonModel | null;
@@ -65,6 +66,7 @@ interface LessonContextType {
     recordingTime: number,
     recordingSize: number
   ) => Promise<LessonModel>;
+  refreshLessons: () => Promise<LessonModel[]>;
 }
 
 const LessonContext = createContext<LessonContextType | undefined>(undefined);
@@ -72,43 +74,37 @@ const LessonContext = createContext<LessonContextType | undefined>(undefined);
 export function LessonProvider({ children }: { children: React.ReactNode }) {
   const { uploadFile } = useUpload();
   const { user } = useAuth();
-
-  const [currentLesson, setCurrentLesson] = useState<LessonModel | null>(null);
   const [lessons, setLessons] = useState<LessonModel[]>([]);
+  const [currentLesson, setCurrentLesson] = useState<LessonModel | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
-/** 
- * Wraps any server‐action returning Result<T>,
- * manages loading + errors + toasts,
- * and finally returns T or bubbles as Error.
- */
-async function callAction<T>(
-  action: () => Promise<Result<T>>
-): Promise<T> {
-  setLoading(true);
-  try {
-    const { data, error } = await action();
-    if (error) {
-      setError(error);
-      toast.error(error);
-      throw new Error(error);
+  const callAction = useCallback(async <T,>(action: () => Promise<Result<T>>): Promise<T> => {
+    setLoading(true);
+    try {
+      const { data, error } = await action();
+      if (error) {
+        setError(error);
+        toast.error(error);
+        throw new Error(error);
+      }
+      return data! as T;
+    } finally {
+      setLoading(false);
     }
-    return data!;
-  } finally {
-    setLoading(false);
-  }
-}
+  }, []);
 
-  // 1) Fetch all lessons
-  const getLessons = async (): Promise<LessonModel[]> => {
-    const lessons = await callAction(() => getLessonsAction());
-    setLessons(lessons);
-    return lessons;
-  };
+  /**
+   *  fetch lessons and store them
+   */
+  const refreshLessons = useCallback(async (): Promise<LessonModel[]> => {
+    const data = await callAction(() => getLessonsAction());
+    setLessons(data);
+    return data;
+  }, [callAction]);
 
-  // 2) Fetch one by ID
+  // 1) Fetch one by ID
   const getLessonById = async (id: string): Promise<LessonModel| null> => {
     const lesson = await callAction(() => getLessonByIdAction(id));
     setCurrentLesson(lesson);
@@ -218,16 +214,54 @@ async function callAction<T>(
     return processedLesson;
   };
 
-  // auto-fetch when user becomes available:
+  const pathname = usePathname();
+
+  //
+  // 1) Initial fetch when `user` first becomes available
+  //
   useEffect(() => {
     if (!user) return;
-    getLessons()
+
+    refreshLessons()
       .then(() => setInitialized(true))
       .catch(() => {
-        /* swallow here; error already handled in withLoading... */
+        /* error already handled in callAction */
       });
-  }, [user]);
+  }, [user, refreshLessons]);
 
+  //
+  // 2) Subsequent fetch any time we navigate into `/app/lessons`
+  //
+  useEffect(() => {
+    // Log current state for debugging dependencies
+    logger.debug('LessonProvider Nav Hook Check:', { pathname, initialized, userId: user?.id });
+
+    // Check ALL conditions *before* deciding to fetch
+    // We only want to fetch if we ARE on the lessons page AND initialization is complete AND we have a user.
+    if (pathname.startsWith('/app/lessons') && initialized && user) {
+      logger.info('LessonProvider Nav Hook: Conditions met, refreshing lessons...');
+      refreshLessons().catch((err) => {
+        logger.error('LessonProvider Nav Hook: Error refreshing lessons', err);
+        // Error is already handled/toasted by callAction in refreshLessons
+      });
+    } else {
+      // Log *why* it's skipping for clarity
+      if (!pathname.startsWith('/app/lessons')) {
+        logger.debug('LessonProvider Nav Hook: Skipping fetch (not on lessons page)');
+      } else if (!initialized) {
+        // This is the likely reason after redirect
+        logger.debug('LessonProvider Nav Hook: Skipping fetch (provider not initialized yet)');
+      } else if (!user) {
+        // This could also be the reason if auth is slow
+        logger.debug('LessonProvider Nav Hook: Skipping fetch (no user yet)');
+      }
+    }
+
+    // Dependencies: This hook should re-run if the path changes,
+    // OR if initialization completes (`initialized` becomes true),
+    // OR if the user logs in/out (`user` changes).
+    // `refreshLessons` is stable due to useCallback.
+  }, [pathname, initialized, user, refreshLessons]); // Keep these dependencies
   const clearError = () => setError(null);
 
   return (
@@ -239,7 +273,7 @@ async function callAction<T>(
         error,
         initialized,
         clearError,
-        getLessons,
+        getLessons: refreshLessons,
         getLessonById,
         createLesson,
         updateLesson,
@@ -250,6 +284,7 @@ async function callAction<T>(
         setCurrentLesson,
         checkAndGenerateNewLessons,
         processLessonRecording,
+        refreshLessons,
       }}
     >
       {children}

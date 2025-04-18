@@ -196,7 +196,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   const goToLessonsWithOnboardingComplete = (): void => {
     setIsOnboardingComplete(true);
-    router.push('/app/lessons');
+    router.replace('/app/lessons');
   };
 
   const clearError = () => setError(null);

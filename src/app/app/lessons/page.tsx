@@ -15,7 +15,7 @@ export default function LessonsPage() {
     router.push(`/app/lessons/${lesson.id}`);
   };
 
-  if (!initialized || loading) {
+  if (!initialized) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-1">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-6 mb-4"></div>
@@ -31,6 +31,11 @@ export default function LessonsPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 bg-neutral-1 min-h-screen">
+      {loading && (
+        <p className="text-center text-sm text-neutral-8 mb-4">
+          Refreshing lessons…
+        </p>
+      )}
       <HeaderWithProfile />
       <h1 className="text-3xl font-bold mb-8 text-neutral-12">Your Lessons</h1>
 
