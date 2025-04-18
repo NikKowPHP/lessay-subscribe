@@ -16,7 +16,9 @@
 - [ ] the lesson generation prompt is not properly constructed
 - [x] user delete all data is not working properly
 - [ ] migrate prisma to deployment
-
+- [ ] delete user profile is not deleting the supabase user 
+- [ ] too many toaster messages 'initial assessment is not completed'
+- [ ] Analyzing pronunciation and fluency should also disable the go to lessons
 ## test fixes
 - [ ] speech recognition should never stop once initiated
 - [ ] speech recognition should not restart if the user manually stops it FINISH
