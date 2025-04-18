@@ -42,18 +42,9 @@ export default function ProfilePage() {
     logger.warn(`User ${user.id} confirmed account deletion.`);
 
     try {
-      const result = await deleteUserProfileAction();
-
-      if (result.success) {
-        logger.warn(`Account deletion successful for user ${user.id}. Logging out.`);
-        // Logout should ideally clear context and redirect via onAuthStateChange
-        await logout();
-        // Explicit redirect as a fallback or if auth state change is slow
-        router.push('/app/login?message=Account+deleted+successfully');
-      } else {
-        logger.error(`Account deletion failed for user ${user.id}: ${result.error}`);
-        setDeleteError(result.error || 'Failed to delete account. Please try again.');
-      }
+      await deleteUserProfileAction();
+      logout();
+      router.push('/app/login');
     } catch (error) {
       logger.error(`Unexpected error during account deletion for user ${user.id}:`, error);
       setDeleteError('An unexpected error occurred. Please try again.');
