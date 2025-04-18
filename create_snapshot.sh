@@ -1,11 +1,10 @@
-# File: /create_snapshot.sh
 #!/bin/bash
 # -----------------------------------------------------------------------------
 # Script Name: create_snapshot.sh
 # Description: Scans a Git repository, extracts content from text files and
-#              paths of image files, ignores specified directories/files,
+#              paths of image/other files, ignores specified directories/files,
 #              and consolidates the information into a single snapshot file
-#              in the project root.
+#              in the project root, prepended with an AI context instruction.
 # Usage:       Place this script anywhere. Run it from within a Git repository
 #              or any subdirectory. It will automatically find the root.
 #              ./create_snapshot.sh
@@ -90,13 +89,15 @@ OUTPUT_FILE="$OUTPUT_FILENAME"
 echo "INFO: Ignoring directories/files: ${IGNORED_ITEMS[*]}"
 echo "INFO: Output file set to: $OUTPUT_FILE (relative to project root)"
 
-# --- 4. Prepare Output File ---
-# The requirement to overwrite the output file is handled implicitly by using
-# the '>' redirection operator when writing the main content in Step 7.
-echo "INFO: Output file '$OUTPUT_FILE' will be overwritten if it exists."
+# --- 4. Prepare Output File & Add Header ---
+# Write the AI context header to the output file.
+# This command uses '>' which creates the file or overwrites it if it exists.
+echo "INFO: Writing AI context header to '$OUTPUT_FILE'..."
+echo "# AI Context Reference: Please analyze the following project snapshot thoroughly to understand the codebase structure and content." > "$OUTPUT_FILE"
+# Any subsequent writes to the file in this script MUST use '>>' (append).
 
 # --- 5. Find and Process Files ---
-echo "INFO: Scanning files and generating snapshot..."
+echo "INFO: Scanning files and generating snapshot content..."
 
 # Construct the -prune arguments for find dynamically based on IGNORED_ITEMS
 # We need to handle both directories and specific files like the output file.
@@ -116,10 +117,10 @@ if [ ${#IGNORED_ITEMS[@]} -gt 0 ]; then
     prune_args+=(")" "-prune")
 fi
 
-# --- 7. Direct Output to File ---
+# --- 7. Append Output to File ---
 # Find files, excluding specified items, and pipe to the processing loop.
-# The redirection '> "$OUTPUT_FILE"' at the end handles Step 7 and Step 4's
-# overwrite requirement. It captures all standard output from the 'while' loop.
+# The redirection '>> "$OUTPUT_FILE"' at the end APPENDS the output of the
+# 'while' loop to the file already created/cleared in Step 4.
 find . "${prune_args[@]}" -o -type f -print0 | while IFS= read -r -d $'\0' file; do
     # --- 6. Inside the Loop: Process Each File ---
 
@@ -161,7 +162,7 @@ find . "${prune_args[@]}" -o -type f -print0 | while IFS= read -r -d $'\0' file;
         echo "" # Blank line for separation
     fi
 
-done > "$OUTPUT_FILE" # Step 7 Implementation: Redirect loop output here.
+done >> "$OUTPUT_FILE" # Step 7 Implementation: APPEND loop output here.
 
 # --- 8. Final Touches & Testing ---
 # Final confirmation message. Testing steps are performed manually by the user.
