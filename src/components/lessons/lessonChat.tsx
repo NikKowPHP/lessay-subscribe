@@ -1144,7 +1144,7 @@ export default function LessonChat({
           feedback={feedback}
           onToggleListening={toggleListening}
           onSubmit={handleSubmit}
-          disableSubmit={!userResponse || loading}
+          disableSubmit={loading}
           disableSkip={loading}
           onUpdateResponse={handleUpdateResponse}
           onSkip={handleSkip}

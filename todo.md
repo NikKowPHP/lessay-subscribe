@@ -3,10 +3,11 @@
 
 
 # FIX
-- [ ] sign up is not working
+- [x] sign up is not working
+<!-- - [ ]  Skipping lesson fetch: Initial assessment not completed. the Redirect to the onboarding is not happeing on production -->
 - [x] lesson chat refreeshes 
 - [x] speech recognition should never stop once initiated
-- [ ] button start listening is never disabled 
+- [x] button start listening is never disabled 
 - [x] delay webspeech after audio queue is empty
 - [x] speech recognition should not restart if the user manually stops it FINISH
 - [x] media recorder fires only on start listening event and should be paused along with speech recognition
