@@ -1,3 +1,4 @@
+// File: src/context/lesson-context.tsx
 'use client';
 
 import { createContext, useCallback, useContext, useState, useEffect, useRef } from 'react';
@@ -25,7 +26,7 @@ import { useUpload } from '@/hooks/use-upload';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useAuth } from '@/context/auth-context';
 import { Result } from '@/lib/server-actions/_withErrorHandling';
-import { usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation'; // Import usePathname
 import { useOnboarding } from './onboarding-context';
 import { useError } from '@/hooks/useError';
 
@@ -82,8 +83,10 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
-  const prevIsOnboardingComplete = useRef<boolean>(isOnboardingComplete); 
+  const prevIsOnboardingComplete = useRef<boolean>(isOnboardingComplete);
   const { showError } = useError();
+  const pathname = usePathname(); // Get current pathname
+
   const callAction = useCallback(async <T,>(action: () => Promise<Result<T>>): Promise<T> => {
     setLoading(true);
     try {
@@ -97,7 +100,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showError]); // Added showError dependency
 
   /**
    *  fetch lessons and store them
@@ -113,12 +116,12 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       // *** Add Guard ***
-  if (!onboarding?.initialAssessmentCompleted) {
-    logger.warn("Skipping lesson fetch: Initial assessment not completed.");
-    setLessons([]); // Clear existing lessons if any
-    return [];
-  }
-  // *** End Guard ***
+      if (!onboarding?.initialAssessmentCompleted) {
+        logger.warn("Skipping lesson fetch: Initial assessment not completed.");
+        setLessons([]); // Clear existing lessons if any
+        return [];
+      }
+      // *** End Guard ***
       const data = await callAction(() => getLessonsAction());
       setLessons(data);
       logger.info(`LessonContext: Refreshed lessons, count: ${data.length}`);
@@ -241,7 +244,6 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     return processedLesson;
   };
 
-  const pathname = usePathname();
 
   //
   // 1) Initial fetch when `user` first becomes available
@@ -249,62 +251,131 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    refreshLessons()
-      .then(() => setInitialized(true))
-      .catch(() => {
-        /* error already handled in callAction */
-      });
-  }, [user, refreshLessons]);
-
-  //
-  // 2) Subsequent fetch any time we navigate into `/app/lessons`
-  //
-  useEffect(() => {
-    const justCompletedOnboarding =
-      prevIsOnboardingComplete.current === false && isOnboardingComplete === true;
-
-    // Update the ref *after* comparison for the next render
-    prevIsOnboardingComplete.current = isOnboardingComplete;
-
-    // Fetch lessons if:
-    // 1. We have a user AND
-    // 2. EITHER this is the first time loading after user logged in (!initialized)
-    //    OR onboarding was *just* completed in this render cycle.
-    if (user && (!initialized || justCompletedOnboarding)) {
-      logger.info('LessonProvider: Triggering refreshLessons', {
-        userId: user.id,
-        initialized,
-        justCompletedOnboarding,
-      });
+    // Don't fetch immediately on login if not on lessons page
+    if (pathname === '/app/lessons') {
       refreshLessons()
-        .then((fetchedLessons) => {
-          // Only set initialized to true after the *first* successful fetch for this user session
-          if (!initialized && fetchedLessons.length >= 0) { // Check >= 0 to handle case where 0 lessons is valid
-            setInitialized(true);
-            logger.info('LessonProvider: Initialized.');
-          }
-        })
+        .then(() => setInitialized(true))
         .catch(() => {
-          /* error handled in refreshLessons/callAction */
-          // Do not set initialized on error
+          /* error already handled in callAction */
         });
     } else {
-      logger.debug('LessonProvider: Skipping refreshLessons', {
-        userId: user?.id,
-        initialized,
-        justCompletedOnboarding,
-        isOnboardingComplete, // Log current onboarding state
-      });
+      // If user logs in but isn't on lessons page, mark as initialized
+      // but don't fetch lessons yet.
+      setInitialized(true);
     }
+  }, [user, refreshLessons, pathname]); // Added pathname dependency
 
-    // Reset initialized state if user logs out
-    if (!user && initialized) {
-        logger.info('LessonProvider: User logged out, resetting initialized state.');
-        setInitialized(false);
-        setLessons([]); // Clear lessons immediately on logout
-    }
+  // --- OLD CODE START ---
+  // src/context/lesson-context.tsx
 
-  }, [user, isOnboardingComplete, initialized, refreshLessons]); 
+    // //
+    // // 2) Subsequent fetch any time we navigate into `/app/lessons`
+    // //
+    // useEffect(() => {
+    //   const justCompletedOnboarding =
+    //     prevIsOnboardingComplete.current === false && isOnboardingComplete === true;
+
+    //   // Update the ref *after* comparison for the next render
+    //   prevIsOnboardingComplete.current = isOnboardingComplete;
+
+    //   // Fetch lessons if:
+    //   // 1. We have a user AND
+    //   // 2. EITHER this is the first time loading after user logged in (!initialized)
+    //   //    OR onboarding was *just* completed in this render cycle.
+    //   if (user && (!initialized || justCompletedOnboarding)) {
+    //     logger.info('LessonProvider: Triggering refreshLessons', {
+    //       userId: user.id,
+    //       initialized,
+    //       justCompletedOnboarding,
+    //     });
+    //     refreshLessons()
+    //       .then((fetchedLessons) => {
+    //         // Only set initialized to true after the *first* successful fetch for this user session
+    //         if (!initialized && fetchedLessons.length >= 0) { // Check >= 0 to handle case where 0 lessons is valid
+    //           setInitialized(true);
+    //           logger.info('LessonProvider: Initialized.');
+    //         }
+    //       })
+    //       .catch(() => {
+    //         /* error handled in refreshLessons/callAction */
+    //         // Do not set initialized on error
+    //       });
+    //   } else {
+    //     logger.debug('LessonProvider: Skipping refreshLessons', {
+    //       userId: user?.id,
+    //       initialized,
+    //       justCompletedOnboarding,
+    //       isOnboardingComplete, // Log current onboarding state
+    //     });
+    //   }
+
+    //   // Reset initialized state if user logs out
+    //   if (!user && initialized) {
+    //       logger.info('LessonProvider: User logged out, resetting initialized state.');
+    //       setInitialized(false);
+    //       setLessons([]); // Clear lessons immediately on logout
+    //   }
+
+    // }, [user, isOnboardingComplete, initialized, refreshLessons]);
+  // --- OLD CODE END ---
+
+  // --- NEW CODE START ---
+  // src/context/lesson-context.tsx
+
+    //
+    // 2) Subsequent fetch/generation logic, now tied to the /app/lessons route
+    //
+    useEffect(() => {
+      const justCompletedOnboarding =
+        prevIsOnboardingComplete.current === false && isOnboardingComplete === true;
+
+      // Update the ref *after* comparison for the next render
+      prevIsOnboardingComplete.current = isOnboardingComplete;
+
+      // Fetch/Generate lessons ONLY if:
+      // 1. We have a user AND
+      // 2. We are on the '/app/lessons' page AND
+      // 3. EITHER this is the first time loading lessons after login/onboarding (!initialized)
+      //    OR onboarding was *just* completed in this render cycle.
+      if (user && pathname === '/app/lessons' && (!initialized || justCompletedOnboarding)) {
+        logger.info('LessonProvider: Triggering refreshLessons on /app/lessons', {
+          userId: user.id,
+          initialized,
+          justCompletedOnboarding,
+          pathname,
+        });
+        refreshLessons()
+          .then((fetchedLessons) => {
+            // Only set initialized to true after the *first* successful fetch for this user session on the lessons page
+            if (!initialized && fetchedLessons.length >= 0) { // Check >= 0 to handle case where 0 lessons is valid
+              setInitialized(true);
+              logger.info('LessonProvider: Initialized on /app/lessons.');
+            }
+          })
+          .catch(() => {
+            /* error handled in refreshLessons/callAction */
+            // Do not set initialized on error
+          });
+      } else {
+        logger.debug('LessonProvider: Skipping refreshLessons', {
+          userId: user?.id,
+          pathname,
+          initialized,
+          justCompletedOnboarding,
+          isOnboardingComplete, // Log current onboarding state
+        });
+      }
+
+      // Reset initialized state if user logs out (regardless of path)
+      if (!user && initialized) {
+          logger.info('LessonProvider: User logged out, resetting initialized state.');
+          setInitialized(false);
+          setLessons([]); // Clear lessons immediately on logout
+      }
+
+    }, [user, isOnboardingComplete, initialized, refreshLessons, pathname]); // Added pathname dependency
+  // --- NEW CODE END ---
+
   const clearError = () => setError(null);
 
   return (
