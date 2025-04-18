@@ -14,11 +14,11 @@
 - [x] on page rehydrating do not populate the user answer if the step is not interactive 
 - [x] only correct user answers gets added to the chat history 
 - [x] fix issue with leson generation : issue 1 
-- [ ] the lesson generation prompt is not properly constructed
+- [x] the lesson generation prompt is not properly constructed
 - [x] user delete all data is not working properly
-- [ ] migrate prisma to deployment
-- [ ] delete user profile is not deleting the supabase user 
-- [ ] too many toaster messages 'initial assessment is not completed'
+- [x] migrate prisma to deployment
+- [x] delete user profile is not deleting the supabase user 
+- [x] too many toaster messages 'initial assessment is not completed'
 - [ ] Analyzing pronunciation and fluency should also disable the go to lessons
 - [x] in the profile provider we should make it more robust, if profile does not exist but we have the authed user then we should create the profile
 - [ ] move most of the provider  logic to the backend (identify areas that can be processed on the backend and modify it, more about the provider data initialization, not the flow of the lesson or onboarding.  )

@@ -5,11 +5,18 @@
 #              paths of image/other files, ignores specified directories/files,
 #              and consolidates the information into a single snapshot file
 #              in the project root, prepended with an AI context instruction.
+#              Finally, attempts to reveal the snapshot file in the default
+#              file manager (opens folder, selects file where possible).
 # Usage:       Place this script anywhere. Run it from within a Git repository
 #              or any subdirectory. It will automatically find the root.
 #              ./create_snapshot.sh
 # Output:      Creates/overwrites 'project_snapshot.txt' in the Git repo root.
-# Requirements: bash, git, find, file (core utilities)
+#              Opens the project root folder in the default file manager,
+#              attempting to select 'project_snapshot.txt'.
+# Requirements: bash, git, find, file (core utilities), and potentially
+#               xdg-utils (Linux), wslpath (WSL), specific file managers
+#               (nautilus, dolphin, thunar) on Linux, or appropriate commands
+#               for your OS.
 # -----------------------------------------------------------------------------
 
 # --- 1. Script Setup ---
@@ -84,7 +91,10 @@ IGNORED_ITEMS=(
 
 # Define the name of the output snapshot file.
 # Since we've cd'd to the PROJECT_ROOT, the output file path is relative to it.
-OUTPUT_FILE="$OUTPUT_FILENAME"
+OUTPUT_FILE="$OUTPUT_FILENAME" # This is just the filename, relative to PROJECT_ROOT
+# Get the absolute path to the output file for file manager commands
+ABSOLUTE_OUTPUT_FILE="$PWD/$OUTPUT_FILENAME"
+
 
 echo "INFO: Ignoring directories/files: ${IGNORED_ITEMS[*]}"
 echo "INFO: Output file set to: $OUTPUT_FILE (relative to project root)"
@@ -169,4 +179,107 @@ done >> "$OUTPUT_FILE" # Step 7 Implementation: APPEND loop output here.
 echo "INFO: Snapshot generation complete."
 echo "INFO: Output written to: $PROJECT_ROOT/$OUTPUT_FILE"
 
+
+# --- 9. Reveal Snapshot File in File Manager ---
+echo "INFO: Attempting to reveal '$OUTPUT_FILE' in the default file manager..."
+# Goal: Open the containing folder ($PROJECT_ROOT) and select the file.
+# This works reliably via specific commands on macOS and Windows.
+# On Linux, we attempt specific file manager commands known to support selection,
+# falling back to opening the folder if none are found or if the file is missing.
+
+# We are in PROJECT_ROOT. Use ABSOLUTE_OUTPUT_FILE for commands needing it.
+
+case "$(uname -s)" in
+    Darwin)
+        # macOS: Use 'open -R' which reveals (opens folder and selects) the file in Finder.
+        if [ -f "$OUTPUT_FILE" ]; then
+            open -R "$OUTPUT_FILE" && echo "INFO: Revealed '$OUTPUT_FILE' in Finder (opened folder and selected file)." || echo "WARN: Failed to reveal file using 'open -R'."
+        else
+            echo "WARN: Output file '$OUTPUT_FILE' not found. Cannot select it. Opening folder instead."
+            open . && echo "INFO: Opened folder using 'open .'" || echo "WARN: Failed to open folder using 'open .'."
+        fi
+        ;;
+    Linux)
+        # Linux: Check for WSL first
+        if [[ -f /proc/version ]] && grep -qiE "(Microsoft|WSL)" /proc/version &> /dev/null ; then
+            # WSL: Use explorer.exe /select which reveals the file in Windows Explorer.
+            if command -v wslpath &> /dev/null; then
+                if [ -f "$OUTPUT_FILE" ]; then
+                    WIN_PATH=$(wslpath -w "$ABSOLUTE_OUTPUT_FILE") # Use absolute path for wslpath
+                    explorer.exe /select,"$WIN_PATH" && echo "INFO: Revealed '$OUTPUT_FILE' in Windows Explorer (opened folder and selected file)." || echo "WARN: Failed to reveal file using 'explorer.exe /select'. Ensure explorer.exe is accessible."
+                else
+                    echo "WARN: Output file '$OUTPUT_FILE' not found. Cannot select it. Opening folder instead."
+                    explorer.exe . && echo "INFO: Opened folder in Windows Explorer using 'explorer.exe .'" || echo "WARN: Failed to open folder using 'explorer.exe .'."
+                fi
+            else
+                echo "WARN: 'wslpath' command not found. Cannot determine Windows path to select file. Opening folder instead."
+                explorer.exe . && echo "INFO: Opened folder in Windows Explorer using 'explorer.exe .'" || echo "WARN: Failed to open folder using 'explorer.exe .'."
+            fi
+        else
+            # Standard Linux: Try specific file managers known to support selection.
+            revealed=false
+            if [ ! -f "$OUTPUT_FILE" ]; then
+                 echo "WARN: Output file '$OUTPUT_FILE' not found. Cannot select it."
+                 # Proceed to fallback (xdg-open .) below
+            else
+                # Try Nautilus (GNOME, Ubuntu default)
+                if command -v nautilus &> /dev/null; then
+                    echo "INFO: Found Nautilus. Attempting reveal using 'nautilus --select'..."
+                    # Run in background, suppress output
+                    nautilus --select "$ABSOLUTE_OUTPUT_FILE" &> /dev/null &
+                    revealed=true
+                    echo "INFO: Requested reveal via Nautilus."
+                fi
+
+                # Try Dolphin (KDE) if not already revealed
+                if [ "$revealed" = false ] && command -v dolphin &> /dev/null; then
+                    echo "INFO: Found Dolphin. Attempting reveal using 'dolphin --select'..."
+                    dolphin --select "$ABSOLUTE_OUTPUT_FILE" &> /dev/null &
+                    revealed=true
+                    echo "INFO: Requested reveal via Dolphin."
+                fi
+
+                # Try Thunar (XFCE) if not already revealed
+                # Thunar often selects when given the direct path, but less guaranteed.
+                if [ "$revealed" = false ] && command -v thunar &> /dev/null; then
+                    echo "INFO: Found Thunar. Attempting reveal by opening file path (may select file)..."
+                    thunar "$ABSOLUTE_OUTPUT_FILE" &> /dev/null &
+                    revealed=true
+                    echo "INFO: Requested reveal via Thunar (behavior might vary)."
+                fi
+            fi
+
+            # Fallback: If no specific manager was found/used or file was missing, use xdg-open to open the folder.
+            if [ "$revealed" = false ]; then
+                if command -v xdg-open &> /dev/null; then
+                    echo "INFO: No specific file manager found or file missing. Falling back to opening the containing folder using 'xdg-open .'."
+                    xdg-open . &> /dev/null
+                    if [ $? -eq 0 ]; then
+                        echo "INFO: Successfully requested opening current folder via 'xdg-open .'."
+                    else
+                        echo "WARN: Fallback 'xdg-open .' failed."
+                    fi
+                else
+                    echo "WARN: No specific file manager found, and fallback 'xdg-open' command not found. Cannot automatically open folder. Please install xdg-utils or a supported file manager (Nautilus, Dolphin, Thunar)."
+                fi
+            fi
+        fi
+        ;;
+    CYGWIN*|MINGW*|MSYS*)
+        # Windows environments (Git Bash, etc.): Use explorer.exe /select which reveals the file.
+         if [ -f "$OUTPUT_FILE" ]; then
+            # Using the relative filename works because we are in the correct CWD ($PROJECT_ROOT).
+            explorer.exe /select,"$OUTPUT_FILE" && echo "INFO: Revealed '$OUTPUT_FILE' in Windows Explorer (opened folder and selected file)." || echo "WARN: Failed to reveal file using 'explorer.exe /select'."
+         else
+            echo "WARN: Output file '$OUTPUT_FILE' not found. Cannot select it. Opening folder instead."
+            explorer.exe . && echo "INFO: Opened folder in Windows Explorer using 'explorer.exe .'" || echo "WARN: Failed to open folder using 'explorer.exe .'."
+         fi
+        ;;
+    *)
+        # Unsupported OS
+        echo "WARN: Unsupported OS '$(uname -s)'. Cannot automatically reveal the file."
+        ;;
+esac
+
+echo "INFO: Script finished."
 # --- End of Script ---
