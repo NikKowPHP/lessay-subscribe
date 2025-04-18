@@ -75,14 +75,13 @@ const LessonContext = createContext<LessonContextType | undefined>(undefined);
 export function LessonProvider({ children }: { children: React.ReactNode }) {
   const { uploadFile } = useUpload();
   const { user } = useAuth();
-  const { isOnboardingComplete } = useOnboarding();
+  const { isOnboardingComplete, onboarding } = useOnboarding();
   const [lessons, setLessons] = useState<LessonModel[]>([]);
   const [currentLesson, setCurrentLesson] = useState<LessonModel | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   const prevIsOnboardingComplete = useRef<boolean>(isOnboardingComplete); 
-  
   const callAction = useCallback(async <T,>(action: () => Promise<Result<T>>): Promise<T> => {
     setLoading(true);
     try {
@@ -111,6 +110,13 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
         return [];
     }
     try {
+      // *** Add Guard ***
+  if (!onboarding?.initialAssessmentCompleted) {
+    logger.warn("Skipping lesson fetch: Initial assessment not completed.");
+    setLessons([]); // Clear existing lessons if any
+    return [];
+  }
+  // *** End Guard ***
       const data = await callAction(() => getLessonsAction());
       setLessons(data);
       logger.info(`LessonContext: Refreshed lessons, count: ${data.length}`);
@@ -121,7 +127,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       setLessons([]); // Clear lessons on error? Or keep stale data? Clearing might be safer.
       return []; // Return empty array on failure
     }
-  }, [callAction, user]);
+  }, [callAction, user, onboarding?.initialAssessmentCompleted]);
 
   // 1) Fetch one by ID
   const getLessonById = async (id: string): Promise<LessonModel| null> => {
