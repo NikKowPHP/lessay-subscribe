@@ -30,58 +30,56 @@ export async function getLessonsAction(): Promise<Result<LessonModel[]>> {
   })
 }
 
-export async function getLessonByIdAction(lessonId: string) {
-  if (!lessonId) {
-    throw new Error('Lesson ID is required');
-  }
-  const lessonService = createLessonService();
-  return await lessonService.getLessonById(lessonId);
+export async function getLessonByIdAction(lessonId: string): Promise<Result<LessonModel | null>> {
+  return withServerErrorHandling(async () => {
+    if (!lessonId) throw new Error('Lesson ID is required');
+    const svc = createLessonService();
+    return await svc.getLessonById(lessonId);
+  });
 }
 
-export async function createLessonAction(lessonData: {
+export async function createLessonAction(data: {
   focusArea: string;
   targetSkills: string[];
   steps: LessonStep[];
-}) {
-  if (!lessonData.focusArea || !lessonData.targetSkills || !lessonData.steps) {
-    throw new Error('All lesson data is required');
-  }
-  const lessonService = createLessonService();
-  return await lessonService.createLesson(lessonData);
+}): Promise<Result<LessonModel>> {
+  return withServerErrorHandling(async () => {
+    if (!data.focusArea || !data.targetSkills.length || !data.steps.length) {
+      throw new Error('All lesson data is required');
+    }
+    const svc = createLessonService();
+    return await svc.createLesson(data);
+  });
 }
 
 export async function updateLessonAction(
   lessonId: string,
   lessonData: Partial<LessonModel>
-) {
-  if (!lessonId) {
-    throw new Error('Lesson ID is required');
-  }
-  const lessonService = createLessonService();
-  return await lessonService.updateLesson(lessonId, lessonData);
+): Promise<Result<LessonModel>> {
+  return withServerErrorHandling(async () => {
+    if (!lessonId) throw new Error('Lesson ID is required');
+    const svc = createLessonService();
+    return await svc.updateLesson(lessonId, lessonData);
+  });
 }
 
 export async function completeLessonAction(
-  lessonId: string,
-  performanceMetrics?: {
-    accuracy?: number;
-    pronunciationScore?: number;
-    errorPatterns?: string[];
-  }
-) {
-  if (!lessonId) {
-    throw new Error('Lesson ID is required');
-  }
-  const lessonService = createLessonService();
-  return await lessonService.completeLesson(lessonId, performanceMetrics);
+  lessonId: string
+): Promise<Result<LessonModel>> {
+  return withServerErrorHandling(async () => {
+    if (!lessonId) throw new Error('Lesson ID is required');
+    const svc = createLessonService();
+    return await svc.completeLesson(lessonId);
+  });
 }
 
-export async function deleteLessonAction(lessonId: string) {
-  if (!lessonId) {
-    throw new Error('Lesson ID is required');
-  }
-  const lessonService = createLessonService();
-  return await lessonService.deleteLesson(lessonId);
+export async function deleteLessonAction(lessonId: string): Promise<Result<null>> {
+  return withServerErrorHandling(async () => {
+    if (!lessonId) throw new Error('Lesson ID is required');
+    const svc = createLessonService();
+    await svc.deleteLesson(lessonId);
+    return null;
+  });
 }
 
 export async function generateInitialLessonsAction(
@@ -98,46 +96,40 @@ export async function generateInitialLessonsAction(
 export async function recordStepAttemptAction(
   lessonId: string,
   stepId: string,
-  // data: {
   userResponse: string
-  // correct: boolean
-  // errorPatterns?: string[]
-  // }
-) {
-  if (!lessonId || !stepId) {
-    throw new Error('Lesson ID and Step ID are required');
-  }
-  const lessonService = createLessonService();
-  return await lessonService.recordStepAttempt(lessonId, stepId, userResponse);
+): Promise<Result<LessonStep>> {
+  return withServerErrorHandling(async () => {
+    if (!lessonId || !stepId) throw new Error('Lesson ID and Step ID are required');
+    const svc = createLessonService();
+    return await svc.recordStepAttempt(lessonId, stepId, userResponse);
+  });
 }
 
-export async function getStepHistoryAction(lessonId: string, stepId: string) {
-  if (!lessonId || !stepId) {
-    throw new Error('Lesson ID and Step ID are required');
-  }
-  const lessonService = createLessonService();
-  return await lessonService.getStepHistory(lessonId, stepId);
+export async function getStepHistoryAction(
+  lessonId: string,
+  stepId: string
+): Promise<Result<LessonStep[]>> {
+  return withServerErrorHandling(async () => {
+    if (!lessonId || !stepId) {
+      throw new Error('Lesson ID and Step ID are required');
+    }
+    const svc = createLessonService();
+    return await svc.getStepHistory(lessonId, stepId);
+  });
 }
 
-export async function generateNewLessonsAction(): Promise<LessonModel[]> {
-  const lessonService = createLessonService();
-
-  try {
-    // Use the existing function but modify for continuation learning
-    return await lessonService.generateNewLessonsBasedOnProgress();
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'An error occurred while generating new lessons';
-    logger.error(message);
-    throw new Error(message);
-  }
+export async function generateNewLessonsAction(): Promise<Result<LessonModel[]>> {
+  return withServerErrorHandling(async () => {
+    const svc = createLessonService();
+    return await svc.generateNewLessonsBasedOnProgress();
+  });
 }
 
-export async function checkAndGenerateNewLessonsAction() {
-  const lessonService = createLessonService();
-  return await lessonService.checkAndGenerateNewLessons();
+export async function checkAndGenerateNewLessonsAction(): Promise<Result<LessonModel[]>> {
+  return withServerErrorHandling(async () => {
+    const svc = createLessonService();
+    return await svc.checkAndGenerateNewLessons();
+  });
 }
 
 export async function processLessonRecordingAction(
@@ -145,24 +137,17 @@ export async function processLessonRecordingAction(
   recordingTime: number,
   recordingSize: number,
   lesson: LessonModel
-) {
-  try {
-    validateLessonRecording(
+): Promise<Result<LessonModel>> {
+  return withServerErrorHandling(async () => {
+    validateLessonRecording(sessionRecording, recordingTime, recordingSize, lesson);
+    const svc = createLessonService();
+    return await svc.processLessonRecording(
       sessionRecording,
       recordingTime,
       recordingSize,
       lesson
     );
-    const lessonService = createLessonService();
-    return await lessonService.processLessonRecording(
-      sessionRecording,
-      recordingTime,
-      recordingSize,
-      lesson
-    );
-  } catch (error) {
-    throw new Error('Error processing lesson recording: ' + error);
-  }
+  });
 }
 
 function validateLessonRecording(

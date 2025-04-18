@@ -1,128 +1,128 @@
 'use server';
+
 import OnboardingService from '@/services/onboarding.service';
 import { OnboardingRepository } from '@/repositories/onboarding.repository';
-import 'server-only';
-import logger from '@/utils/logger';
 import LessonService from '@/services/lesson.service';
 import { LessonRepository } from '@/repositories/lesson.repository';
 import AIService from '@/services/ai.service';
 import AssessmentGeneratorService from '@/services/assessment-generator.service';
 import { GoogleTTS } from '@/services/google-tts.service';
 import LessonGeneratorService from '@/services/lesson-generator.service';
-import { AssessmentLesson } from '@/models/AppAllModels.model';
+import { AssessmentLesson, AssessmentStep, OnboardingModel } from '@/models/AppAllModels.model';
 import { uploadFile } from '@/utils/vercel_blob-upload';
+import logger from '@/utils/logger';
+import { withServerErrorHandling, Result } from './_withErrorHandling';
+
 function createOnboardingService() {
-  const repository = new OnboardingRepository();
-  const lessonRepository = new LessonRepository();
+  const repo = new OnboardingRepository();
+  const lessonRepo = new LessonRepository();
   return new OnboardingService(
-    repository,
+    repo,
     new LessonService(
-      lessonRepository,
+      lessonRepo,
       new LessonGeneratorService(new AIService(), new GoogleTTS(), uploadFile),
-      repository
+      repo
     ),
     new AssessmentGeneratorService(new AIService(), new GoogleTTS(), uploadFile)
   );
 }
 
-export async function createOnboardingAction() {
-  const onboardingService = createOnboardingService();
-  return await onboardingService.createOnboarding();
+// Create
+export async function createOnboardingAction(): Promise<Result<OnboardingModel>> {
+  return withServerErrorHandling(async () => {
+    const svc = createOnboardingService();
+    return await svc.createOnboarding();
+  });
 }
 
-export async function getOnboardingAction() {
-  const onboardingService = createOnboardingService();
-  const onboarding = await onboardingService.getOnboarding();
-  logger.log('current onboarding:', onboarding);
-  return onboarding;
+// Read
+export async function getOnboardingAction(): Promise<Result<OnboardingModel | null>> {
+  return withServerErrorHandling(async () => {
+    const svc = createOnboardingService();
+    return await svc.getOnboarding();
+  });
 }
 
-export async function updateOnboardingAction(step: string, formData: any) {
-  if (!step) {
-    throw new Error('Step is required');
-  }
-  const onboardingService = createOnboardingService();
-  const updatedOnboarding = await onboardingService.updateOnboarding(
-    step,
-    formData
-  );
-  logger.log('updated onboarding:', updatedOnboarding);
-  return updatedOnboarding;
+// Update a single step
+export async function updateOnboardingAction(
+  step: string,
+  formData: any
+): Promise<Result<OnboardingModel>> {
+  return withServerErrorHandling(async () => {
+    if (!step) throw new Error('Step is required');
+    const svc = createOnboardingService();
+    const updated = await svc.updateOnboarding(step, formData);
+    logger.log('updated onboarding:', updated);
+    return updated;
+  });
 }
 
-export async function markOnboardingCompleteAndGenerateInitialLessonsAction() {
-  logger.info('marking onboarding complete and generating initial lessons');
-  const onboardingService = createOnboardingService();
-  const completedOnboarding =
-    await onboardingService.markOnboardingAsCompleteAndGenerateLessons();
-  logger.info('completed onboarding:', completedOnboarding);
-  return completedOnboarding;
+// Delete
+export async function deleteOnboardingAction(): Promise<Result<void>> {
+  return withServerErrorHandling(async () => {
+    const svc = createOnboardingService();
+    const deleted = await svc.deleteOnboarding();
+    logger.log('deleted onboarding:', deleted);
+    return deleted;
+  });
 }
 
-export async function deleteOnboardingAction() {
-  const onboardingService = createOnboardingService();
-  const deletedOnboarding = await onboardingService.deleteOnboarding();
-  logger.log('deleted onboarding:', deletedOnboarding);
-  return deletedOnboarding;
+// Mark complete + generate lessons
+export async function markOnboardingCompleteAndGenerateInitialLessonsAction(): Promise<Result<OnboardingModel>> {
+  return withServerErrorHandling(async () => {
+    logger.info('marking onboarding complete and generating initial lessons');
+    const svc = createOnboardingService();
+    const completed = await svc.markOnboardingAsCompleteAndGenerateLessons();
+    logger.info('completed onboarding:', completed);
+    return completed;
+  });
 }
 
-export async function getStatusAction() {
-  const onboardingService = createOnboardingService();
-  const status = await onboardingService.getStatus();
-  logger.log('status:', status);
-  return status;
+// Status flag
+export async function getStatusAction(): Promise<Result<boolean>> {
+  return withServerErrorHandling(async () => {
+    const svc = createOnboardingService();
+    return await svc.getStatus();
+  });
 }
 
-export async function getAssessmentLessonAction() {
-  const onboardingService = createOnboardingService();
-
-  const lesson = await onboardingService.getAssessmentLesson();
-  logger.log('lessons:', lesson);
-  return lesson;
+// Assessment lesson fetch/complete/record/etc.
+export async function getAssessmentLessonAction(): Promise<Result<AssessmentLesson>> {
+  return withServerErrorHandling(async () => {
+    const svc = createOnboardingService();
+    return await svc.getAssessmentLesson();
+  });
 }
 
 export async function completeAssessmentLessonAction(
   lessonId: string,
   userResponse: string
-) {
-  const onboardingService = createOnboardingService();
-  const completedLesson = await onboardingService.completeAssessmentLesson(
-    lessonId,
-    userResponse
-  );
-  logger.log('completed lesson:', completedLesson);
-  return completedLesson;
+): Promise<Result<AssessmentLesson>> {
+  return withServerErrorHandling(async () => {
+    const svc = createOnboardingService();
+    return await svc.completeAssessmentLesson(lessonId, userResponse);
+  });
 }
 
 export async function recordAssessmentStepAttemptAction(
   lessonId: string,
   stepId: string,
   userResponse: string
-) {
-  if (!lessonId || !stepId) {
-    throw new Error('Lesson ID and Step ID are required');
-  }
-  const onboardingService = createOnboardingService();
-
-  return await onboardingService.recordStepAttempt(
-    lessonId,
-    stepId,
-    userResponse
-  );
+): Promise<Result<AssessmentStep>> {
+  return withServerErrorHandling(async () => {
+    const svc = createOnboardingService();
+    return await svc.recordStepAttempt(lessonId, stepId, userResponse);
+  });
 }
 
 export async function updateOnboardingLessonAction(
   lessonId: string,
   lessonData: Partial<AssessmentLesson>
-) {
-  if (!lessonId) {
-    throw new Error('Lesson ID is required');
-  }
-  const onboardingService = createOnboardingService();
-  return await onboardingService.updateOnboardingAssessmentLesson(
-    lessonId,
-    lessonData
-  );
+): Promise<Result<AssessmentLesson>> {
+  return withServerErrorHandling(async () => {
+    const svc = createOnboardingService();
+    return await svc.updateOnboardingAssessmentLesson(lessonId, lessonData);
+  });
 }
 
 export async function processAssessmentLessonRecordingAction(
@@ -130,42 +130,19 @@ export async function processAssessmentLessonRecordingAction(
   lesson: AssessmentLesson,
   recordingTime: number,
   recordingSize: number
-) {
-  try {
-    validateAssessmentRecording(
-      sessionRecording,
-      recordingTime,
-      recordingSize,
-      lesson
-    );
-    const onboardingService = createOnboardingService();
-    return await onboardingService.processAssessmentLessonRecording(
+): Promise<Result<AssessmentLesson>> {
+  return withServerErrorHandling(async () => {
+    if (!sessionRecording)   throw new Error('No session recording provided');
+    if (!lesson)             throw new Error('No assessment lesson provided');
+    if (!recordingTime)      throw new Error('No recording time provided');
+    if (!recordingSize)      throw new Error('No recording size provided');
+
+    const svc = createOnboardingService();
+    return await svc.processAssessmentLessonRecording(
       sessionRecording,
       lesson,
       recordingTime,
       recordingSize
     );
-  } catch (error) {
-    throw new Error('Error processing assessment recording: ' + error);
-  }
-}
-
-function validateAssessmentRecording(
-  sessionRecording: Blob,
-  recordingTime: number,
-  recordingSize: number,
-  lesson: AssessmentLesson
-) {
-  if (!sessionRecording) {
-    throw new Error('No session recording provided');
-  }
-  if (!lesson) {
-    throw new Error('No assessment lesson provided');
-  }
-  if (!recordingTime) {
-    throw new Error('No recording time provided');
-  }
-  if (!recordingSize) {
-    throw new Error('No recording size provided');
-  }
+  });
 }

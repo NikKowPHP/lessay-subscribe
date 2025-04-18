@@ -1,72 +1,73 @@
 'use server';
 
+import { withServerErrorHandling, Result } from './_withErrorHandling'
 import logger from '@/utils/logger';
-import {  Session, User } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 import { AuthError } from '@supabase/supabase-js';
 import { createSupabaseServerClient } from '@/utils/supabase/server';
 
-function getSupabaseClient() {
-  return createSupabaseServerClient();
-}
+type AuthData = { user: User | null; session: Session | null };
 
-
-export type AuthResult = {
-  data: { user: User | null; session: Session | null };
-  error: AuthError | null;
-};
-
+// LOGIN (with fallback→signup)
 export async function loginAction(
   email: string,
   password: string
-): Promise<AuthResult> {
-  try {
+): Promise<Result<AuthData>> {
+  return withServerErrorHandling(async () => {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    // fall back to a server‑side registration, if you like:
     if (error?.code === 'invalid_credentials') {
-      const { data: regData, error: regErr } = await supabase.auth.signUp({ email, password });
-      return { data: regData, error: regErr };
+      // auto‐signup
+      const { data: d2, error: e2 } = await supabase.auth.signUp({ email, password });
+      if (e2) throw new Error(e2.message);
+      return { user: d2.user, session: d2.session };
     }
+    if (error) throw new Error(error.message);
 
-    return {
-      data: {
-        user: data.user,
-        session: data.session,
-      },
-      error,
-    };
-  } catch (err: any) {
-    // network or unexpected
-    return {
-      data: { user: null, session: null },
-      error: { message: err.message, status: 500, name: 'ServerError' } as AuthError,
-    };
-  }
+    return { user: data.user, session: data.session };
+  })
 }
 
-export async function registerAction(email: string, password: string): Promise<{ data: { user: User | null; session: Session | null }, error: AuthError | null }> {
-  const supabase = await getSupabaseClient();
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-  if (error) {
-    logger.error('Registration error:', error);
-    return { data: { user: null, session: null }, error };
-  }
-  return { data, error: null };
+// SIGNUP
+export async function registerAction(
+  email: string,
+  password: string
+): Promise<Result<AuthData>> {
+  return withServerErrorHandling(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw new Error(error.message);
+    return { user: data.user, session: data.session };
+  })
+}
+
+// LOGOUT
+export async function logoutAction(): Promise<Result<null>> {
+  return withServerErrorHandling(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw new Error(error.message);
+    return null;
+  })
+}
+
+// GET SESSION
+export async function getSessionAction(): Promise<Result<Session | null>> {
+  return withServerErrorHandling(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) throw new Error(error.message);
+    return session;
+  })
 }
 
 export async function loginWithGoogleAction(): Promise<{ error: AuthError | null }> {
-  const supabase = await getSupabaseClient();
+  const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/app/lessons` // Ensure this is set in your env vars
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/app/lessons` 
     }
   });
   if (error) {
@@ -74,25 +75,5 @@ export async function loginWithGoogleAction(): Promise<{ error: AuthError | null
     return { error };
   }
   return { error: null };
-}
-
-export async function logoutAction(): Promise<{ error: AuthError | null }> {
-  const supabase = await getSupabaseClient();
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    logger.error('Logout error:', error);
-    return { error };
-  }
-  return { error: null };
-}
-
-export async function getSessionAction(): Promise<Session | null> {
-  const supabase = await getSupabaseClient();
-  const { data: { session }, error } = await supabase.auth.getSession();
-  if (error) {
-    logger.error('Get session error:', error);
-    return null;
-  }
-  return session;
 }
 

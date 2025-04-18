@@ -24,6 +24,7 @@ import toast from 'react-hot-toast';
 import { useUpload } from '@/hooks/use-upload';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useAuth } from '@/context/auth-context';
+import { Result } from '@/lib/server-actions/_withErrorHandling';
 
 interface LessonContextType {
   currentLesson: LessonModel | null;
@@ -78,238 +79,146 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
-  // Helper method to handle async operations with loading and error states
-  const withLoadingAndErrorHandling = async <T,>(
-    operation: () => Promise<T>
-  ): Promise<T> => {
-    setLoading(true);
-    try {
-      return await operation();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'An error occurred';
-      setError(message);
-      logger.error(message);
-      toast.error(message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  async function getLessons(): Promise<LessonModel[] | undefined> {
-    setLoading(true)
-    const { data, error } = await getLessonsAction()
-    setLoading(false)
-  
+/** 
+ * Wraps any server‐action returning Result<T>,
+ * manages loading + errors + toasts,
+ * and finally returns T or bubbles as Error.
+ */
+async function callAction<T>(
+  action: () => Promise<Result<T>>
+): Promise<T> {
+  setLoading(true);
+  try {
+    const { data, error } = await action();
     if (error) {
-      setError(error)
-      toast.error(error)
-      return
+      setError(error);
+      toast.error(error);
+      throw new Error(error);
     }
-    setLessons(data!)
-    return data
+    return data!;
+  } finally {
+    setLoading(false);
   }
+}
 
-  const getLessonById = async (lessonId: string) => {
-    return withLoadingAndErrorHandling(async () => {
-      const lesson = await getLessonByIdAction(lessonId);
-      if (lesson) {
-        setCurrentLesson(lesson);
-      }
-      return lesson;
-    });
+  // 1) Fetch all lessons
+  const getLessons = async (): Promise<LessonModel[]> => {
+    const lessons = await callAction(() => getLessonsAction());
+    setLessons(lessons);
+    return lessons;
   };
 
-  const createLesson = async (lessonData: {
+  // 2) Fetch one by ID
+  const getLessonById = async (id: string): Promise<LessonModel| null> => {
+    const lesson = await callAction(() => getLessonByIdAction(id));
+    setCurrentLesson(lesson);
+    return lesson;
+  };
+
+  // 3) Create
+  const createLesson = async (ld: {
     focusArea: string;
     targetSkills: string[];
     steps: LessonStep[];
-  }) => {
-    return withLoadingAndErrorHandling(async () => {
-      const newLesson = await createLessonAction(lessonData);
-      setLessons((prevLessons) => [newLesson, ...prevLessons]);
-      setCurrentLesson(newLesson);
-      return newLesson;
-    });
+  }): Promise<LessonModel> => {
+    const lesson = await callAction(() => createLessonAction(ld));
+    setLessons((prev) => [lesson, ...prev]);
+    setCurrentLesson(lesson);
+    return lesson;
   };
 
+  // 4) Update
   const updateLesson = async (
     lessonId: string,
     lessonData: Partial<LessonModel>
-  ) => {
-    return withLoadingAndErrorHandling(async () => {
-      const updatedLesson = await updateLessonAction(lessonId, lessonData);
-      setLessons((prevLessons) =>
-        prevLessons.map((lesson) =>
-          lesson.id === lessonId ? updatedLesson : lesson
-        )
-      );
-      if (currentLesson?.id === lessonId) {
-        setCurrentLesson(updatedLesson);
-      }
-      return updatedLesson;
-    });
+  ): Promise<LessonModel> => {
+    const lesson = await callAction(() => updateLessonAction(lessonId, lessonData));
+    setLessons((prev) =>
+      prev.map((l) => (l.id === lessonId ? lesson : l))
+    );
+    if (currentLesson?.id === lessonId) setCurrentLesson(lesson);
+    return lesson;
   };
 
+  // 5) Complete
   const completeLesson = async (
     lessonId: string,
     sessionRecording: Blob | null
-  ) => {
-    return withLoadingAndErrorHandling(async () => {
-      const completedLesson = await completeLessonAction(lessonId);
-
-      // const completedLesson = await completeLessonAction(lessonId, sessionRecording)
-      setLessons((prevLessons) =>
-        prevLessons.map((lesson) =>
-          lesson.id === lessonId ? completedLesson : lesson
-        )
-      );
-      if (currentLesson?.id === lessonId) {
-        setCurrentLesson(completedLesson);
-      }
-
-      // check and generate new lessons was here. 
-
-
-
-      return completedLesson;
-    });
+  ): Promise<LessonModel> => {
+    const lesson = await callAction(() => completeLessonAction(lessonId));
+    setLessons((prev) =>
+      prev.map((l) => (l.id === lessonId ? lesson : l))
+    );
+    if (currentLesson?.id === lessonId) setCurrentLesson(lesson);
+    return lesson;
   };
 
-  const deleteLesson = async (lessonId: string) => {
-    return withLoadingAndErrorHandling(async () => {
-      await deleteLessonAction(lessonId);
-      setLessons((prevLessons) =>
-        prevLessons.filter((lesson) => lesson.id !== lessonId)
-      );
-      if (currentLesson?.id === lessonId) {
-        setCurrentLesson(null);
-      }
-    });
+  // 6) Delete
+  const deleteLesson = async (lessonId: string): Promise<void> => {
+    await callAction(() => deleteLessonAction(lessonId));
+    setLessons((prev) => prev.filter((l) => l.id !== lessonId));
+    if (currentLesson?.id === lessonId) setCurrentLesson(null);
   };
 
+  // 7) Record a step
   const recordStepAttempt = async (
     lessonId: string,
     stepId: string,
     userResponse: string
-    // correct: boolean,
-    // errorPatterns?: string[]
-  ) => {
-    return withLoadingAndErrorHandling(async () => {
-      logger.info('recordStepAttempt in context', {
-        lessonId,
-        stepId,
-        userResponse,
-      });
-      const updatedStep = await recordStepAttemptAction(
-        lessonId,
-        stepId,
-        userResponse
-      );
-      logger.info('recordStepAttempt after updation', { updatedStep });
-      // Optionally update the current lesson's step response locally:
-      setCurrentLesson((prev) => {
-        if (!prev) return prev;
-        const updatedsteps = prev?.steps?.map((s) =>
-          s.stepNumber === updatedStep.stepNumber ? { ...s, ...updatedStep } : s
-        );
-        return { ...prev, steps: updatedsteps };
-      });
-      return updatedStep;
+  ): Promise<LessonStep | AssessmentStepModel> => {
+    const step = await callAction(() => recordStepAttemptAction(
+      lessonId,
+      stepId,
+      userResponse
+    ));
+    setCurrentLesson((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        steps: prev.steps.map((s) =>
+          s.stepNumber === step.stepNumber ? { ...s, ...step } : s
+        ),
+      };
     });
+    return step;
   };
 
-  const getStepHistory = async (lessonId: string, stepId: string) => {
-    return withLoadingAndErrorHandling(async () => {
-      const history = await getStepHistoryAction(lessonId, stepId);
-      return history;
-    });
+  // 8) Step history
+  const getStepHistory = async (
+    lessonId: string,
+    stepId: string
+  ): Promise<LessonStep[]> => {
+    const history = await callAction(() => getStepHistoryAction(
+      lessonId,
+      stepId
+    ));
+    return history;
   };
 
-  const clearError = () => setError(null);
-
-  // Add new method to check if all lessons are complete and generate new ones
-  const checkAndGenerateNewLessons = async () => {
-
-    try {
-
-      const newLessons = await checkAndGenerateNewLessonsAction();
-      // Update local state with new lessons
-      setLessons((prevLessons) => [...newLessons, ...prevLessons]);
-
-      // Notify user
-      toast.success('New lessons generated based on your progress!');
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Failed to generate new lessons';
-      logger.error(message);
-      toast.error(message);
-    }
+  // 9) Generate new based on progress
+  const checkAndGenerateNewLessons = async (): Promise<void> => {
+    await callAction(() => checkAndGenerateNewLessonsAction());
+    setLessons((prev) => [...prev]);
+    toast.success('New lessons generated based on your progress!');
   };
 
+  // 10) Process audio recordings
   const processLessonRecording = async (
     sessionRecording: RecordingBlob,
     lesson: LessonModel,
     recordingTime: number,
     recordingSize: number
-  ) => {
-    if (!sessionRecording) {
-      throw new Error('No session recording provided');
-    }
-    if (lesson.audioMetrics) {
-      return lesson;
-    }
-    if (!lesson.sessionRecordingUrl) {
-
-      const uploadedAudioUrl = await uploadFilesToStorage(sessionRecording);
-      lesson.sessionRecordingUrl = uploadedAudioUrl;
-  
-      updateLessonAction(lesson.id, { sessionRecordingUrl: uploadedAudioUrl });
-    }
-    logger.info('processLessonRecording in context', {
-      sessionRecording,
-      recordingTime,
-      recordingSize,
-      lesson,
-    });
-    const lessonWithAudioMetrics = await processLessonRecordingAction(
+  ): Promise<LessonModel> => {
+    const processedLesson = await callAction(() => processLessonRecordingAction(
       sessionRecording,
       recordingTime,
       recordingSize,
       lesson
-    );
-    logger.info('lessonWithAudioMetrics', { lessonWithAudioMetrics });
-    return lessonWithAudioMetrics;
-    // TODO: sync when generating new lessons
-    // TODO: each target langauge should have its own onboarding, and data
+    ));
+    return processedLesson;
   };
 
-  // Upload file for slider items – only processes the image file.
-  const uploadFilesToStorage = useCallback(
-    async (data: Blob): Promise<string> => {
-      const file = new File([data], `recording-${Date.now()}.webm`, {
-        type: data.type,
-      });
-
-      let recordingUrl = null;
-      if(true) {
-      // if (process.env.NEXT_PUBLIC_MOCK_UPLOADS === 'true') {
-        recordingUrl = `https://6jnegrfq8rkxfevo.public.blob.vercel-storage.com/products/images/1741514066709-2025-03-09_07-55-trAfuCDSuaW2aZYiXHgENMuGfGNdCo.png`;
-      } else {
-        recordingUrl = await uploadFile(file, 'lessay/sessionRecordings');
-      }
-
-      if (!recordingUrl) throw new Error('Missing recording URL');
-
-      return  recordingUrl ;
-    },
-    [uploadFile]
-  );
-
-  // Auto-fetch when user becomes available:
+  // auto-fetch when user becomes available:
   useEffect(() => {
     if (!user) return;
     getLessons()
@@ -318,6 +227,8 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
         /* swallow here; error already handled in withLoading... */
       });
   }, [user]);
+
+  const clearError = () => setError(null);
 
   return (
     <LessonContext.Provider

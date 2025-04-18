@@ -1,35 +1,37 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import {
   createOnboardingAction,
+  getOnboardingAction,
   updateOnboardingAction,
+  deleteOnboardingAction,
+  markOnboardingCompleteAndGenerateInitialLessonsAction,
   getStatusAction,
   getAssessmentLessonAction,
   completeAssessmentLessonAction,
-  getOnboardingAction,
-  markOnboardingCompleteAndGenerateInitialLessonsAction,
   recordAssessmentStepAttemptAction,
   updateOnboardingLessonAction,
-  processAssessmentLessonRecordingAction
+  processAssessmentLessonRecordingAction,
 } from '@/lib/server-actions/onboarding-actions';
-import logger from '@/utils/logger';
-import { AssessmentLesson, AssessmentStep, OnboardingModel } from '@/models/AppAllModels.model';
 import toast from 'react-hot-toast';
-import { usePathname, useRouter } from 'next/navigation';
+import logger from '@/utils/logger';
+import { useRouter, usePathname } from 'next/navigation';
+import { AssessmentLesson, AssessmentStep, OnboardingModel } from '@/models/AppAllModels.model';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
-import { useUpload } from '@/hooks/use-upload';
 import { useAuth } from './auth-context';
 import { useUserProfile } from './user-profile-context';
+import { Result } from '@/lib/server-actions/_withErrorHandling';
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;
-  goToLessonsWithOnboardingComplete: () => Promise<void>;
-  checkOnboardingStatus: () => Promise<boolean>;
-  markStepComplete: (step: string, formData: any) => Promise<void>;
+  onboarding: OnboardingModel | null;
   loading: boolean;
   error: string | null;
-  clearError: () => void;
+  initializing: boolean;
+  startOnboarding: () => Promise<void>;
+  checkOnboardingStatus: () => Promise<boolean>;
+  markStepComplete: (step: string, formData: any) => Promise<void>;
   getOnboarding: () => Promise<OnboardingModel | null>;
   getAssessmentLesson: () => Promise<AssessmentLesson>;
   completeAssessmentLesson: (
@@ -37,222 +39,140 @@ interface OnboardingContextType {
     userResponse: string
   ) => Promise<AssessmentLesson>;
   markOnboardingAsCompleteAndGenerateLessons: () => Promise<void>;
-  onboarding: OnboardingModel | null;
   recordAssessmentStepAttempt: (
     lessonId: string,
     stepId: string,
-    userResponse: string,
-    correct?: boolean
+    userResponse: string
   ) => Promise<AssessmentStep>;
+  updateOnboardingLesson: (
+    lessonId: string,
+    lessonData: Partial<AssessmentLesson>
+  ) => Promise<AssessmentLesson>;
   processAssessmentLessonRecording: (
     recording: RecordingBlob,
     lesson: AssessmentLesson,
     recordingTime: number,
     recordingSize: number
   ) => Promise<AssessmentLesson>;
-  initializing: boolean;
+  clearError: () => void;
+  goToLessonsWithOnboardingComplete: () => void;
 }
 
-const OnboardingContext = createContext<OnboardingContextType | undefined>(
-  undefined
-);
+const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-export function OnboardingProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function OnboardingProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useUserProfile();
+
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
+  const [onboarding, setOnboarding] = useState<OnboardingModel | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [onboarding, setOnboarding] = useState<OnboardingModel | null>(null);
-  const router = useRouter();
-
-  const { user , loading: authLoading} = useAuth();
-  const { profile, loading: profileLoading } = useUserProfile();
-  const { uploadFile } = useUpload();
-  const pathname = usePathname();
-  // NEW: are we still deciding where to send them?
   const [initializing, setInitializing] = useState(true);
 
-  // Helper method to handle async operations with loading and error states
-  const withLoadingAndErrorHandling = async <T,>(
-    operation: () => Promise<T>
-  ): Promise<T> => {
+  // --------------------------------------------------------------------------
+  // helper: unwrap Result<T>, manage loading + errors + toasts
+  // --------------------------------------------------------------------------
+  const callAction = async <T,>(action: () => Promise<Result<T>>): Promise<T> => {
     setLoading(true);
     try {
-      return await operation();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'An error occurred';
-      setError(message);
-      logger.error(message);
-      toast.error(message);
-
-      throw error;
+      const { data, error: msg } = await action();
+      if (msg) {
+        setError(msg);
+        toast.error(msg);
+        throw new Error(msg);
+      }
+      return data!;
     } finally {
       setLoading(false);
     }
   };
 
-  const checkOnboardingStatus = async () => {
-    return withLoadingAndErrorHandling(async () => {
-      const status = await getStatusAction();
-      setIsOnboardingComplete(status);
-      return status;
-    });
+  // --------------------------------------------------------------------------
+  // onboarding flows
+  // --------------------------------------------------------------------------
+  const startOnboarding = async (): Promise<void> => {
+    await callAction(() => createOnboardingAction());
+    setIsOnboardingComplete(false);
   };
 
-  const startOnboarding = async () => {
-    return withLoadingAndErrorHandling(async () => {
-      await createOnboardingAction();
-      setIsOnboardingComplete(false);
-    });
+  const checkOnboardingStatus = async (): Promise<boolean> => {
+    const status = await callAction(() => getStatusAction());
+    setIsOnboardingComplete(status);
+    return status;
   };
 
-  const markStepComplete = async (step: string, formData: any) => {
-    return withLoadingAndErrorHandling(async () => {
-      await updateOnboardingAction(step, formData);
-      await checkOnboardingStatus();
-    });
+  const markStepComplete = async (step: string, formData: any): Promise<void> => {
+    await callAction(() => updateOnboardingAction(step, formData));
+    // re‑check overall status
+    const status = await callAction(() => getStatusAction());
+    setIsOnboardingComplete(status);
   };
 
-  const clearError = () => setError(null);
-
-  const getAssessmentLesson = async () => {
-    return withLoadingAndErrorHandling(async () => {
-      return await getAssessmentLessonAction();
-    });
+  const getOnboarding = async (): Promise<OnboardingModel | null> => {
+    const data = await callAction(() => getOnboardingAction());
+    setOnboarding(data);
+    return data;
   };
 
-  const completeAssessmentLesson = async (
-    lessonId: string,
-    userResponse: string
-  ) => {
-    return withLoadingAndErrorHandling(async () => {
-      return await completeAssessmentLessonAction(lessonId, userResponse);
-    });
+  // assessment lessons
+  const getAssessmentLesson = () => callAction(() => getAssessmentLessonAction());
+  const completeAssessmentLesson = (id: string, resp: string) =>
+    callAction(() => completeAssessmentLessonAction(id, resp));
+  const recordAssessmentStepAttempt = (l: string, s: string, r: string) =>
+    callAction(() => recordAssessmentStepAttemptAction(l, s, r));
+  const updateOnboardingLesson = (id: string, d: Partial<AssessmentLesson>) =>
+    callAction(() => updateOnboardingLessonAction(id, d));
+  const processAssessmentLessonRecording = (
+    rec: RecordingBlob,
+    lesson: AssessmentLesson,
+    t: number,
+    sz: number
+  ) => callAction(() => processAssessmentLessonRecordingAction(rec, lesson, t, sz));
+
+  const markOnboardingAsCompleteAndGenerateLessons = async (): Promise<void> => {
+    const completed = await callAction(() =>
+      markOnboardingCompleteAndGenerateInitialLessonsAction()
+    );
+    setOnboarding(completed);
+    toast.success('Onboarding completed! Lessons generated!');
   };
 
-  const markOnboardingAsCompleteAndGenerateLessons = async () => {
-    return withLoadingAndErrorHandling(async () => {
-      const completedOnboarding = await markOnboardingCompleteAndGenerateInitialLessonsAction();
-      setOnboarding(completedOnboarding);
-      toast.success(
-        'Onboarding completed! Lessons generated!'
-      );
-    });
-  };
-
-  const getOnboarding = async () => {
-    return withLoadingAndErrorHandling(async () => {
-      const result = await getOnboardingAction();
-      setOnboarding(result);
-      return result;
-    });
-  };
-
-  const recordAssessmentStepAttempt = async (
-    lessonId: string,
-    stepId: string,
-    userResponse: string
-  ) => {
-    return withLoadingAndErrorHandling(async () => {
-      return await recordAssessmentStepAttemptAction(lessonId, stepId, userResponse);
-    });
-  };
-
-  const goToLessonsWithOnboardingComplete = async () => {
+  const goToLessonsWithOnboardingComplete = () => {
     setIsOnboardingComplete(true);
     router.push('/app/lessons');
   };
 
+  const clearError = () => setError(null);
 
-  const processAssessmentLessonRecording = async (
-    sessionRecording: RecordingBlob,
-    lesson: AssessmentLesson,
-    recordingTime: number,
-    recordingSize: number
-  ) => {
-    if (!sessionRecording) {
-      throw new Error('No session recording provided');
-    }
-    if (lesson.audioMetrics) {
-      return lesson;
-    }
-    if (!lesson.sessionRecordingUrl) {
-      const uploadedAudioUrl = await uploadFilesToStorage(sessionRecording);
-      lesson.sessionRecordingUrl = uploadedAudioUrl;
-  
-      updateOnboardingLessonAction(lesson.id, { sessionRecordingUrl: uploadedAudioUrl });
-    }
-    const lessonWithAudioMetrics = await processAssessmentLessonRecordingAction(
-      sessionRecording,
-      lesson,
-      recordingSize,
-      recordingTime
-    );
-    logger.info('lessonWithAudioMetrics', { lessonWithAudioMetrics });
-    return lessonWithAudioMetrics;
-    // TODO: sync when generating new lessons
-    // TODO: each target langauge should have its own onboarding, and data
-  };
-
-
-  const uploadFilesToStorage = useCallback(
-    async (data: Blob): Promise<string> => {
-      const file = new File([data], `recording-${Date.now()}.webm`, {
-        type: data.type,
-      });
-
-      let recordingUrl = null;
-      if(true) {
-      // if (process.env.NEXT_PUBLIC_MOCK_UPLOADS === 'true') {
-        recordingUrl = `https://6jnegrfq8rkxfevo.public.blob.vercel-storage.com/products/images/1741514066709-2025-03-09_07-55-trAfuCDSuaW2aZYiXHgENMuGfGNdCo.png`;
-      } else {
-        recordingUrl = await uploadFile(file, 'lessay/sessionRecordings');
-      }
-
-      if (!recordingUrl) throw new Error('Missing recording URL');
-
-      return  recordingUrl ;
-    },
-    [uploadFile]
-  );
-
-
-
+  // --------------------------------------------------------------------------
+  // initial redirect logic (auth → onboarding vs lessons)
+  // --------------------------------------------------------------------------
   useEffect(() => {
-    // 1) Wait for auth to finish
     if (authLoading || profileLoading) return;
 
-    // 2) If no user, redirect to login
     if (!user) {
       setInitializing(false);
       if (pathname !== '/app/login') router.replace('/app/login');
       return;
     }
 
-    // 3) Once user & profile exist, decide onboarding vs lessons
     (async () => {
       try {
-        const isComplete = await getStatusAction();
-        setIsOnboardingComplete(isComplete);
-        if (isComplete) {
-          if (pathname !== '/app/lessons') {
-            router.replace('/app/lessons');
-          }
-        } else {
-          // ensure an onboarding record exists
-          await createOnboardingAction();
-          if (pathname !== '/app/onboarding') {
-            router.replace('/app/onboarding');
-          }
+        const complete = await callAction(() => getStatusAction());
+        setIsOnboardingComplete(complete);
+        if (complete && pathname !== '/app/lessons') {
+          router.replace('/app/lessons');
+        } else if (!complete && pathname !== '/app/onboarding') {
+          await callAction(() => createOnboardingAction());
+          router.replace('/app/onboarding');
         }
-      } catch (err) {
-        // swallow or log
+      } catch {
+        // already in state.error
       } finally {
-        setInitializing(false);  // ← done deciding
+        setInitializing(false);
       }
     })();
   }, [authLoading, profileLoading, user, pathname, router]);
@@ -261,20 +181,22 @@ export function OnboardingProvider({
     <OnboardingContext.Provider
       value={{
         isOnboardingComplete,
-        checkOnboardingStatus,
-        markStepComplete,
+        onboarding,
         loading,
         error,
-        clearError,
+        initializing,
+        startOnboarding,
+        checkOnboardingStatus,
+        markStepComplete,
         getOnboarding,
         getAssessmentLesson,
         completeAssessmentLesson,
-        markOnboardingAsCompleteAndGenerateLessons,
-        onboarding,
         recordAssessmentStepAttempt,
-        goToLessonsWithOnboardingComplete,
+        updateOnboardingLesson,
         processAssessmentLessonRecording,
-        initializing
+        markOnboardingAsCompleteAndGenerateLessons,
+        goToLessonsWithOnboardingComplete,
+        clearError,
       }}
     >
       {children}
@@ -282,10 +204,8 @@ export function OnboardingProvider({
   );
 }
 
-export const useOnboarding = () => {
-  const context = useContext(OnboardingContext);
-  if (context === undefined) {
-    throw new Error('useOnboarding must be used within an OnboardingProvider');
-  }
-  return context;
+export const useOnboarding = (): OnboardingContextType => {
+  const ctx = useContext(OnboardingContext);
+  if (!ctx) throw new Error('useOnboarding must be used within OnboardingProvider');
+  return ctx;
 };

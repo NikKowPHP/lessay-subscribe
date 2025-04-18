@@ -46,21 +46,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logger.log("AuthProvider Effect: Mounting / Running");
   
       setLoading(true); 
-      getSessionAction().then((initialSession) => {
-        if (isMounted.current) {
-          logger.log("AuthProvider Effect: getSessionAction resolved", initialSession);
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-          setLoading(false); 
+      getSessionAction().then(({ data, error }) => {
+        if (error) {
+          setError(error)
+        } else {
+          setSession(data ?? null)
+          setUser(data?.user ?? null)
         }
-      })
-      .catch((err) => { 
-        if (isMounted.current) {
-          logger.error("AuthProvider Effect: getSessionAction failed", err);
-          setError(err instanceof Error ? err.message : 'Session error occurred');
-          setLoading(false); 
-        }
-      });
+      }).finally(() => setLoading(false))
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, changedSession) => {
@@ -95,51 +88,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const login = async (email: string, password: string) => {
-      setError(null);
-      setLoading(true);
-  
-      try {
-        const { data, error: actionError } = await loginAction(email, password);
-  
-        if (actionError) {
-          const friendly = checkErrorMessageAndGiveTheUserError(actionError.message);
-          setError(friendly);
-          // re‑throw so your page’s `catch` fires
-          throw new Error(friendly);
-        }
-  
-        // success → update user & session
-        setUser(data.user);
-        setSession(data.session);
-      } finally {
-        setLoading(false);
+      setLoading(true)
+      const { data, error } = await loginAction(email, password)
+      if (error) {
+        setError(error)
+        throw new Error(error)
       }
-    };
+      setUser(data!.user)
+      setSession(data!.session)
+      setError(null)
+      setLoading(false)
+    }
 
     const register = async (email: string, password: string) => {
-      if (!isMounted.current) return;
-      setError(null)
       setLoading(true)
-      try {
-        const { data, error: actionError } = await registerAction(email, password)
-        if (actionError) {
-          setError(actionError.message);
-        }
-        if (isMounted.current) {
-          setUser(data.user);
-          setSession(data.session);
-        }
-      } catch (caughtError: any) {
-          if (isMounted.current) {
-              const message = caughtError?.message ? caughtError.message : 'Registration failed';
-              // setError(message);
-              throw new Error(message);
-          }
-      } finally {
-        if (isMounted.current) {
-          setLoading(false);
-        }
+      const { data, error } = await registerAction(email, password)
+      if (error) {
+        setError(error)
+        throw new Error(error)
       }
+      setUser(data!.user)
+      setSession(data!.session)
+      setError(null)
+      setLoading(false)
     }
   
 
@@ -169,25 +140,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
       if (!isMounted.current) return;
-      setError(null)
-      try {
-        const { error: actionError } = await logoutAction()
-        if (actionError) {
-           if (isMounted.current) {
-              setError(actionError.message);
-           }
-          return;
-        }
-        if (isMounted.current) {
-          setUser(null);
-          setSession(null);
-        }
-      } catch (caughtError: any) { 
-          if (isMounted.current) {
-              // setError(caughtError instanceof Error ? caughtError.message : 'Logout failed');
-              throw new Error(caughtError instanceof Error ? caughtError.message : 'Logout failed');
-          }
+      setLoading(true)
+      const { error } = await logoutAction()
+      if (error) setError(error)
+      else {
+        setUser(null)
+        setSession(null)
       }
+      setLoading(false)
     }
   
     const clearError = () => {

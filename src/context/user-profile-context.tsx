@@ -40,7 +40,7 @@ export function UserProfileProvider({
 
   // Load user profile when auth user changes
   useEffect(() => {
-    // don’t touch anything until auth has finished checking
+    // don't touch anything until auth has finished checking
     if (authLoading) return;
 
     if (user?.id && user.email) {
@@ -52,23 +52,22 @@ export function UserProfileProvider({
 
   const fetchUserProfile = async (userId: string) => {
     setLoading(true);
-    try {
-      // here we should check if it exists if not create a new one
-      logger.info('get user profile in context', userId);
-      let userProfile = await getUserProfileAction(userId);
-      logger.info('get user profile in context', userProfile);
-      if (!userProfile && user?.email) {
-        userProfile = await saveInitialProfile(user?.email);
-      }
-      setProfile(userProfile);
-    } catch (error) {
-      logger.error('Error fetching user profile:', error);
-      setError(
-        error instanceof Error ? error.message : 'Failed to load profile'
-      );
-    } finally {
-      setLoading(false);
+    const { data, error: fetchError } = await getUserProfileAction(userId);
+    setLoading(false);
+
+    if (fetchError) {
+      setError(fetchError);
+      logger.error('Error fetching user profile:', fetchError);
+      return;
     }
+
+    let userProfile = data;
+    if (!userProfile && user?.email) {
+      // first-time user → create profile
+      userProfile = await saveInitialProfile(user.email);
+    }
+
+    setProfile(userProfile || null);
   };
 
   const saveInitialProfile = async (
@@ -80,24 +79,18 @@ export function UserProfileProvider({
     }
 
     setLoading(true);
-    try {
-      const initialProfile = {
-        userId: user.id,
-        email,
-        onboardingCompleted: false,
-      };
+    const { data, error: createError } = await createUserProfileAction({
+      userId: user.id,
+      email,
+    });
+    setLoading(false);
 
-      const userProfile = await createUserProfileAction(initialProfile);
-      return userProfile;
-    } catch (error) {
-      logger.error('Error creating user profile:', error);
-      setError(
-        error instanceof Error ? error.message : 'Failed to create profile'
-      );
-      throw error;
-    } finally {
-      setLoading(false);
+    if (createError) {
+      logger.error('Error creating user profile:', createError);
+      setError(createError);
+      return null;
     }
+    return data!;
   };
 
   const updateProfile = async (data: Partial<UserProfileModel>) => {
@@ -106,28 +99,27 @@ export function UserProfileProvider({
       return;
     }
 
-    setLoading(true);
-    try {
-      const { subscriptionStatus, subscriptionEndDate, ...updateData } = data;
-      if (Object.keys(updateData).length === 0) {
-        logger.warn("updateProfile called with no updatable fields.");
-        setLoading(false);
-        return; // Nothing to update
-      }
-      const updatedProfile = await updateUserProfileAction(user.id, updateData);
-      if (updatedProfile) {
-        setProfile(updatedProfile);
-      } else {
-        throw new Error('Failed to update user profile');
-      }
-    } catch (error) {
-      logger.error('Error updating user profile:', error);
-      setError(
-        error instanceof Error ? error.message : 'Failed to update profile'
-      );
-    } finally {
-      setLoading(false);
+    // strip out any fields we don't want sent
+    const { subscriptionStatus, subscriptionEndDate, ...updateData } = data;
+    if (Object.keys(updateData).length === 0) {
+      logger.warn('updateProfile called with no updatable fields.');
+      return;
     }
+
+    setLoading(true);
+    const { data: updated, error: updateError } = await updateUserProfileAction(
+      user.id,
+      updateData
+    );
+    setLoading(false);
+
+    if (updateError) {
+      logger.error('Error updating user profile:', updateError);
+      setError(updateError);
+      return;
+    }
+
+    setProfile(updated!);
   };
 
 
