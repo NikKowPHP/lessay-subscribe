@@ -8,8 +8,8 @@ import {
 import prisma from '@/lib/prisma';
 import { SubscriptionStatus } from '@prisma/client';
 import { createSupabaseServerClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
 import { SupabaseClient } from '@supabase/supabase-js';
+import supabaseAdmin from '@/utils/supabase/admin';
 
 export interface IUserRepository {
   getUserProfile(userId: string): Promise<UserProfileModel | null>;
@@ -305,27 +305,18 @@ export class UserRepository implements IUserRepository {
 
       // Step 2: Delete auth user (server-side only)
       if (typeof window === 'undefined' && this.getSupabaseClient) {
-        const supabase = await this.getSupabaseClient();
-        if (!supabase) {
-          throw new Error('No auth service available');
-        }
-        
-        // Handle mock user deletion differently
-        // if (userId === 'mock-user-id') {
-        //   logger.warn('Bypassing auth deletion for mock user');
-        //   return;
-        // }
-
+            
         // Use admin API for user deletion
-        const { error: authError } = await supabase.auth.admin.deleteUser(
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(
           userId
         );
+        
 
         if (authError) {
           logger.error(`Auth deletion failed: ${authError.message}`, {
             userId,
           });
-          throw new Error('Failed to delete auth user');
+          throw new Error(`Failed to delete auth user: ${authError.message}`); 
         }
         logger.info(`Auth user deleted: ${userId}`);
       }
@@ -351,11 +342,7 @@ export class UserRepository implements IUserRepository {
             `Attempting Auth Provider deletion for potentially orphaned user: ${userId}`
           );
           if (typeof window === 'undefined' && this.getSupabaseClient) {
-            const supabase = await this.getSupabaseClient();
-            if (!supabase) {
-              throw new Error('No auth service available')
-            }
-            const { error: authError } = await supabase.auth.admin.deleteUser(
+            const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(
               userId
             );
 
