@@ -102,9 +102,6 @@ This list tracks the implementation status for the monthly/yearly subscription w
         *   [x] Ensure `fetchUserProfile` loads subscription data. *(Implemented in File 28 - relies on action/service/repo)*
         *   [x] Ensure `hasActiveSubscription` logic correctly checks `TRIAL`/`ACTIVE` status and `subscriptionEndDate`. *(Implemented in File 28)*
         *   [x] Ensure `updateProfile` excludes subscription fields. *(Implemented correctly in File 28)*
-    *   **[ ] Subscription Context (`context/subscription-context.tsx`):** *(Code not provided - Recommend removal)*
-        *   [ ] **Decision:** Remove this context and rely solely on `UserProfileContext`.
-        *   [ ] If removing: Update components using `useSubscription` to use `useUserProfile`. Remove provider and API route if unused elsewhere.
     *   **[ ] Content Gating/Restriction:** *(Implementation needed)*
         *   **[ ] Component Level:** Implement checks in relevant components (e.g., `LessonChat`, `LessonDetailPage`) using `useUserProfile().hasActiveSubscription()`. Show upgrade prompts/disable features if inactive.
         *   **[ ] Route Level (Middleware - Optional but Recommended):** Create `middleware.ts` to protect routes based on subscription status fetched server-side.
