@@ -29,34 +29,41 @@ interface OnboardingContextType {
   loading: boolean;
   error: string | null;
   initializing: boolean;
+
   startOnboarding: () => Promise<void>;
   checkOnboardingStatus: () => Promise<boolean>;
   markStepComplete: (step: string, formData: any) => Promise<void>;
   getOnboarding: () => Promise<OnboardingModel | null>;
-  getAssessmentLesson: () => Promise<AssessmentLesson>;
+
+  getAssessmentLesson: () => Promise<AssessmentLesson | undefined>;
   completeAssessmentLesson: (
     lessonId: string,
     userResponse: string
-  ) => Promise<AssessmentLesson>;
+  ) => Promise<AssessmentLesson | undefined>;
   markOnboardingAsCompleteAndGenerateLessons: () => Promise<void>;
+
   recordAssessmentStepAttempt: (
     lessonId: string,
     stepId: string,
     userResponse: string
-  ) => Promise<AssessmentStep>;
+  ) => Promise<AssessmentStep | undefined>;
+
   updateOnboardingLesson: (
     lessonId: string,
     lessonData: Partial<AssessmentLesson>
-  ) => Promise<AssessmentLesson>;
+  ) => Promise<AssessmentLesson | undefined>;
+
   processAssessmentLessonRecording: (
     recording: RecordingBlob,
     lesson: AssessmentLesson,
     recordingTime: number,
     recordingSize: number
-  ) => Promise<AssessmentLesson>;
+  ) => Promise<AssessmentLesson | undefined>;
+
   clearError: () => void;
   goToLessonsWithOnboardingComplete: () => void;
 }
+
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
@@ -75,19 +82,33 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   // --------------------------------------------------------------------------
   // helper: unwrap Result<T>, manage loading + errors + toasts
   // --------------------------------------------------------------------------
-  const callAction = async <T,>(action: () => Promise<Result<T>>): Promise<T> => {
+  /**
+   * Unwraps Result<T>, sets loading & error toast,
+   * but never throws—always returns T|undefined
+   */
+  const callAction = async <T,>(
+    action: () => Promise<Result<T>>
+  ): Promise<T | undefined> => {
     setLoading(true);
+    let result: T | undefined;
     try {
       const { data, error: msg } = await action();
       if (msg) {
+        // surface the error in your UI
         setError(msg);
         toast.error(msg);
-        throw new Error(msg);
+      } else {
+        result = data!;
       }
-      return data!;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : String(err);
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
+    return result;
   };
 
   // --------------------------------------------------------------------------
@@ -100,47 +121,80 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   const checkOnboardingStatus = async (): Promise<boolean> => {
     const status = await callAction(() => getStatusAction());
-    setIsOnboardingComplete(status);
-    return status;
+    const complete = status ?? false;
+    setIsOnboardingComplete(complete);
+    return complete;
   };
 
-  const markStepComplete = async (step: string, formData: any): Promise<void> => {
+  const markStepComplete = async (
+    step: string,
+    formData: any
+  ): Promise<void> => {
     await callAction(() => updateOnboardingAction(step, formData));
     // re‑check overall status
     const status = await callAction(() => getStatusAction());
-    setIsOnboardingComplete(status);
+    setIsOnboardingComplete(status ?? false);
   };
 
   const getOnboarding = async (): Promise<OnboardingModel | null> => {
     const data = await callAction(() => getOnboardingAction());
-    setOnboarding(data);
-    return data;
+    setOnboarding(data ?? null);
+    return data ?? null;
   };
 
   // assessment lessons
-  const getAssessmentLesson = () => callAction(() => getAssessmentLessonAction());
-  const completeAssessmentLesson = (id: string, resp: string) =>
-    callAction(() => completeAssessmentLessonAction(id, resp));
-  const recordAssessmentStepAttempt = (l: string, s: string, r: string) =>
-    callAction(() => recordAssessmentStepAttemptAction(l, s, r));
-  const updateOnboardingLesson = (id: string, d: Partial<AssessmentLesson>) =>
-    callAction(() => updateOnboardingLessonAction(id, d));
-  const processAssessmentLessonRecording = (
-    rec: RecordingBlob,
+  const getAssessmentLesson = async (): Promise<AssessmentLesson | undefined> =>
+    await callAction(() => getAssessmentLessonAction());
+
+  const completeAssessmentLesson = async (
+    id: string,
+    resp: string
+  ): Promise<AssessmentLesson | undefined> =>
+    await callAction(() => completeAssessmentLessonAction(id, resp));
+
+  const recordAssessmentStepAttempt = async (
+    lessonId: string,
+    stepId: string,
+    userResponse: string
+  ): Promise<AssessmentStep | undefined> =>
+    await callAction(() =>
+      recordAssessmentStepAttemptAction(lessonId, stepId, userResponse)
+    );
+
+  const updateOnboardingLesson = async (
+    lessonId: string,
+    data: Partial<AssessmentLesson>
+  ): Promise<AssessmentLesson | undefined> =>
+    await callAction(() =>
+      updateOnboardingLessonAction(lessonId, data)
+    );
+
+  const processAssessmentLessonRecording = async (
+    recording: RecordingBlob,
     lesson: AssessmentLesson,
-    t: number,
-    sz: number
-  ) => callAction(() => processAssessmentLessonRecordingAction(rec, lesson, t, sz));
+    recordingTime: number,
+    recordingSize: number
+  ): Promise<AssessmentLesson | undefined> =>
+    await callAction(() =>
+      processAssessmentLessonRecordingAction(
+        recording,
+        lesson,
+        recordingTime,
+        recordingSize
+      )
+    );
 
   const markOnboardingAsCompleteAndGenerateLessons = async (): Promise<void> => {
     const completed = await callAction(() =>
       markOnboardingCompleteAndGenerateInitialLessonsAction()
     );
-    setOnboarding(completed);
-    toast.success('Onboarding completed! Lessons generated!');
+    if (completed) {
+      setOnboarding(completed);
+      toast.success('Onboarding completed! Lessons generated!');
+    }
   };
 
-  const goToLessonsWithOnboardingComplete = () => {
+  const goToLessonsWithOnboardingComplete = (): void => {
     setIsOnboardingComplete(true);
     router.push('/app/lessons');
   };
@@ -171,7 +225,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     (async () => {
       try {
         const complete = await callAction(() => getStatusAction());
-        setIsOnboardingComplete(complete);
+        setIsOnboardingComplete(complete ?? false);
         if (complete && !pathname.startsWith('/app/lessons')) {
           router.replace('/app/lessons');
         } else if (!complete && pathname !== '/app/onboarding') {

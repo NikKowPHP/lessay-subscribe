@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { useOnboarding } from '@/context/onboarding-context';
+import { toast } from 'react-hot-toast';
 import logger from '@/utils/logger';
 import WelcomeStep from '@/components/onboarding/WelcomeStep';
 import LanguageSelectionStep from '@/components/onboarding/LanguageSelectionStep';
@@ -153,11 +154,14 @@ export default function OnboardingPage() {
     setAssessmentLoading(true);
     try {
       const lesson = await getAssessmentLesson();
-      if (lesson) {
-        setAssessmentLesson(lesson);
+      if (!lesson) {
+        toast.error('Failed to load assessment lesson');
+        return;
       }
+      setAssessmentLesson(lesson);
     } catch (error) {
       logger.error('Error generating assessment lesson:', error);
+      toast.error('Error generating assessment lesson');
     } finally {
       setAssessmentLoading(false);
     }
@@ -166,23 +170,26 @@ export default function OnboardingPage() {
   // complete assessment lesson (generates text-based metrics)
   const handleOnAssessmentComplete = async () => {
     if (!assessmentLesson) {
-      throw new Error('Assessment lesson not found');
+      toast.error('No assessment lesson to complete');
+      return;
     }
+    setAreMetricsGenerated(false);
     try {
-      setAreMetricsGenerated(false);
-      const LessonWithMetrics = await completeAssessmentLesson(
-        assessmentLesson?.id,
+      const lessonWithMetrics = await completeAssessmentLesson(
+        assessmentLesson.id,
         'Assessment completed'
       );
-      // Update state with the first set of results
-      setAssessmentLesson((prev) => ({ ...prev, ...LessonWithMetrics }));
-      logger.info('LessonWithMetrics (Text-based)', LessonWithMetrics);
+      if (!lessonWithMetrics) {
+        toast.error('Failed to complete assessment');
+        return;
+      }
+      setAssessmentLesson(prev => ({ ...prev, ...lessonWithMetrics }));
+      logger.info('LessonWithMetrics (Text-based)', lessonWithMetrics);
     } catch (error) {
       logger.error('Error completing assessment lesson:', error);
-      // Optionally reset state or show error
+      toast.error('Error completing assessment');
     } finally {
       setAreMetricsGenerated(true);
-      // No need to set a flag here, the UI will react to assessmentLesson update
     }
   };
 
@@ -195,15 +202,18 @@ export default function OnboardingPage() {
   const onProcessAssessmentLessonRecording = async (sessionRecording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number) => {
     logger.info('processing assessment lesson recording', { sessionRecording, lesson, recordingTime, recordingSize });
     try {
-      const LessonWithAudioMetrics = await processAssessmentLessonRecording(sessionRecording, lesson, recordingTime, recordingSize);
-      // Update state again, now including audioMetrics
-      setAssessmentLesson((prev) => ({ ...prev, ...LessonWithAudioMetrics }));
-      logger.info('LessonWithAudioMetrics (Audio included)', LessonWithAudioMetrics);
-      return LessonWithAudioMetrics;
+      const lessonWithAudioMetrics = await processAssessmentLessonRecording(sessionRecording, lesson, recordingTime, recordingSize);
+      if (!lessonWithAudioMetrics) {
+        toast.error('Failed to process pronunciation');
+        return;
+      }
+      setAssessmentLesson(prev => ({ ...prev, ...lessonWithAudioMetrics }));
+      logger.info('LessonWithAudioMetrics (Audio included)', lessonWithAudioMetrics);
+      return lessonWithAudioMetrics;
     } catch (error) {
-       logger.error('Error processing assessment recording on page:', error);
-       // Handle error appropriately in UI if needed
-       throw error; // Re-throw if AssessmentStep needs to handle it
+      logger.error('Error processing assessment recording on page:', error);
+      toast.error('Error processing assessment recording');
+      return;
     }
   };
 

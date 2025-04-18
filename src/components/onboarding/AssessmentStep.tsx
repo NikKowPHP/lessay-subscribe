@@ -18,9 +18,14 @@ interface AssessmentStepProps {
   loading: boolean;
   targetLanguage: string;
   lesson: AssessmentLesson | null;
-  onAssessmentComplete: () => void;
-  onGoToLessonsButtonClick: () => void;
-  processAssessmentLessonRecording: (sessionRecording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number) => Promise<AssessmentLesson>;
+  onAssessmentComplete: () => Promise<void>;
+  onGoToLessonsButtonClick: () => Promise<void>;
+  processAssessmentLessonRecording: (
+    sessionRecording: RecordingBlob,
+    lesson: AssessmentLesson,
+    recordingTime: number,
+    recordingSize: number
+  ) => Promise<AssessmentLesson | undefined>;
 }
 
 export default function AssessmentStep({
@@ -49,19 +54,26 @@ export default function AssessmentStep({
   ): Promise<AssessmentStepModel | LessonStep> => {
     try {
       if (!lesson) {
-        throw new Error('Lesson is not loaded');
+        toast.error('Lesson is not loaded');
+        return step;
       }
       // Record the step attempt, similar to how lessons work
-      return await recordAssessmentStepAttempt(
+     const updatedStep = await recordAssessmentStepAttempt(
         lesson.id,
         step.id,
         userResponse
-      );
+     );
+      if (!updatedStep) {
+        toast.error('Failed to record assessment response');
+        return step;
+      }
+      return updatedStep;
+
       // Update local state if needed
       // (This matches how the lesson page updates local lesson state)
     } catch (error) {
       toast.error('Failed to record assessment response');
-      throw error;
+      return step;
     }
   };
 
@@ -70,12 +82,14 @@ export default function AssessmentStep({
     setIsCompleting(true);
     try {
       if (!lesson) {
-        throw new Error('Lesson is not loaded');
+        toast.error('Lesson is not loaded');
+        setIsCompleting(false);
+        return;
       }
       setSessionRecording(recording);
 
       // const result = await completeAssessmentLesson(lesson.id, 'Assessment completed');
-      onAssessmentComplete();
+      await onAssessmentComplete();
       // After completion, show results instead of immediately navigating
     } catch (error) {
       toast.error('Something went wrong completing your assessment');
@@ -112,10 +126,15 @@ export default function AssessmentStep({
             recordingTime,
             recordingSize
           );
-          logger.info('lessonWithAudioMetrics', lessonWithAudioMetrics);
-          if (!lessonWithAudioMetrics.audioMetrics) {
-            throw new Error('No audio metrics found');
+          if (!lessonWithAudioMetrics) {
+            toast.error('Pronunciation analysis failed.');
+            return;
           }
+          if (!lessonWithAudioMetrics.audioMetrics) {
+            toast.error('No audio metrics returned.');
+            return;
+          }
+          logger.info('lessonWithAudioMetrics', lessonWithAudioMetrics);
           
         } catch (error) {
           logger.error('Failed to process pronunciation:', error);
