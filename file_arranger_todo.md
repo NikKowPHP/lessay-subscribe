@@ -18,41 +18,42 @@ This script will scan a Git workspace, extract text file contents and image file
 
 ## 3. Define Ignored Directories and Output File
 
--   [ ] Define an array or a list of directory names to ignore (e.g., `node_modules`, `vendor`, `.git`, `dist`, `build`, etc.). Ensure `.git` is always included.
--   [ ] Define the name for the output file (e.g., `project_snapshot.txt`).
--   [ ] Construct the full path to the output file relative to the `PROJECT_ROOT` (e.g., `OUTPUT_FILE="$PROJECT_ROOT/project_snapshot.txt"` - since we `cd`'d, just `OUTPUT_FILE="project_snapshot.txt"` might be sufficient and simpler).
+-   [x] Define an array or a list of directory names to ignore (e.g., `node_modules`, `vendor`, `.git`, `dist`, `build`, etc.). Ensure `.git` is always included.
+-   [x] Define the name for the output file (e.g., `project_snapshot.txt`).
+-   [x] Construct the full path to the output file relative to the `PROJECT_ROOT` (e.g., `OUTPUT_FILE="$PROJECT_ROOT/project_snapshot.txt"` - since we `cd`'d, just `OUTPUT_FILE="project_snapshot.txt"` might be sufficient and simpler).
 
 ## 4. Prepare Output File
 
--   [ ] Ensure the script overwrites the output file if it exists. This can be done by using single redirection `>` when writing the main content, typically by redirecting the output of the main processing loop.
+-   [x] Ensure the script overwrites the output file if it exists. This can be done by using single redirection `>` when writing the main content, typically by redirecting the output of the main processing loop.
 
 ## 5. Find and Process Files
 
--   [ ] Use the `find` command starting from the current directory (`.` - which is now the project root).
-    -   [ ] Use `-type f` to find only files.
-    -   [ ] Construct the `-prune` logic for ignored directories. This usually looks something like:
+-   [x] Use the `find` command starting from the current directory (`.` - which is now the project root).
+    -   [x] Use `-type f` to find only files.
+    -   [x] Construct the `-prune` logic for ignored directories. This usually looks something like:
         `find . \( -name node_modules -o -name vendor -o -name .git \) -prune -o -type f -print`
         *(Adjust the `-name` parts for all directories to ignore)*.
-    -   [ ] Pipe the output of `find` to a `while read -r file` loop to process each file path found.
+    -   [x] Pipe the output of `find` to a `while read -r file` loop to process each file path found.
 
 ## 6. Inside the Loop: Process Each File
 
--   [ ] For each `file` found by `find`:
-    -   [ ] **Get Relative Path:** The path from `find .` will be relative (e.g., `./src/myfile.js`). Optionally, remove the leading `./` using `sed 's|^\./||'` or parameter expansion `"${file#./}"` for cleaner output. Store this in `RELATIVE_PATH`.
-    -   [ ] **Determine File Type:** Use `file --mime-type -b "$file"` to get the MIME type of the file.
-    -   [ ] **Conditional Processing:**
-        -   [ ] **If Text File:** Check if the MIME type starts with `text/` (e.g., using `[[ $MIME_TYPE == text/* ]]` or `echo "$MIME_TYPE" | grep -q '^text/'`).
-            -   [ ] Print a header indicating the file path (e.g., `echo "--- START FILE: $RELATIVE_PATH ---"`).
-            -   [ ] Print the file contents using `cat "$file"`.
-            -   [ ] Print a footer (optional, e.g., `echo "--- END FILE: $RELATIVE_PATH ---"`).
-            -   [ ] Print a blank line for separation.
-        -   [ ] **If Image File:** Check if the MIME type starts with `image/`.
-            -   [ ] Print only the relative path marker (e.g., `echo "--- IMAGE FILE: $RELATIVE_PATH ---"`).
-        -   [ ] **Other Files (Optional):** Decide how to handle other file types (binary, etc.). Maybe ignore them or just print their path like images. Currently, the logic implies they might be ignored if neither text nor image. Add an `else` condition if needed.
+-   [x] For each `file` found by `find`:
+    -   [x] **Get Relative Path:** The path from `find .` will be relative (e.g., `./src/myfile.js`). Optionally, remove the leading `./` using `sed 's|^\./||'` or parameter expansion `"${file#./}"` for cleaner output. Store this in `RELATIVE_PATH`.
+    -   [x] **Determine File Type:** Use `file --mime-type -b "$file"` to get the MIME type of the file.
+    -   [x] **Conditional Processing:**
+        -   [x] **If Text File:** Check if the MIME type starts with `text/` (e.g., using `[[ $MIME_TYPE == text/* ]]` or `echo "$MIME_TYPE" | grep -q '^text/'`).
+            -   [x] Print a header indicating the file path (e.g., `echo "--- START FILE: $RELATIVE_PATH ---"`).
+            -   [x] Print the file contents using `cat "$file"`.
+            -   [x] Print a footer (optional, e.g., `echo "--- END FILE: $RELATIVE_PATH ---"`).
+            -   [x] Print a blank line for separation.
+        -   [x] **If Image File:** Check if the MIME type starts with `image/`.
+            -   [x] Print only the relative path marker (e.g., `echo "--- IMAGE FILE: $RELATIVE_PATH ---"`).
+        -   [x] **Other Files (Optional):** Decide how to handle other file types (binary, etc.). Maybe ignore them or just print their path like images. Currently, the logic implies they might be ignored if neither text nor image. Add an `else` condition if needed.
 
 ## 7. Direct Output to File
 
--   [ ] Redirect the standard output of the entire `while` loop (or the `find | while` pipeline) to the `$OUTPUT_FILE` using `> "$OUTPUT_FILE"`. This handles the overwriting requirement efficiently.
+
+-   [x] Redirect the standard output of the entire `while` loop (or the `find | while` pipeline) to the `$OUTPUT_FILE` using `> "$OUTPUT_FILE"`. This handles the overwriting requirement efficiently.
     ```bash
     find . <find_options> | while read -r file; do
         # ... processing logic ...
