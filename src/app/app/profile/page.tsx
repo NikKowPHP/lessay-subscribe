@@ -47,6 +47,7 @@ export default function ProfilePage() {
       logout();
       router.push('/app/login');
     } catch (error) {
+      // check error and give user friendly message
       logger.error(`Unexpected error during account deletion for user ${user.id}:`, error);
       setDeleteError('An unexpected error occurred. Please try again.');
     } finally {

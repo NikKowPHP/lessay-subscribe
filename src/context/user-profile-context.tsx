@@ -43,32 +43,48 @@ export function UserProfileProvider({
     // don't touch anything until auth has finished checking
     if (authLoading) return;
 
-    if (user?.id && user.email) {
+    if (user?.id ) {
       fetchUserProfile(user.id);
     } else {
       setProfile(null);
+      setProfile(null);
+      setError(null);
+      setLoading(false);
     }
   }, [user, authLoading]);
 
   const fetchUserProfile = async (userId: string) => {
     setLoading(true);
-    const { data, error: fetchError } = await getUserProfileAction(userId);
-    setLoading(false);
+    setError(null); // Clear previous errors
+    try {
+      // Call the action, which now handles profile creation internally if needed
+      const { data, error: fetchError } = await getUserProfileAction(userId);
 
-    if (fetchError) {
-      setError(fetchError);
-      logger.error('Error fetching user profile:', fetchError);
-      return;
+      if (fetchError) {
+        setError(fetchError);
+        logger.error('Error fetching user profile:', fetchError);
+        setProfile(null); // Clear profile on error
+      } else {
+        // Set the profile (it will be the existing one or the newly created one)
+        setProfile(data || null);
+        if (data) {
+          logger.info(`Profile loaded/created successfully for user ${userId}.`);
+        } else {
+          // This case should ideally not happen if auth is successful,
+          // as getUserProfile now attempts creation. Log if it does.
+          logger.warn(`getUserProfileAction returned null data for user ${userId} despite successful auth.`);
+        }
+      }
+    } catch (err: any) {
+      // Catch any unexpected errors during the process (e.g., network issues)
+      logger.error('Unexpected error in fetchUserProfile:', err);
+      setError(err.message || 'An unexpected error occurred while fetching the profile.');
+      setProfile(null);
+    } finally {
+      setLoading(false);
     }
-
-    let userProfile = data;
-    if (!userProfile && user?.email) {
-      // first-time user → create profile
-      userProfile = await saveInitialProfile(user.email);
-    }
-
-    setProfile(userProfile || null);
   };
+
 
   const saveInitialProfile = async (
     email: string

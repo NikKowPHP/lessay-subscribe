@@ -20,6 +20,7 @@
 - [ ] delete user profile is not deleting the supabase user 
 - [ ] too many toaster messages 'initial assessment is not completed'
 - [ ] Analyzing pronunciation and fluency should also disable the go to lessons
+- [x] in the profile provider we should make it more robust, if profile does not exist but we have the authed user then we should create the profile
 ## test fixes
 - [ ] speech recognition should never stop once initiated
 - [ ] speech recognition should not restart if the user manually stops it FINISH

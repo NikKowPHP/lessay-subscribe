@@ -70,21 +70,32 @@ export class UserRepository implements IUserRepository {
       // First ensure the user is authorized to access this profile
       const session = await this.getSession();
       if (session.user.id !== userId) {
+        logger.error(`Unauthorized attempt to get profile. Logged in user: ${session.user.id}, Requested user: ${userId}`);
         throw new Error('Unauthorized to access this profile');
       }
 
-      const user = await prisma.user.findUnique({
+      let user = await prisma.user.findUnique({
         where: { id: userId },
         include: { onboarding: true },
       });
 
+      // If user doesn't exist in DB, but we have an authenticated session user, create the profile.
       if (!user) {
-        return null;
+        logger.warn(`User profile not found in DB for authenticated user ${userId}. Attempting to create.`);
+        // Ensure email is available from the session user
+        if (!session.user.email) {
+            logger.error(`Cannot create profile for user ${userId}: Email is missing from session.`);
+            throw new Error('User email not found in session, cannot create profile.');
+        }
+        // Call createUserProfile which handles the creation logic and returns the UserProfileModel
+        // createUserProfile already checks for existing user again, so it's safe.
+        return await this.createUserProfile({ userId: userId, email: session.user.email });
       }
 
+      // If user exists, map Prisma User to UserProfileModel
       return {
         id: user.id,
-        userId: user.id,
+        userId: user.id, // Ensure userId is mapped
         email: user.email || '',
         name: user.name || undefined,
         nativeLanguage: user.onboarding?.nativeLanguage || undefined,
@@ -92,18 +103,27 @@ export class UserRepository implements IUserRepository {
         proficiencyLevel: user.onboarding?.proficiencyLevel || undefined,
         learningPurpose: user.onboarding?.learningPurpose || undefined,
         onboardingCompleted: user.onboarding?.completed || false,
-        createdAt: user.createdAt,
-        initialAssessmentCompleted:
-          user.onboarding?.initialAssessmentCompleted || false,
+        initialAssessmentCompleted: user.onboarding?.initialAssessmentCompleted || false,
         subscriptionStatus: user.subscriptionStatus,
-        subscriptionEndDate: user.subscriptionEndDate || null,
+        subscriptionId: user.subscriptionId,
+        subscriptionPlan: user.subscriptionPlan,
+        trialStartDate: user.trialStartDate,
+        trialEndDate: user.trialEndDate,
+        subscriptionStartDate: user.subscriptionStartDate,
+        subscriptionEndDate: user.subscriptionEndDate,
+        billingCycle: user.billingCycle,
+        paymentMethodId: user.paymentMethodId,
+        stripeCustomerId: user.stripeCustomerId,
+        cancelAtPeriodEnd: user.cancelAtPeriodEnd,
+        createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       };
     } catch (error) {
       logger.error('Error fetching user profile:', error);
-      throw error;
+      throw error; // Re-throw the original error
     }
   }
+
 
   async createUserProfile(
     profile: Partial<UserProfileModel>
