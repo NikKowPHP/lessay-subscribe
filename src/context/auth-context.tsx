@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import React  from 'react'
 import { Session, User, AuthError } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { MockAuthService } from '@/services/mock-auth-service.service'
 import logger from '@/utils/logger'
 import { UserProfileProvider } from '@/context/user-profile-context'
 import { loginAction, registerAction, loginWithGoogleAction, logoutAction, getSessionAction } from '@/lib/server-actions/auth-actions'
@@ -26,9 +25,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isMock] = useState(() => process.env.NEXT_PUBLIC_MOCK_AUTH === 'true')
+  const isMock = process.env.NEXT_PUBLIC_IS_MOCK === 'true';
   const supabase = useRef(createClient()).current;
-
 
   logger.log('isMock', isMock)
 
@@ -57,16 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, changedSession) => {
+          // Only update state if the component is still mounted
           if (isMounted.current) {
               logger.log("AuthProvider Effect: onAuthStateChange fired", event, changedSession);
               setSession(changedSession);
               setUser(changedSession?.user ?? null);
-  
-              const currentPath = window.location.pathname; // Safe to access here if needed
-              if (event === 'SIGNED_OUT' && currentPath.startsWith('/app')) {
-                  logger.log("AuthProvider Effect: Redirecting on SIGNED_OUT");
-                  router.replace('/app/login');
-              }
           } else {
               logger.log("AuthProvider Effect: onAuthStateChange fired AFTER unmount, ignoring.");
           }
@@ -78,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isMounted.current = false; // Set false on cleanup
         subscription.unsubscribe();
       };
-    }, [router, supabase]);
+    }, [router, supabase.auth]);
   
     const checkErrorMessageAndGiveTheUserError = (errorMessage: string) => {
       if (errorMessage.includes('Invalid login credentials') || errorMessage.includes('invalid_credentials')) {
@@ -89,29 +82,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (email: string, password: string) => {
       setLoading(true)
-      const { data, error } = await loginAction(email, password)
-      if (error) {
-        setError(error)
-        throw new Error(error)
+      const { data, error: loginError } = await loginAction(email, password); // Renamed error
+      if (loginError) {
+        const userFriendlyError = checkErrorMessageAndGiveTheUserError(loginError);
+        setError(userFriendlyError);
+        throw new Error(userFriendlyError); // Throw the user-friendly message
       }
       setUser(data!.user)
       setSession(data!.session)
       setError(null)
       setLoading(false)
+      router.push('/app/lessons');
     }
 
     const register = async (email: string, password: string) => {
       setLoading(true)
-      const { data, error } = await registerAction(email, password)
-      if (error) {
-        setError(error)
-        throw new Error(error)
+    
+      const { data, error: registerError } = await registerAction(email, password); // Renamed error
+      if (registerError) {
+        setError(registerError);
+        throw new Error(registerError);
       }
       setUser(data!.user)
       setSession(data!.session)
       setError(null)
       setLoading(false)
+      router.push('/app/onboarding');
     }
+
   
 
     const loginWithGoogle = async () => {
@@ -121,14 +119,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { error: actionError } = await loginWithGoogleAction()
         if (actionError) {
-          setError(actionError.message);
+       
+          setError(actionError.message); // Set error state
+          throw new Error(actionError.message); // Also throw for consistency
         }
         // No need to set user/session here as it will be handled by the auth state change
       } catch (caughtError: any) {
           if (isMounted.current) {
               const message = caughtError?.message ? caughtError.message : 'Google login failed';
-              // setError(message);
-              throw new Error(message);
+          
+              setError(message); // Set error state
+              throw new Error(message); // Re-throw
           }
       } finally {
         if (isMounted.current) {
@@ -136,19 +137,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
+
   
 
-    const logout = async () => {
+    const logout = async (options: { redirect?: boolean } = { redirect: true }) => {
       if (!isMounted.current) return;
-      setLoading(true)
-      const { error } = await logoutAction()
-      if (error) setError(error)
-      else {
-        setUser(null)
-        setSession(null)
+      setLoading(true);
+      setError(null); // Clear previous errors
+
+      try {
+        // Attempt server-side logout, but don't block client-side cleanup if it fails
+        const { error: serverLogoutError } = await logoutAction();
+        if (serverLogoutError) {
+          // Log the error, but proceed with client-side cleanup
+          logger.warn('Server-side logout action failed (might be expected if user was just deleted):', serverLogoutError);
+          // Optionally set the error state if it's not an expected "user not found" type error
+          // setError(serverLogoutError.message);
+        }
+      } catch (caughtError: any) {
+        // Catch errors from the action call itself
+        logger.error('Error calling logoutAction:', caughtError);
+        // setError(caughtError.message || 'Logout failed');
+      } finally {
+        // Always clear client-side state regardless of server action outcome
+        if (isMounted.current) {
+          logger.info('Clearing client-side auth state in logout function.');
+          setUser(null);
+          setSession(null);
+          setLoading(false);
+
+          const currentPath = window.location.pathname;
+          if (options.redirect && currentPath.startsWith('/app')) {
+              logger.info("AuthProvider logout: Redirecting to /app/login");
+              router.replace('/app/login'); // Use replace to avoid back button issues
+          }
+        }
       }
-      setLoading(false)
-    }
+    };
+    // --- NEW CODE END ---
   
     const clearError = () => {
         if (isMounted.current) {

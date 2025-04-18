@@ -3,24 +3,9 @@
 
 
 # FIX
-- [x] sign up is not working
-<!-- - [ ]  Skipping lesson fetch: Initial assessment not completed. the Redirect to the onboarding is not happeing on production -->
-- [x] lesson chat refreeshes 
-- [x] speech recognition should never stop once initiated
-- [x] button start listening is never disabled 
-- [x] delay webspeech after audio queue is empty
-- [x] speech recognition should not restart if the user manually stops it FINISH
-- [x] media recorder fires only on start listening event and should be paused along with speech recognition
-- [x] on page rehydrating do not populate the user answer if the step is not interactive 
-- [x] only correct user answers gets added to the chat history 
-- [x] fix issue with leson generation : issue 1 
-- [x] the lesson generation prompt is not properly constructed
-- [x] user delete all data is not working properly
-- [x] migrate prisma to deployment
-- [x] delete user profile is not deleting the supabase user 
-- [x] too many toaster messages 'initial assessment is not completed'
+
 - [ ] Analyzing pronunciation and fluency should also disable the go to lessons
-- [x] in the profile provider we should make it more robust, if profile does not exist but we have the authed user then we should create the profile
+
 - [ ] move most of the provider  logic to the backend (identify areas that can be processed on the backend and modify it, more about the provider data initialization, not the flow of the lesson or onboarding.  )
 - ## test fixes
 - [ ] speech recognition should never stop once initiated
@@ -29,9 +14,7 @@
 - [ ] on page rehydrating do not populate the user answer if the step is not interactive 
 - [ ] only correct user answers gets added to the chat history 
 - [ ] user info request is being populated
-
-
-
+- [x] after redirect 'delete user profile action' we get an error hook.js:608 AuthApiError: Invalid Refresh Token: Refresh Token Not Found
 
 
 implementing the monthly/yearly subscription with a trial plan

@@ -43,17 +43,21 @@ export default function ProfilePage() {
     logger.warn(`User ${user.id} confirmed account deletion.`);
 
     try {
+  
       await deleteUserProfileAction();
-      logout();
-      router.push('/app/login');
-    } catch (error) {
-      // check error and give user friendly message
+      // Call logout, which now handles the redirect internally
+      await logout();
+    } catch (error: any) { // Catch specific errors if needed
       logger.error(`Unexpected error during account deletion for user ${user.id}:`, error);
-      setDeleteError('An unexpected error occurred. Please try again.');
+   
+      setDeleteError(error.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsDeleting(false);
     }
-  } 
+  }
+
+
+
  const handleLogout = async () => {
    setIsLoggingOut(true);
    try {
