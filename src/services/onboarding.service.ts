@@ -176,11 +176,12 @@ export default class OnboardingService {
         assessmentLesson
       );
 
+    logger.info('results in completeAssessmentLesson', results);
+
     assessmentLesson.metrics = results.metrics;
     assessmentLesson.summary = results.summary;
     assessmentLesson.proposedTopics = results.proposedTopics;
 
-    logger.info(`Assessment lesson: ${JSON.stringify(assessmentLesson)}`);
 
     // complete assessment lesson
     const completedLesson =
@@ -433,7 +434,7 @@ export default class OnboardingService {
     // 3. convert ai  response to audioMetrics model.
     const audioMetrics = this.convertAiResponseToAudioMetrics(aiResponse);
 
-    logger.debug('audioMetrics in recording ai response', audioMetrics);
+  
     // 4. update lesson with sessionRecordingMetrics, lesson should have a foreign key to audioMetrics
     return this.onboardingRepository.updateOnboardingAssessmentLesson(
       lesson.id,
@@ -444,10 +445,7 @@ export default class OnboardingService {
   private convertAiResponseToAudioMetrics(
     aiResponse: AiLessonAnalysisResponse // Use the specific interface type
   ): AudioMetrics {
-    logger.debug(
-      '>>> convertAiResponseToAudioMetrics INPUT:',
-      JSON.stringify(aiResponse, null, 2)
-    );
+   
 
     // Safely access nested objects
     const performanceMetrics: AiPerformanceMetrics | undefined =

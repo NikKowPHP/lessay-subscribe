@@ -557,10 +557,9 @@ class LessonGeneratorService implements ILessonGeneratorService {
         );
         
         aiResponse = this.formatLessonCompletionResults(result);
-        logger.info('Generated real lesson completion results', { aiResponse });
+        logger.info('Generated real lesson completion results in not mocked mode', { aiResponse });
       }
       
-      logger.info('Generated lesson completion results', { aiResponse });
       return aiResponse;
     } catch (error) {
       logger.error('Error generating lesson completion results', { error });

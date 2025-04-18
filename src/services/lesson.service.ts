@@ -1352,10 +1352,7 @@ export default class LessonService {
   private convertAiResponseToAudioMetrics(
     aiResponse: AiLessonAnalysisResponse // Use the specific interface type
   ): AudioMetrics {
-    logger.debug(
-      '>>> convertAiResponseToAudioMetrics INPUT:',
-      JSON.stringify(aiResponse, null, 2)
-    );
+   
 
     // Safely access nested objects
     const performanceMetrics: AiPerformanceMetrics | undefined =

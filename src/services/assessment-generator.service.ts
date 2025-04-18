@@ -400,13 +400,13 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   ): AiAssessmentResultResponse {
     return {
       metrics: {
-        accuracy: aiResponse.accuracy,
-        pronunciationScore: aiResponse.pronunciationScore,
-        grammarScore: aiResponse.grammarScore,
-        vocabularyScore: aiResponse.vocabularyScore,
-        overallScore: aiResponse.overallScore,
-        strengths: aiResponse.strengths,
-        weaknesses: aiResponse.weaknesses,
+        accuracy: aiResponse.metrics.accuracy,
+        pronunciationScore: aiResponse.metrics.pronunciationScore,
+        grammarScore: aiResponse.metrics.grammarScore,
+        vocabularyScore: aiResponse.metrics.vocabularyScore,
+        overallScore: aiResponse.metrics.overallScore,
+        strengths: aiResponse.metrics.strengths,
+        weaknesses: aiResponse.metrics.weaknesses,
       },
       proposedTopics: aiResponse.proposedTopics,
       summary: aiResponse.summary,
