@@ -24,12 +24,13 @@ import { LearningProgressModel } from '@/models/AppAllModels.model'
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user, logout, loading: authLoading } = useAuth()
   const { profile, loading: profileLoading, error: profileError } = useUserProfile()
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [learningProgress, setLearningProgress] = useState<LearningProgressModel | null>(null)
   const [progressLoading, setProgressLoading] = useState(true)
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleDeleteAccount = async () => {
     if (!user) {
@@ -51,7 +52,20 @@ export default function ProfilePage() {
     } finally {
       setIsDeleting(false);
     }
-  }
+  } 
+ const handleLogout = async () => {
+   setIsLoggingOut(true);
+   try {
+     await logout();
+     // Auth context listener should handle redirect to /app/login
+     // router.push('/app/login'); // Explicit push is likely redundant
+   } catch (error) {
+     logger.error('Logout failed on profile page:', error);
+     // Error should be handled by AuthContext's toast
+   } finally {
+     setIsLoggingOut(false);
+   }
+ }
 
   useEffect(() => {
     const fetchProgress = async () => {
@@ -113,6 +127,18 @@ export default function ProfilePage() {
           <p><strong>User ID:</strong> {profile.userId}</p>
           <p><strong>Joined:</strong> {new Date(profile.createdAt).toLocaleDateString()}</p>
         </div>
+
+      {/* --- Add Logout Button Section --- */}
+      <div className="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Account Actions</h2>
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          disabled={authLoading || isLoggingOut} // Disable while auth is loading or logging out
+        >
+          {isLoggingOut ? 'Logging out...' : 'Logout'}
+        </Button>
+      </div>
       </div>
 
       <div className="bg-white shadow rounded-lg p-6 mb-6">
