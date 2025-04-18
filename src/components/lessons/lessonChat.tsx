@@ -10,7 +10,7 @@ import { mapLanguageToCode } from '@/utils/map-language-to-code.util';
 import ChatMessages, { ChatMessage } from './ChatMessages';
 import ChatInput from './ChatInput';
 import { ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 // TODO: play the expectedAudio when answer is correct
 
@@ -107,7 +107,8 @@ export default function LessonChat({
 
   // Add state to track if lesson is complete but waiting for manual completion in mock mode
   const [lessonReadyToComplete, setLessonReadyToComplete] = useState(false);
-
+  const pathname = usePathname();
+  const showBackButton = pathname.includes('/lessons');
   const stopRecordingCompletely = useCallback(() => {
     if (
       mediaRecorderRef.current &&
@@ -1085,17 +1086,27 @@ export default function LessonChat({
     lesson && (
       <div className="flex flex-col h-full border rounded-[4px] bg-neutral-2 overflow-hidden">
         {/* Chat Header */}
-        <div className="p-4 bg-neutral-12 text-white shrink-0 flex justify-between items-center">
-          <button
-            onClick={() =>
-              router.push(isAssessment ? '/app/onboarding' : '/app/lessons')
-            }
-            className="flex items-center text-sm font-medium text-white hover:text-neutral-3 transition-colors"
+        <div
+          className={`p-4 bg-neutral-12 text-white shrink-0 flex items-center ${
+            isAssessment ? 'justify-center' : 'justify-between'
+          }`}
+        >
+          {showBackButton && (
+            <button
+              onClick={() =>
+                router.push(isAssessment ? '/app/onboarding' : '/app/lessons')
+              }
+              className="flex items-center text-sm font-medium text-white hover:text-neutral-3 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              {isAssessment ? 'Back to Assessment' : 'Back to Lessons'}
+            </button>
+          )}
+          <h2
+            className={`text-xl font-semibold ${
+              isAssessment ? 'mx-auto' : 'flex-1 text-left'
+            }`}
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            {isAssessment ? 'Back to Assessment' : 'Back to Lessons'}
-          </button>
-          <h2 className="text-xl font-semibold flex items-center justify-center">
             {isAssessment
               ? 'Language Assessment'
               : `Lesson: ${'focusArea' in lesson ? lesson.focusArea : ''}`}
