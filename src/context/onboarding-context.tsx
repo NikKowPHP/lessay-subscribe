@@ -43,7 +43,6 @@ interface OnboardingContextType {
     stepId: string,
     userResponse: string,
     correct?: boolean
-
   ) => Promise<AssessmentStep>;
   processAssessmentLessonRecording: (
     recording: RecordingBlob,
@@ -51,6 +50,7 @@ interface OnboardingContextType {
     recordingTime: number,
     recordingSize: number
   ) => Promise<AssessmentLesson>;
+  initializing: boolean;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(
@@ -69,9 +69,12 @@ export function OnboardingProvider({
   const router = useRouter();
 
   const { user , loading: authLoading} = useAuth();
-  const { profile } = useUserProfile();
+  const { profile, loading: profileLoading } = useUserProfile();
   const { uploadFile } = useUpload();
   const pathname = usePathname();
+  // NEW: are we still deciding where to send them?
+  const [initializing, setInitializing] = useState(true);
+
   // Helper method to handle async operations with loading and error states
   const withLoadingAndErrorHandling = async <T,>(
     operation: () => Promise<T>
@@ -220,39 +223,39 @@ export function OnboardingProvider({
 
 
   useEffect(() => {
-    // 1) wait until AuthProvider has resolved the session
-    if (authLoading) return;
+    // 1) Wait for auth to finish
+    if (authLoading || profileLoading) return;
 
-    // 2) if still no user, send them to /app/login (only if we aren’t already there)
+    // 2) If no user, redirect to login
     if (!user) {
-      if (pathname !== '/app/login') {
-        router.replace('/app/login');
-      }
+      setInitializing(false);
+      if (pathname !== '/app/login') router.replace('/app/login');
       return;
     }
 
-    // 3) we have a user—now wait for a profile to exist, otherwise bail
-    if (!profile) return;
-
-    // 4) finally, check onboarding status
+    // 3) Once user & profile exist, decide onboarding vs lessons
     (async () => {
-      const isComplete = await getStatusAction();
-
-      if (isComplete) {
-        // send to lessons if not already there
-        if (pathname !== '/app/lessons') {
-          router.replace('/app/lessons');
+      try {
+        const isComplete = await getStatusAction();
+        setIsOnboardingComplete(isComplete);
+        if (isComplete) {
+          if (pathname !== '/app/lessons') {
+            router.replace('/app/lessons');
+          }
+        } else {
+          // ensure an onboarding record exists
+          await createOnboardingAction();
+          if (pathname !== '/app/onboarding') {
+            router.replace('/app/onboarding');
+          }
         }
-      } else {
-        // first time through? create an onboarding record
-        await createOnboardingAction();
-        // then send to the onboarding wizard
-        if (pathname !== '/app/onboarding') {
-          router.replace('/app/onboarding');
-        }
+      } catch (err) {
+        // swallow or log
+      } finally {
+        setInitializing(false);  // ← done deciding
       }
     })();
-  }, [authLoading, user, profile, pathname, router]);
+  }, [authLoading, profileLoading, user, pathname, router]);
 
   return (
     <OnboardingContext.Provider
@@ -270,7 +273,8 @@ export function OnboardingProvider({
         onboarding,
         recordAssessmentStepAttempt,
         goToLessonsWithOnboardingComplete,
-        processAssessmentLessonRecording
+        processAssessmentLessonRecording,
+        initializing
       }}
     >
       {children}

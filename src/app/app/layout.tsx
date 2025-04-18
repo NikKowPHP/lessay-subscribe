@@ -6,6 +6,7 @@ import { LessonProvider } from '@/context/lesson-context';
 import { UserProfileProvider } from '@/context/user-profile-context';
 import { User } from 'lucide-react';
 import Link from 'next/link';
+import { AppGate } from '@/components/AppGate';
 export default function AdminLayout({
   children,
 }: {
@@ -19,7 +20,9 @@ export default function AdminLayout({
           <LessonProvider>
             <div className="min-h-screen bg-gray-50">
               {/* Main Content */}
-              <main>{children}</main>
+              <AppGate> 
+                <main>{children}</main>
+              </AppGate>
             </div>
             <Toaster />
           </LessonProvider>
