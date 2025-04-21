@@ -50,6 +50,9 @@ IGNORED_ITEMS=(
     "node_modules"
     "vendor"
     "bower_components"
+    "package-lock.json"
+    # Convert Windows path to Unix-style for cross-platform compatibility
+    "src/__mocks__/google-audio-json-reply.mock.json"
     # Common Build/Output Directories
     "dist"
     "build"
@@ -119,11 +122,11 @@ if [ ${#IGNORED_ITEMS[@]} -gt 0 ]; then
         if [ "$first" = false ]; then
             prune_args+=("-o")
         fi
-        # Match by name - works for both files and directories at any depth
-        prune_args+=("-name" "$item")
+        # Normalize path separators and use -path
+        normalized_item="${item//\\//}"  # Convert backslashes to forward slashes
+        prune_args+=("-path" "*$normalized_item")
         first=false
     done
-    # We want to prune the matching directories or files
     prune_args+=(")" "-prune")
 fi
 
@@ -143,34 +146,42 @@ find . "${prune_args[@]}" -o -type f -print0 | while IFS= read -r -d $'\0' file;
     fi
 
     # Determine File Type using MIME types
-    # Use '|| true' to prevent script exit if 'file' command fails (e.g., permission denied)
-    MIME_TYPE=$(file --mime-type -b "$file" || echo "unknown/error") # Provide default on error
+    MIME_TYPE=$(file --mime-type -b "$file" || echo "unknown/error")
 
-    # Conditional Processing based on MIME Type
-    if [[ "$MIME_TYPE" == "unknown/error" ]]; then
-        # Handle cases where file command failed
+    case "$MIME_TYPE" in
+      unknown/error)
         echo "--- SKIPPED FILE (Could not determine type): $RELATIVE_PATH ---"
-        echo ""
-    elif [[ $MIME_TYPE == text/* ]]; then
-        # Text File: Print header, content, footer, and newline
+        ;;
+
+      # treat plain text and common code formats as text
+      text/* \
+      | application/json* \
+      | application/javascript* \
+      | application/ecmascript* \
+      | application/typescript* \
+      | text/css \
+      | text/html \
+      | application/xml* \
+      | */*+xml)
         echo "--- START FILE: $RELATIVE_PATH ---"
-        # Use cat and handle potential errors reading the file gracefully
-        if cat "$file"; then
-            : # No-op, cat succeeded
-        else
-            echo "[Error reading file content for $RELATIVE_PATH]"
+        if ! cat "$file"; then
+          echo "[Error reading file content for $RELATIVE_PATH]"
         fi
         echo "--- END FILE: $RELATIVE_PATH ---"
-        echo "" # Blank line for separation
-    elif [[ $MIME_TYPE == image/* ]]; then
-        # Image File: Print only the path marker
+        ;;
+
+      # images we only list by path
+      image/*)
         echo "--- IMAGE FILE: $RELATIVE_PATH ---"
-        echo "" # Blank line for separation
-    else
-        # Other File Types (e.g., binary, application/*): Print a path marker with MIME type
+        ;;
+
+      # everything else remains "OTHER"
+      *)
         echo "--- OTHER FILE ($MIME_TYPE): $RELATIVE_PATH ---"
-        echo "" # Blank line for separation
-    fi
+        ;;
+    esac
+
+    echo ""  # blank line for separation
 
 done >> "$OUTPUT_FILE" # Step 7 Implementation: APPEND loop output here.
 
