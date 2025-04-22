@@ -31,16 +31,17 @@
     -   [x] Call `createOnboardingAction` if onboarding doesn't exist.
     -   [x] Store onboarding status/data.
     -   [x] Implement error handling for onboarding fetch/create.
--   [ ] **Implement Conditional Redirection:**
-    -   [ ] Redirect to `/app/login` if no user.
-    -   [ ] Redirect to `/app/onboarding` if user exists but onboarding is needed/incomplete.
-    -   [ ] Allow access/redirect to `/app/lessons` if user and completed onboarding exist.
-    -   [ ] Use `router.replace` for redirects.
--   [ ] **Integrate Lesson Fetch (Conditional):**
-    -   [ ] Ensure `LessonProvider` fetches initial lessons only *after* initializer confirms onboarding is complete and user is likely heading to `/app/lessons`.
-    -   [ ] Adjust `LessonProvider` `useEffect` dependencies if necessary.
--   [ ] **Handle Loading State During Login/Register:**
-    -   [ ] Show loading indicator on Login/Register buttons if app initializer is still running (`initializing` state).
+-   [x] **Implement Conditional Redirection:**
+    -   [x] Redirect to `/app/login` if no user.
+    -   [x] Redirect to `/app/onboarding` if user exists but onboarding is needed/incomplete.
+    -   [x] Allow access/redirect to `/app/lessons` if user and completed onboarding exist.
+    -   [x] Use `router.replace` for redirects.
+-   [x] **Integrate Lesson Fetch (Conditional):**
+    -   [x] Ensure `LessonProvider` fetches initial lessons only *after* initializer confirms onboarding is complete and user is likely heading to `/app/lessons`.
+    -   [x] Adjust `LessonProvider` `useEffect` dependencies if necessary.
+-   [x] **Handle Loading State During Login/Register:**
+    -   [x] Show loading indicator on Login/Register buttons if app initializer is still running (`initializing` state).
+
 
 ## Phase 2: Refactoring and Best Practices
 

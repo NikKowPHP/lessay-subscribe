@@ -1,3 +1,4 @@
+'use client'
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   createOnboardingAction,
@@ -14,27 +15,27 @@ import {
 } from '@/lib/server-actions/onboarding-actions';
 import toast from 'react-hot-toast';
 import logger from '@/utils/logger';
-import { useRouter } from 'next/navigation'; // Use next/navigation
+import { useRouter } from 'next/navigation';
 import { AssessmentLesson, AssessmentStep, OnboardingModel } from '@/models/AppAllModels.model';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useAuth } from './auth-context';
 import { Result } from '@/lib/server-actions/_withErrorHandling';
 import { useError } from '@/hooks/useError';
-import { useAppInitializer } from './app-initializer-context'; // Import AppInitializer context
+// Removed useAppInitializer import
 
 interface OnboardingContextType {
   isOnboardingComplete: boolean;
   onboarding: OnboardingModel | null;
-  loading: boolean; // General loading for actions
+  loading: boolean; // General loading for actions initiated within this context
   error: string | null;
-  // Add setters for AppInitializer to update state
+  // Add setters for AppInitializer to update state (if needed, but likely handled internally now)
   setOnboarding: React.Dispatch<React.SetStateAction<OnboardingModel | null>>;
   setIsOnboardingComplete: React.Dispatch<React.SetStateAction<boolean>>;
 
   startOnboarding: () => Promise<void>;
   checkOnboardingStatus: () => Promise<boolean>;
   markStepComplete: (step: string, formData: any) => Promise<void>;
-  getOnboarding: () => Promise<OnboardingModel | null>;
+  getOnboarding: () => Promise<OnboardingModel | null>; // Keep for manual refresh
 
   getAssessmentLesson: () => Promise<AssessmentLesson | undefined>;
   completeAssessmentLesson: (
@@ -70,19 +71,18 @@ const OnboardingContext = createContext<OnboardingContextType | undefined>(undef
 
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user } = useAuth();
-  const { status: appInitializerStatus } = useAppInitializer(); // Get initializer status
+  const { user } = useAuth(); // Only need user from auth
 
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
   const [onboarding, setOnboarding] = useState<OnboardingModel | null>(null);
-  const [loading, setLoading] = useState(false); // Loading for specific actions, not initial load
+  const [loading, setLoading] = useState(false); // Loading for specific actions
   const [error, setError] = useState<string | null>(null);
   const { showError } = useError();
 
-  // Helper to call server actions and handle loading/errors
+  // Helper to call server actions
   const callAction = useCallback(async <T,>(
     action: () => Promise<Result<T>>,
-    setGlobalLoading = true // Control if this action sets the global loading state
+    setGlobalLoading = true
   ): Promise<T | undefined> => {
     if (setGlobalLoading) setLoading(true);
     setError(null);
@@ -91,50 +91,50 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       const { data, error: msg } = await action();
       if (msg) {
         setError(msg);
-        showError(msg); // Use the hook to show toast
+        showError(msg);
       } else {
-        resultData = data; // Assign data if no error
+        resultData = data;
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
-      showError(message); // Use the hook to show toast
+      showError(message);
     } finally {
       if (setGlobalLoading) setLoading(false);
     }
-    return resultData; // Return the data or undefined
-  }, [showError]); // Dependency on showError
+    return resultData;
+  }, [showError]);
 
-  // Fetch onboarding data when user changes or initializer finishes, but only if not already loaded
+  // Effect to fetch onboarding data when user logs in (after initializer ensures it exists)
   useEffect(() => {
-    const fetchOnboardingIfNeeded = async () => {
-      // Only fetch if initializer is idle, user exists, and onboarding state is not yet set
-      if (appInitializerStatus === 'idle' && user && onboarding === null) {
-        logger.info("OnboardingProvider: Initializer idle and user exists, fetching onboarding data...");
-        setLoading(true); // Indicate loading for this specific fetch
-        const data = await callAction(() => getOnboardingAction(), false); // Don't set global loading here
+    const fetchOnboardingData = async () => {
+      if (user && onboarding === null) { // Fetch only if user exists and local state is null
+        logger.info("OnboardingProvider: User logged in, fetching onboarding data...");
+        setLoading(true); // Indicate loading for this context's fetch
+        const data = await callAction(() => getOnboardingAction(), false); // Don't set global loading
         if (data) {
           setOnboarding(data);
           setIsOnboardingComplete(data.completed);
-          logger.info("OnboardingProvider: Onboarding data fetched.", { completed: data.completed });
+          logger.info("OnboardingProvider: Onboarding data fetched and context updated.", { completed: data.completed });
         } else {
-          // Handle case where onboarding might be null even after initializer (e.g., creation failed silently)
-          logger.warn("OnboardingProvider: getOnboardingAction returned null/undefined after initializer.");
-          // Optionally try creating again, or rely on user action
+          logger.warn("OnboardingProvider: getOnboardingAction returned null/undefined even though user exists.");
+          // This might indicate an issue if the initializer didn't create it properly.
+          // Optionally, try creating it here as a fallback?
+          // await startOnboarding(); // Be cautious with automatic creation here
         }
         setLoading(false);
       } else if (!user) {
-        // Clear onboarding state if user logs out
+        // Clear local state if user logs out
         setOnboarding(null);
         setIsOnboardingComplete(false);
       }
     };
 
-    fetchOnboardingIfNeeded();
-  }, [user, appInitializerStatus, onboarding, callAction]); // Rerun when user or initializer status changes, or if onboarding is null
+    fetchOnboardingData();
+  }, [user, callAction]); // Depend only on user
 
 
-  // --- Onboarding Actions ---
+  // --- Onboarding Actions (remain largely the same) ---
   const startOnboarding = async (): Promise<void> => {
     const data = await callAction(() => createOnboardingAction());
     if (data) {
@@ -154,12 +154,12 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     const updatedOnboarding = await callAction(() => updateOnboardingAction(step, formData));
     if (updatedOnboarding) {
       setOnboarding(updatedOnboarding);
-      // Re-check overall status from the updated data
       setIsOnboardingComplete(updatedOnboarding.completed);
     }
   };
 
   const getOnboarding = async (): Promise<OnboardingModel | null> => {
+    // This can be used for manual refresh
     const data = await callAction(() => getOnboardingAction());
     if (data) {
       setOnboarding(data);
@@ -172,19 +172,18 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     const completed = await callAction(() => markOnboardingCompleteAndGenerateInitialLessonsAction());
     if (completed) {
       setOnboarding(completed);
-      setIsOnboardingComplete(true); // Explicitly set complete
+      setIsOnboardingComplete(true);
       toast.success('Onboarding completed! Lessons generated!');
-      // Navigation is handled by AppInitializer's redirection logic now
+      // Navigation is handled by AppInitializer
     }
   };
 
   const goToLessonsWithOnboardingComplete = (): void => {
-    // This function might still be useful for manual navigation triggers
     setIsOnboardingComplete(true);
     router.replace('/app/lessons');
   };
 
-  // --- Assessment Actions ---
+  // --- Assessment Actions (remain the same) ---
   const getAssessmentLesson = async (): Promise<AssessmentLesson | undefined> => {
     return await callAction(() => getAssessmentLessonAction());
   }
@@ -194,7 +193,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   }
 
   const recordAssessmentStepAttempt = async (lessonId: string, stepId: string, userResponse: string): Promise<AssessmentStep | undefined> => {
-    // Use setGlobalLoading = false for step attempts
     return await callAction(() => recordAssessmentStepAttemptAction(lessonId, stepId, userResponse), false);
   }
 
@@ -203,7 +201,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   }
 
   const processAssessmentLessonRecording = async (recording: RecordingBlob, lesson: AssessmentLesson, recordingTime: number, recordingSize: number): Promise<AssessmentLesson | undefined> => {
-    // This might be a longer operation, keep setGlobalLoading = true (default)
     return await callAction(() => processAssessmentLessonRecordingAction(recording, lesson, recordingTime, recordingSize));
   }
 
@@ -214,8 +211,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   }
 
   const clearError = () => setError(null);
-
-  // Remove the initial redirect logic useEffect, as it's now handled by AppInitializerProvider
 
   return (
     <OnboardingContext.Provider
