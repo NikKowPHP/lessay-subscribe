@@ -737,6 +737,7 @@ export default class LessonService {
   async checkAndGenerateNewLessons(): Promise<LessonModel[]> {
     const currentLessons = await this.lessonRepository.getLessons();
     logger.info('currentLessons', { currentLessons });
+    logger.info('GENERATING NEW LESSONS BASED ON PROGRESS');
     // If there are no lessons or not all are complete, just return
     if (currentLessons.length === 0) throw new Error('No lessons found');
     const allComplete = currentLessons.every((lesson) => lesson.completed);
