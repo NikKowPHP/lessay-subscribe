@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { useAuth } from './auth-context';
 import { useUserProfile } from './user-profile-context';
-import { useOnboarding } from './onboarding-context'; // Keep for later steps
+import { useOnboarding } from './onboarding-context';
 import { useRouter, usePathname } from 'next/navigation';
 import logger from '@/utils/logger';
 import AppLoadingIndicator from '@/components/AppLoadingIndicator';
@@ -31,8 +31,15 @@ export function AppInitializerProvider({ children }: { children: ReactNode }) {
 
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading, error: profileError } = useUserProfile();
-  // Keep onboarding context hooks for later integration
-  const { loading: onboardingLoading, error: onboardingError } = useOnboarding();
+  const {
+    isOnboardingComplete, // Get state for redirection logic later
+    loading: onboardingLoading,
+    error: onboardingError,
+    // No need to call actions directly, OnboardingProvider handles it
+  } = useOnboarding();
+
+  const router = useRouter(); // Keep for redirection logic
+  const pathname = usePathname(); // Keep for redirection logic
 
   // --- Initialization Sequence ---
   useEffect(() => {
@@ -70,22 +77,34 @@ export function AppInitializerProvider({ children }: { children: ReactNode }) {
     }
 
     // If profile doesn't exist after loading (and no error), something is wrong
-    // UserProfileProvider should handle creation, but if it fails silently, catch it here.
     if (!profile) {
       logger.error('AppInitializer: Profile is null after loading without error. This indicates a problem.');
       setError('Failed to load or create user profile.');
       setStatus('error');
       return;
     }
+    logger.info('AppInitializer: Profile loaded successfully.');
 
-    // --- Placeholder for Onboarding Check (Next Step) ---
-    // For now, if profile is loaded successfully, move to idle
-    logger.info('AppInitializer: Profile loaded successfully. Setting status to idle (pending onboarding check).');
+    // If profile exists, wait for onboarding status check
+    if (onboardingLoading) {
+      logger.info('AppInitializer: Waiting for onboarding status...');
+      return;
+    }
+    logger.info('AppInitializer: Onboarding settled.', { isOnboardingComplete, onboardingError });
+
+    // Handle onboarding error (log but don't block for now)
+    if (onboardingError) {
+      logger.error('AppInitializer: Onboarding error encountered.', { onboardingError });
+      // setError(`Onboarding Error: ${onboardingError}`); // Optionally set error state
+      // setStatus('error'); // Optionally set error state
+      logger.warn('AppInitializer: Proceeding despite onboarding error.');
+    }
+
+    // If onboarding status check is done (regardless of error for now), set to idle
+    logger.info('AppInitializer: Initialization sequence complete. Setting status to idle.');
     setStatus('idle');
-    // --- End Placeholder ---
 
-
-  }, [authLoading, user, profileLoading, profile, profileError]); // Dependencies for sequence
+  }, [authLoading, user, profileLoading, profile, profileError, onboardingLoading, onboardingError, isOnboardingComplete]); // Added onboarding dependencies
 
 
   // --- Redirection Logic (Placeholder for now) ---
