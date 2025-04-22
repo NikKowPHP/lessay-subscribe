@@ -32,14 +32,13 @@ export function AppInitializerProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading, error: profileError } = useUserProfile();
   const {
-    isOnboardingComplete, // Get state for redirection logic later
+    isOnboardingComplete,
     loading: onboardingLoading,
     error: onboardingError,
-    // No need to call actions directly, OnboardingProvider handles it
   } = useOnboarding();
 
-  const router = useRouter(); // Keep for redirection logic
-  const pathname = usePathname(); // Keep for redirection logic
+  const router = useRouter();
+  const pathname = usePathname();
 
   // --- Initialization Sequence ---
   useEffect(() => {
@@ -47,28 +46,24 @@ export function AppInitializerProvider({ children }: { children: ReactNode }) {
     setStatus('initializing');
     setError(null);
 
-    // Wait for auth to settle
     if (authLoading) {
       logger.info('AppInitializer: Waiting for auth...');
       return;
     }
     logger.info('AppInitializer: Auth settled.', { user: !!user });
 
-    // If no user, initialization is done (redirect handled elsewhere or later)
     if (!user) {
       logger.info('AppInitializer: No user found. Setting status to idle.');
       setStatus('idle');
       return;
     }
 
-    // If user exists, wait for profile
     if (profileLoading) {
       logger.info('AppInitializer: Waiting for profile...');
       return;
     }
     logger.info('AppInitializer: Profile settled.', { profile: !!profile, profileError });
 
-    // Handle profile error
     if (profileError) {
       logger.error('AppInitializer: Profile error encountered.', { profileError });
       setError(`Profile Error: ${profileError}`);
@@ -76,39 +71,68 @@ export function AppInitializerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // If profile doesn't exist after loading (and no error), something is wrong
     if (!profile) {
-      logger.error('AppInitializer: Profile is null after loading without error. This indicates a problem.');
+      logger.error('AppInitializer: Profile is null after loading without error.');
       setError('Failed to load or create user profile.');
       setStatus('error');
       return;
     }
     logger.info('AppInitializer: Profile loaded successfully.');
 
-    // If profile exists, wait for onboarding status check
     if (onboardingLoading) {
       logger.info('AppInitializer: Waiting for onboarding status...');
       return;
     }
     logger.info('AppInitializer: Onboarding settled.', { isOnboardingComplete, onboardingError });
 
-    // Handle onboarding error (log but don't block for now)
     if (onboardingError) {
       logger.error('AppInitializer: Onboarding error encountered.', { onboardingError });
-      // setError(`Onboarding Error: ${onboardingError}`); // Optionally set error state
-      // setStatus('error'); // Optionally set error state
       logger.warn('AppInitializer: Proceeding despite onboarding error.');
     }
 
-    // If onboarding status check is done (regardless of error for now), set to idle
     logger.info('AppInitializer: Initialization sequence complete. Setting status to idle.');
     setStatus('idle');
 
-  }, [authLoading, user, profileLoading, profile, profileError, onboardingLoading, onboardingError, isOnboardingComplete]); // Added onboarding dependencies
+  }, [authLoading, user, profileLoading, profile, profileError, onboardingLoading, onboardingError, isOnboardingComplete]);
 
 
-  // --- Redirection Logic (Placeholder for now) ---
-  // This will be filled in later steps
+  // --- Redirection Logic ---
+  useEffect(() => {
+    logger.info('AppInitializer: Running redirection check...', { status, user: !!user, isOnboardingComplete, pathname });
+
+    // Only redirect when initialization is complete and not in error state
+    if (status !== 'idle') {
+      logger.info('AppInitializer: Skipping redirect, status is not idle.');
+      return;
+    }
+
+    const isAuthPage = pathname === '/app/login';
+    const isOnboardingPage = pathname === '/app/onboarding';
+    // Define other non-redirect pages if needed (e.g., profile page)
+    const isProfilePage = pathname.startsWith('/app/profile');
+
+    // Redirect to login if no user and not already on login page
+    if (!user && !isAuthPage) {
+      logger.info('AppInitializer: No user, redirecting to login.');
+      router.replace('/app/login');
+    }
+    // Redirect to onboarding if user exists, onboarding incomplete, and not on onboarding/profile page
+    else if (user && !isOnboardingComplete && !isOnboardingPage && !isProfilePage) {
+      logger.info('AppInitializer: User needs onboarding, redirecting to onboarding.');
+      router.replace('/app/onboarding');
+    }
+    // Redirect to lessons if user exists, onboarding complete, but currently on login or onboarding page
+    else if (user && isOnboardingComplete && (isAuthPage || isOnboardingPage)) {
+      logger.info('AppInitializer: User onboarded, redirecting from auth/onboarding to lessons.');
+      router.replace('/app/lessons'); // Default app page after login/onboarding
+    }
+    // No redirect needed in other cases (e.g., user logged in, onboarding complete, on lessons page)
+    else {
+      logger.info('AppInitializer: No redirect needed.');
+    }
+
+  }, [status, user, isOnboardingComplete, pathname, router]); // Dependencies for redirection
+
 
   return (
     <AppInitializerContext.Provider value={{ status, error }}>
@@ -119,7 +143,6 @@ export function AppInitializerProvider({ children }: { children: ReactNode }) {
             <h2 className="text-xl font-bold mb-2">Application Error</h2>
             <p>Failed to initialize the application.</p>
             <p className="mt-2 text-sm">{error}</p>
-            {/* Optionally add a retry button */}
           </div>
         </div>
       )}
