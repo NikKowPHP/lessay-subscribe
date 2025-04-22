@@ -1,5 +1,3 @@
-// --- NEW FILE START ---
-// File: src/context/app-initializer-context.tsx
 'use client';
 
 import React, {
@@ -11,10 +9,10 @@ import React, {
 } from 'react';
 import { useAuth } from './auth-context';
 import { useUserProfile } from './user-profile-context';
-import { useOnboarding } from './onboarding-context';
+import { useOnboarding } from './onboarding-context'; // Keep for later steps
 import { useRouter, usePathname } from 'next/navigation';
 import logger from '@/utils/logger';
-import AppLoadingIndicator from '@/components/AppLoadingIndicator'; // Assuming this component exists
+import AppLoadingIndicator from '@/components/AppLoadingIndicator';
 
 type InitializationStatus = 'initializing' | 'idle' | 'error';
 
@@ -31,17 +29,64 @@ export function AppInitializerProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<InitializationStatus>('initializing');
   const [error, setError] = useState<string | null>(null);
 
-  // --- Initialization Sequence (Placeholder for now) ---
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading, error: profileError } = useUserProfile();
+  // Keep onboarding context hooks for later integration
+  const { loading: onboardingLoading, error: onboardingError } = useOnboarding();
+
+  // --- Initialization Sequence ---
   useEffect(() => {
     logger.info('AppInitializer: Starting initialization sequence...');
-    // Simulate initialization delay for testing the loading indicator
-    const timer = setTimeout(() => {
-      logger.info('AppInitializer: Initialization sequence complete (simulated). Setting status to idle.');
-      setStatus('idle'); // Set to idle after a delay
-    }, 1500); // Simulate 1.5 seconds initialization
+    setStatus('initializing');
+    setError(null);
 
-    return () => clearTimeout(timer); // Cleanup timer on unmount
-  }, []); // Run only once on mount
+    // Wait for auth to settle
+    if (authLoading) {
+      logger.info('AppInitializer: Waiting for auth...');
+      return;
+    }
+    logger.info('AppInitializer: Auth settled.', { user: !!user });
+
+    // If no user, initialization is done (redirect handled elsewhere or later)
+    if (!user) {
+      logger.info('AppInitializer: No user found. Setting status to idle.');
+      setStatus('idle');
+      return;
+    }
+
+    // If user exists, wait for profile
+    if (profileLoading) {
+      logger.info('AppInitializer: Waiting for profile...');
+      return;
+    }
+    logger.info('AppInitializer: Profile settled.', { profile: !!profile, profileError });
+
+    // Handle profile error
+    if (profileError) {
+      logger.error('AppInitializer: Profile error encountered.', { profileError });
+      setError(`Profile Error: ${profileError}`);
+      setStatus('error');
+      return;
+    }
+
+    // If profile doesn't exist after loading (and no error), something is wrong
+    // UserProfileProvider should handle creation, but if it fails silently, catch it here.
+    if (!profile) {
+      logger.error('AppInitializer: Profile is null after loading without error. This indicates a problem.');
+      setError('Failed to load or create user profile.');
+      setStatus('error');
+      return;
+    }
+
+    // --- Placeholder for Onboarding Check (Next Step) ---
+    // For now, if profile is loaded successfully, move to idle
+    logger.info('AppInitializer: Profile loaded successfully. Setting status to idle (pending onboarding check).');
+    setStatus('idle');
+    // --- End Placeholder ---
+
+
+  }, [authLoading, user, profileLoading, profile, profileError]); // Dependencies for sequence
+
 
   // --- Redirection Logic (Placeholder for now) ---
   // This will be filled in later steps
@@ -72,4 +117,4 @@ export const useAppInitializer = () => {
   }
   return context;
 };
-// --- NEW FILE END ---
+// --- NEW CODE END ---
