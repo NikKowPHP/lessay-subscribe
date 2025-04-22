@@ -101,22 +101,10 @@ export default class LessonService {
   }
 
   async getLessons(): Promise<LessonModel[]> {
+    // Simply fetch and return existing lessons. Generation is handled elsewhere.
     const lessons = await this.lessonRepository.getLessons();
-    if (!lessons || lessons.length === 0) {
-      logger.info('No lessons found, checking the onboarding data');
-      // get onboarding data
-      const onboardingData = await this.onboardingRepository.getOnboarding();
-      if (onboardingData && onboardingData.initialAssessmentCompleted) {
-        logger.info('Initial assessment completed, generating lessons');
-        // Call the method directly, don't return here as it might be called from checkAndGenerateNewLessons context indirectly
-        return await this.generateInitialLessons();
-      } else {
-        // Throw specific error if assessment isn't done, but onboarding exists
-        logger.warn('Initial assessment not completed, cannot proceed.');
-        throw new Error('Initial assessment not completed');
-      }
-    }
-    return lessons;
+    logger.info(`LessonService.getLessons: Found ${lessons?.length ?? 0} lessons.`);
+    return lessons || []; // Return empty array if null/undefined
   }
 
   async getLessonById(lessonId: string): Promise<LessonModel | null> {
@@ -217,8 +205,8 @@ export default class LessonService {
               responseHistory.length > 0
                 ? responseHistory
                 : step.userResponse
-                ? [step.userResponse]
-                : [],
+                  ? [step.userResponse]
+                  : [],
           };
         });
 
@@ -422,8 +410,8 @@ export default class LessonService {
       const lessonItems = Array.isArray(generatedResult.data)
         ? generatedResult.data
         : generatedResult.data
-        ? [generatedResult.data]
-        : [];
+          ? [generatedResult.data]
+          : [];
 
       // Check if the array is empty or contains only falsy values
       if (lessonItems.length === 0 || !lessonItems[0]) {
@@ -1185,16 +1173,16 @@ export default class LessonService {
       focusTopic,
       overallProgress: learningProgress
         ? {
-            estimatedProficiencyLevel:
-              learningProgress.estimatedProficiencyLevel,
-            overallScore: learningProgress.overallScore,
-            learningTrajectory: learningProgress.learningTrajectory,
-            persistentWeaknesses: learningProgress.weaknesses,
-            lowMasteryTopics:
-              learningProgress.topics
-                ?.filter((t) => t.masteryLevel !== MasteryLevel.Mastered)
-                .map((t) => t.topicName) ?? [],
-          }
+          estimatedProficiencyLevel:
+            learningProgress.estimatedProficiencyLevel,
+          overallScore: learningProgress.overallScore,
+          learningTrajectory: learningProgress.learningTrajectory,
+          persistentWeaknesses: learningProgress.weaknesses,
+          lowMasteryTopics:
+            learningProgress.topics
+              ?.filter((t) => t.masteryLevel !== MasteryLevel.Mastered)
+              .map((t) => t.topicName) ?? [],
+        }
         : undefined,
       performanceMetrics: {
         avgAccuracy: metrics.avgAccuracy,
@@ -1224,10 +1212,10 @@ export default class LessonService {
       },
       previousLesson: mostRecentLesson
         ? {
-            id: mostRecentLesson.id,
-            focusArea: mostRecentLesson.focusArea,
-            targetSkills: mostRecentLesson.targetSkills,
-          }
+          id: mostRecentLesson.id,
+          focusArea: mostRecentLesson.focusArea,
+          targetSkills: mostRecentLesson.targetSkills,
+        }
         : undefined,
     };
   }
@@ -1352,7 +1340,7 @@ export default class LessonService {
   private convertAiResponseToAudioMetrics(
     aiResponse: AiLessonAnalysisResponse // Use the specific interface type
   ): AudioMetrics {
-   
+
 
     // Safely access nested objects
     const performanceMetrics: AiPerformanceMetrics | undefined =
@@ -1487,11 +1475,11 @@ export default class LessonService {
     // Handle potential nesting within learning_style_observations or direct access
     const preferredPatterns = extractStringArray(
       adaptiveSuggestions?.preferred_patterns ||
-        adaptiveSuggestions?.learning_style_observations?.preferred_patterns
+      adaptiveSuggestions?.learning_style_observations?.preferred_patterns
     );
     const effectiveApproaches = extractStringArray(
       adaptiveSuggestions?.effective_approaches ||
-        adaptiveSuggestions?.learning_style_observations?.effective_approaches
+      adaptiveSuggestions?.learning_style_observations?.effective_approaches
     );
 
     // Extract metadata safely

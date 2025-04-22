@@ -1,4 +1,3 @@
-// src/app/app/lessons/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -6,47 +5,46 @@ import { useLesson } from '@/context/lesson-context';
 import { useOnboarding } from '@/context/onboarding-context';
 import { LessonModel } from '@/models/AppAllModels.model';
 import HeaderWithProfile from '@/components/HeaderWithProfile';
-import { useEffect, useState } from 'react'; // Import useEffect and useState
-import logger from '@/utils/logger'; // Import logger
+import { useEffect, useState } from 'react';
+import logger from '@/utils/logger';
 
 export default function LessonsPage() {
   const router = useRouter();
   const { onboarding } = useOnboarding();
-  const { lessons, loading, initialized, refreshLessons } = useLesson(); // Add refreshLessons
-  const [hasAttemptedRefetch, setHasAttemptedRefetch] = useState(false); // Local state for refetch attempt
+  const { lessons, loading, initialized, refreshLessons, isGeneratingInitial, error } = useLesson(); // Add isGeneratingInitial and error
+  const [hasAttemptedRefetch, setHasAttemptedRefetch] = useState(false);
 
   const handleStartLesson = (lesson: LessonModel) => {
     router.push(`/app/lessons/${lesson.id}`);
   };
 
-  // Effect to trigger refetch if initialized with no lessons
+  // Effect to trigger refetch if initialized with no lessons (remains the same, but added isGeneratingInitial check)
   useEffect(() => {
-    if (initialized && !loading && lessons.length === 0 && !hasAttemptedRefetch) {
+    if (initialized && !loading && lessons.length === 0 && !hasAttemptedRefetch && !isGeneratingInitial) { // Don't refetch if generating
       logger.warn("LessonsPage: Initialized but no lessons found. Attempting refetch.");
-      setHasAttemptedRefetch(true); // Mark that we've attempted the refetch
+      setHasAttemptedRefetch(true);
       refreshLessons().catch(err => {
         logger.error("LessonsPage: Error during automatic refetch:", err);
-        // Error is likely already shown by the context's callAction
       });
     }
-  }, [initialized, loading, lessons.length, hasAttemptedRefetch, refreshLessons]);
+  }, [initialized, loading, lessons.length, hasAttemptedRefetch, refreshLessons, isGeneratingInitial]); // Add isGeneratingInitial
 
-  // Initial loading state (before context is initialized)
-  if (!initialized) {
+  // Initial loading state (before context is initialized or while generating)
+  if (!initialized || isGeneratingInitial) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-1">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-6 mb-4"></div>
         <p className="text-xl text-neutral-12">
-          Loading your personalized lessons...
+          {isGeneratingInitial ? "Generating Your First Lessons..." : "Loading your learning plan..."}
         </p>
         <p className="text-sm text-neutral-8 mt-2">
-          We're preparing content based on your assessment
+          {isGeneratingInitial ? "This might take a moment..." : "Please wait..."}
         </p>
       </div>
     );
   }
 
-  // Loading state (while fetching/refreshing)
+  // Loading state (while fetching/refreshing after initialization)
   if (loading) {
     return (
       <div className="container mx-auto py-8 px-4 bg-neutral-1 min-h-screen">
@@ -55,30 +53,52 @@ export default function LessonsPage() {
         <div className="text-center py-12 border rounded-[4px] p-8 bg-neutral-2">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent-6 mx-auto mb-4"></div>
           <h2 className="text-2xl font-bold mb-4 text-neutral-12">
-            {hasAttemptedRefetch ? "Refreshing Lessons..." : "Generating Your Learning Plan..."}
+            Loading Lessons...
           </h2>
           <p className="text-neutral-10">
-            Please wait a moment.
+            Please wait...
           </p>
         </div>
       </div>
     );
   }
 
-  // Content rendering after loading is complete
+  // Content rendering after loading/generation is complete
   return (
     <div className="container mx-auto py-8 px-4 bg-neutral-1 min-h-screen">
       <HeaderWithProfile />
       <h1 className="text-3xl font-bold mb-8 text-neutral-12">Your Lessons</h1>
 
-      {lessons.length === 0 ? (
-        // State: No lessons found, even after potential refetch
+      {/* Handle potential errors during fetch/generation */}
+      {error && !loading && !isGeneratingInitial && (
+        <div className="text-center py-12 border border-red-300 rounded-[4px] p-8 bg-red-50 text-red-700">
+          <h2 className="text-2xl font-bold mb-4">
+            Oops! Something went wrong.
+          </h2>
+          <p className="mb-6">
+            {error}
+          </p>
+          <button
+            onClick={() => {
+              setHasAttemptedRefetch(false); // Allow manual refresh to try again
+              refreshLessons();
+            }}
+            className="px-4 py-2 bg-red-600 text-white rounded-[4px] hover:bg-red-700 text-sm"
+            disabled={loading || isGeneratingInitial} // Disable while loading/generating
+          >
+            {loading ? "Retrying..." : "Try Again"}
+          </button>
+        </div>
+      )}
+
+      {/* Handle case where no lessons exist AND no error occurred */}
+      {!error && lessons.length === 0 && !loading && !isGeneratingInitial ? (
         <div className="text-center py-12 border rounded-[4px] p-8 bg-neutral-2">
           <h2 className="text-2xl font-bold mb-4 text-neutral-12">
             No Lessons Found Yet
           </h2>
           <p className="text-neutral-10 mb-6">
-            We couldn't find any lessons for you at the moment. This might happen if generation is still in progress or if there was an issue.
+            It seems your initial lessons haven't been generated or loaded correctly.
           </p>
           <button
             onClick={() => {
@@ -86,16 +106,18 @@ export default function LessonsPage() {
               refreshLessons();
             }}
             className="px-4 py-2 bg-accent-6 text-white rounded-[4px] hover:bg-accent-7 text-sm"
-            disabled={loading} // Disable while loading
+            disabled={loading || isGeneratingInitial} // Disable while loading/generating
           >
             {loading ? "Refreshing..." : "Try Refreshing"}
           </button>
           <p className="text-xs text-neutral-8 mt-4">
-            If the problem persists, please contact support.
+            If the problem persists after refreshing, please contact support.
           </p>
         </div>
-      ) : (
-        // State: Lessons found, display them
+      ) : null}
+
+      {/* Display lessons if they exist and there's no error */}
+      {!error && lessons.length > 0 && !loading && !isGeneratingInitial ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {lessons.map((lesson) => (
             <div
@@ -113,11 +135,10 @@ export default function LessonsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      lesson.completed
+                    className={`px-2 py-1 text-xs rounded-full ${lesson.completed
                         ? 'bg-accent-1 text-accent-9'
                         : 'bg-accent-2 text-accent-10'
-                    }`}
+                      }`}
                   >
                     {lesson.completed ? 'Completed' : 'In Progress'}
                   </span>
@@ -132,7 +153,8 @@ export default function LessonsPage() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
+// --- NEW CODE END ---

@@ -151,43 +151,61 @@ export function AppInitializerProvider({ children }: { children: ReactNode }) {
 
   // --- Redirection Logic ---
   useEffect(() => {
-    // This effect runs *after* the initialization effect finishes and status becomes 'idle'
     logger.info('AppInitializer: Running redirection check...', { status, user: !!user, isOnboardingComplete, pathname });
 
-    // Only redirect when initialization is complete and not in error state
+    // Only run redirection logic when initialization is complete and successful
     if (status !== 'idle') {
       logger.info('AppInitializer: Skipping redirect, status is not idle.');
       return;
     }
 
-    const isAuthPage = pathname === '/app/login';
+    const isLoginPage = pathname === '/app/login';
     const isOnboardingPage = pathname === '/app/onboarding';
+    const isLessonsPage = pathname.startsWith('/app/lessons'); // Check if it's the lessons page or a sub-page
     const isProfilePage = pathname.startsWith('/app/profile');
 
-    // Redirect to login if no user and not already on login page
-    if (!user && !isAuthPage) {
-      logger.info('AppInitializer: No user, redirecting to login.');
-      router.replace('/app/login');
+    // 1. Handle unauthenticated users
+    if (!user) {
+      if (!isLoginPage) {
+        logger.info('AppInitializer: No user, redirecting to login.');
+        router.replace('/app/login');
+      } else {
+        logger.info('AppInitializer: No user, already on login page.');
+      }
+      return; // Stop further checks if no user
     }
-    // Redirect to onboarding if user exists, onboarding incomplete, and not on onboarding/profile page
-    // Uses the LIVE state from OnboardingContext here
-    else if (user && !isOnboardingComplete && !isOnboardingPage && !isProfilePage) {
-      logger.info('AppInitializer: User needs onboarding, redirecting to onboarding.');
-      router.replace('/app/onboarding');
+
+    // --- User is authenticated from here ---
+
+    // 2. Allow access to profile pages regardless of onboarding status
+    if (isProfilePage) {
+      logger.info('AppInitializer: Allowing access to profile page.');
+      return;
     }
-    // Redirect to lessons if user exists, onboarding complete, but currently on login or onboarding page
-    // Uses the LIVE state from OnboardingContext here
-    else if (user && isOnboardingComplete && (isAuthPage || isOnboardingPage)) {
-      logger.info('AppInitializer: User onboarded, redirecting from auth/onboarding to lessons.');
+
+    // 3. Handle users needing onboarding
+    if (!isOnboardingComplete) {
+      if (!isOnboardingPage) {
+        logger.info('AppInitializer: User needs onboarding, redirecting to onboarding.');
+        router.replace('/app/onboarding');
+      } else {
+        logger.info('AppInitializer: User needs onboarding, already on onboarding page.');
+      }
+      return; // Stop further checks
+    }
+
+    // --- User is authenticated AND onboarding is complete ---
+
+    // 4. Redirect to lessons if not already there (or on profile)
+    if (!isLessonsPage) {
+      // This covers cases like being on /app, /app/login, /app/onboarding after completion
+      logger.info('AppInitializer: User onboarded, redirecting to lessons.');
       router.replace('/app/lessons');
-    }
-    // No redirect needed in other cases
-    else {
-      logger.info('AppInitializer: No redirect needed.');
+    } else {
+      logger.info('AppInitializer: User onboarded, already on lessons page.');
     }
 
-  }, [status, user, isOnboardingComplete, pathname, router]); // Dependencies for redirection
-
+  }, [status, user, isOnboardingComplete, pathname, router]);
 
   return (
     <AppInitializerContext.Provider value={{ status, error }}>

@@ -82,15 +82,14 @@ export async function deleteLessonAction(lessonId: string): Promise<Result<null>
   });
 }
 
-export async function generateInitialLessonsAction(
-  onboardingData: OnboardingModel
-) {
-  if (!onboardingData) {
-    throw new Error('Onboarding data is required');
-  }
-
-  const lessonService = createLessonService();
-  return await lessonService.generateInitialLessons();
+export async function generateInitialLessonsAction(): Promise<Result<LessonModel[]>> {
+  return withServerErrorHandling(async () => {
+    logger.info('generateInitialLessonsAction: Triggered.');
+    const lessonService = createLessonService();
+    const generatedLessons = await lessonService.generateInitialLessons();
+    logger.info(`generateInitialLessonsAction: Generated ${generatedLessons.length} lessons.`);
+    return generatedLessons;
+  });
 }
 
 export async function recordStepAttemptAction(

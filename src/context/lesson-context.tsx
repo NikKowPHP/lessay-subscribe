@@ -13,6 +13,7 @@ import {
   generateNewLessonsAction,
   processLessonRecordingAction,
   checkAndGenerateNewLessonsAction,
+  generateInitialLessonsAction, // Import the new action
 } from '@/lib/server-actions/lesson-actions';
 import logger from '@/utils/logger';
 import {
@@ -28,17 +29,17 @@ import { Result } from '@/lib/server-actions/_withErrorHandling';
 import { usePathname } from 'next/navigation';
 import { useOnboarding } from './onboarding-context';
 import { useError } from '@/hooks/useError';
-// Import AppInitializer context
 import { useAppInitializer } from './app-initializer-context';
 
 interface LessonContextType {
   currentLesson: LessonModel | null;
   lessons: LessonModel[];
-  loading: boolean;
+  loading: boolean; // General loading for fetch/refresh
+  isGeneratingInitial: boolean; // Specific loading for initial generation
   error: string | null;
   initialized: boolean; // Tracks if lessons have been fetched *at least once* successfully for the current session/conditions
   clearError: () => void;
-  getLessons: () => Promise<LessonModel[] | undefined>;
+  getLessons: () => Promise<LessonModel[] | undefined>; // Renamed from refreshLessons for clarity
   getLessonById: (lessonId: string) => Promise<LessonModel | null>;
   createLesson: (lessonData: {
     focusArea: string;
@@ -68,7 +69,7 @@ interface LessonContextType {
     recordingTime: number,
     recordingSize: number
   ) => Promise<LessonModel>;
-  refreshLessons: () => Promise<LessonModel[]>;
+  refreshLessons: () => Promise<LessonModel[]>; // Keep refreshLessons exposed if needed externally
 }
 
 const LessonContext = createContext<LessonContextType | undefined>(undefined);
@@ -77,94 +78,169 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   const { uploadFile } = useUpload();
   const { user } = useAuth();
   const { isOnboardingComplete, onboarding } = useOnboarding();
-  const { status: appInitializerStatus } = useAppInitializer(); // Get initializer status
+  const { status: appInitializerStatus } = useAppInitializer();
   const [lessons, setLessons] = useState<LessonModel[]>([]);
   const [currentLesson, setCurrentLesson] = useState<LessonModel | null>(null);
-  const [loading, setLoading] = useState(false); // Start as false, only true during actual fetch
+  const [loading, setLoading] = useState(false);
+  const [isGeneratingInitial, setIsGeneratingInitial] = useState(false); // New state
+  const [initialGenerationAttempted, setInitialGenerationAttempted] = useState(false); // New state
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false); // Tracks if lessons have been fetched *at least once* successfully
+  const [initialized, setInitialized] = useState(false);
   const { showError } = useError();
   const pathname = usePathname();
 
-  const callAction = useCallback(async <T,>(action: () => Promise<Result<T>>): Promise<T> => {
-    setLoading(true);
+  const callAction = useCallback(async <T,>(
+    action: () => Promise<Result<T>>,
+    setGlobalLoading = true // Default to setting the main loading state
+  ): Promise<T> => {
+    if (setGlobalLoading) setLoading(true);
     setError(null);
     try {
-      const { data, error } = await action();
-      if (error) {
-        setError(error);
-        showError(error);
-        throw new Error(error);
+      const { data, error: actionError } = await action(); // Renamed error variable
+      if (actionError) {
+        setError(actionError);
+        showError(actionError);
+        throw new Error(actionError);
       }
       if (data === undefined) {
+        // Allow undefined for void actions like delete
+        if (action.toString().includes('deleteLessonAction')) {
+          return undefined as T; // Return undefined for void actions
+        }
         throw new Error('Action returned successfully but with undefined data.');
       }
       return data;
     } catch (err) {
+      // Avoid double-setting/showing error if it was already handled above
       if (!(err instanceof Error && error === err.message)) {
         const message = err instanceof Error ? err.message : 'An unknown error occurred';
         setError(message);
         showError(message);
       }
-      throw err;
+      throw err; // Re-throw the original error
     } finally {
-      setLoading(false);
+      if (setGlobalLoading) setLoading(false);
     }
   }, [showError, error]); // Added `error` dependency
 
-  const refreshLessons = useCallback(async (): Promise<LessonModel[]> => {
-    logger.info('LessonContext: Attempting to refresh lessons...');
+  const getLessons = useCallback(async (): Promise<LessonModel[]> => {
+    logger.info('LessonContext: getLessons called...');
 
     // --- Pre-conditions for fetching ---
     if (appInitializerStatus !== 'idle') {
-      logger.warn('LessonContext: Skipping refresh, app not initialized.');
-      return lessons; // Return current (likely empty) lessons
+      logger.warn('LessonContext: Skipping getLessons, app not initialized.');
+      return lessons;
     }
     if (!user) {
-      logger.warn('LessonContext: Skipping refresh, no user.');
+      logger.warn('LessonContext: Skipping getLessons, no user.');
       setLessons([]);
       setInitialized(false);
+      setInitialGenerationAttempted(false); // Reset generation attempt on user change
       return [];
     }
     if (!isOnboardingComplete) {
-      logger.warn('LessonContext: Skipping refresh, onboarding not complete.');
+      logger.warn('LessonContext: Skipping getLessons, onboarding not complete.');
       setLessons([]);
       setInitialized(false);
+      setInitialGenerationAttempted(false); // Reset generation attempt
       return [];
     }
-    // Only fetch if on the lessons page
     if (pathname !== '/app/lessons') {
-      logger.info('LessonContext: Skipping refresh, not on lessons page.', { pathname });
-      // Don't clear lessons if navigating away, keep existing state
+      logger.info('LessonContext: Skipping getLessons, not on lessons page.', { pathname });
       return lessons;
     }
     // --- End Pre-conditions ---
 
     logger.info('LessonContext: Conditions met, proceeding with lesson fetch.');
+    setLoading(true); // Set loading before the fetch attempt
+    setError(null);
+    let generatedLessons: LessonModel[] | undefined; // Variable to hold generated lessons if needed
+
     try {
-      const data = await callAction(() => getLessonsAction());
-      setLessons(data);
+      const { data: fetchedLessons, error: fetchError } = await getLessonsAction();
+
+      if (fetchError) {
+        setError(fetchError);
+        showError(fetchError);
+        setLessons([]);
+        setInitialized(false); // Consider if initialization should fail here
+        setInitialGenerationAttempted(false); // Reset on error
+        setLoading(false);
+        return [];
+      }
+
+      const currentLessons = fetchedLessons || [];
+      setLessons(currentLessons);
       setInitialized(true); // Mark as initialized *after* successful fetch
-      logger.info(`LessonContext: Refreshed lessons, count: ${data.length}. Initialized: true.`);
-      return data;
+      logger.info(`LessonContext: Fetched lessons, count: ${currentLessons.length}. Initialized: true.`);
+
+      // --- Initial Generation Logic ---
+      if (currentLessons.length === 0 && !initialGenerationAttempted) {
+        logger.info("LessonContext: No lessons found and generation not attempted. Triggering initial generation.");
+        setInitialGenerationAttempted(true); // Mark attempt *before* calling action
+        setIsGeneratingInitial(true); // Set specific loading state
+        setLoading(false); // Turn off general loading while generating
+
+        try {
+          // Use callAction for generation as well, but don't set global loading
+          generatedLessons = await callAction(() => generateInitialLessonsAction(), false);
+
+          if (generatedLessons) {
+            setLessons(generatedLessons); // Update state with newly generated lessons
+            logger.info(`LessonContext: Successfully generated ${generatedLessons.length} initial lessons.`);
+          } else {
+            // This case means callAction caught an error or returned undefined unexpectedly
+            logger.warn('LessonContext: generateInitialLessonsAction call resulted in undefined data or error was handled by callAction.');
+            // Error state should already be set by callAction if there was an error
+            // Keep lessons empty
+          }
+        } catch (genErr) {
+          // Catch unexpected errors during the action call itself (if callAction re-throws)
+          const message = genErr instanceof Error ? genErr.message : 'Unknown generation error';
+          // Error state/toast is likely already handled by callAction, just log here
+          logger.error('LessonContext: Unexpected error during initial lesson generation call', { genErr });
+        } finally {
+          setIsGeneratingInitial(false); // Reset generation loading state
+        }
+        // Return the lessons state *after* generation attempt
+        setLoading(false); // Ensure loading is false after generation attempt
+        return lessons; // Return the current state of lessons (might be generated or empty on error)
+      }
+      // --- End Initial Generation Logic ---
+
+      setLoading(false); // Turn off general loading if fetch was successful and no generation needed
+      return currentLessons;
+
     } catch (refreshError) {
-      logger.error('LessonContext: Failed to refresh lessons', refreshError);
-      setLessons([]); // Clear lessons on error
-      setInitialized(false); // Reset initialized on error? Maybe keep true if previously successful? Let's reset for now.
+      // This catch block might be redundant if callAction handles errors, but keep for safety
+      logger.error('LessonContext: Unexpected error during getLessons process', refreshError);
+      const message = refreshError instanceof Error ? refreshError.message : 'Failed to load lessons';
+      setError(message);
+      showError(message);
+      setLessons([]);
+      setInitialized(false);
+      setInitialGenerationAttempted(false);
+      setLoading(false);
+      setIsGeneratingInitial(false);
       return [];
     }
-  }, [callAction, user, appInitializerStatus, isOnboardingComplete, pathname, lessons]); // Added dependencies
+  }, [
+    // Dependencies for getLessons useCallback
+    appInitializerStatus,
+    user,
+    isOnboardingComplete,
+    pathname,
+    initialGenerationAttempted,
+    callAction, // callAction is stable if its dependencies are correct
+    lessons, // Include lessons if returned directly
+    showError, // Include showError from useError
+    error // Include error state if used within callAction's dependency array
+  ]);
 
   // Effect to trigger initial fetch/refresh based on conditions
   useEffect(() => {
     logger.debug('LessonProvider: Initial fetch effect triggered.', { appInitializerStatus, user: !!user, isOnboardingComplete, pathname, initialized });
 
-    // Conditions to trigger the fetch:
-    // 1. App Initializer must be idle.
-    // 2. User must be logged in.
-    // 3. Onboarding must be complete.
-    // 4. Must be on the lessons page.
-    // 5. Lessons haven't been successfully initialized yet OR onboarding was just completed (handled implicitly by isOnboardingComplete change).
     if (
       appInitializerStatus === 'idle' &&
       user &&
@@ -173,32 +249,33 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       !initialized // Only run if not yet initialized under these conditions
     ) {
       logger.info('LessonProvider: Conditions met for initial lesson fetch/refresh.');
-      refreshLessons(); // Call refreshLessons which now contains all checks
+      getLessons(); // Call getLessons which now contains fetch and generation logic
     } else {
       logger.debug('LessonProvider: Conditions not met for initial fetch/refresh.');
     }
 
     // Reset state if user logs out or app initializer status changes from idle
     if (!user || (appInitializerStatus !== 'idle' && appInitializerStatus !== 'initializing')) {
-      if (initialized || lessons.length > 0) {
+      if (initialized || lessons.length > 0 || isGeneratingInitial || initialGenerationAttempted) {
         logger.info('LessonProvider: Resetting lessons state due to user logout or app status change.');
         setLessons([]);
         setCurrentLesson(null);
         setInitialized(false);
         setError(null);
+        setIsGeneratingInitial(false);
+        setInitialGenerationAttempted(false); // Reset generation flag
       }
     }
 
-  }, [appInitializerStatus, user, isOnboardingComplete, pathname, initialized, refreshLessons]);
-
+  }, [appInitializerStatus, user, isOnboardingComplete, pathname, initialized, getLessons]); // Use getLessons as dependency
 
   // --- Other context methods (remain largely unchanged) ---
 
   const getLessonById = async (id: string): Promise<LessonModel | null> => {
-    // Consider adding checks here if needed, though typically called when lesson list is already populated
-    const lesson = await callAction(() => getLessonByIdAction(id));
-    setCurrentLesson(lesson);
-    return lesson;
+    // Use callAction for consistency, though individual loading might not be needed here
+    const lesson = await callAction(() => getLessonByIdAction(id), false); // Don't set global loading
+    setCurrentLesson(lesson ?? null); // Handle potential undefined from callAction
+    return lesson ?? null;
   };
 
   const createLesson = async (ld: {
@@ -224,6 +301,28 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     return lesson;
   };
 
+  const checkAndGenerateNewLessons = useCallback(async (): Promise<void> => {
+    // Use callAction to handle loading/errors for the generation check itself
+    logger.info("LessonContext: Checking and generating new lessons...");
+    try {
+      // Don't set global loading for this background check
+      const newLessons = await callAction(() => checkAndGenerateNewLessonsAction(), false);
+      if (newLessons && newLessons.length > 0) {
+        // Refresh the list to include the new lessons
+        await getLessons(); // Call getLessons to update the state
+        toast.success('New lessons generated based on your progress!');
+      } else {
+        logger.info("checkAndGenerateNewLessonsAction completed but returned no new lessons.");
+        // Optionally inform the user if needed, or just refresh silently
+        // Consider if a refresh is needed even if no new lessons are generated
+        // await getLessons(); // Refresh even if no new lessons generated? Maybe not needed.
+      }
+    } catch (error) {
+      logger.error("LessonContext: Error during checkAndGenerateNewLessons", error);
+      // Error is handled by callAction
+    }
+  }, [callAction, getLessons]); // Add dependencies
+
   const completeLesson = async (
     lessonId: string,
     sessionRecording: Blob | null // Keep signature, even if not used directly here
@@ -234,13 +333,13 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       prev.map((l) => (l.id === lessonId ? lesson : l))
     );
     if (currentLesson?.id === lessonId) setCurrentLesson(lesson);
-    // Potentially trigger checkAndGenerateNewLessons after completion?
-    // checkAndGenerateNewLessons(); // Or handle this elsewhere
+    // Trigger check for new lessons after completion
+    checkAndGenerateNewLessons(); // Call this after a lesson is completed
     return lesson;
   };
 
   const deleteLesson = async (lessonId: string): Promise<void> => {
-    await callAction(() => deleteLessonAction(lessonId));
+    await callAction(() => deleteLessonAction(lessonId)); // callAction handles void return
     setLessons((prev) => prev.filter((l) => l.id !== lessonId));
     if (currentLesson?.id === lessonId) setCurrentLesson(null);
   };
@@ -281,25 +380,12 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     lessonId: string,
     stepId: string
   ): Promise<LessonStep[]> => {
+    // Use callAction for consistency if desired, or keep direct call
     const history = await callAction(() => getStepHistoryAction(
       lessonId,
       stepId
-    ));
+    ), false); // No global loading
     return history;
-  };
-
-  const checkAndGenerateNewLessons = async (): Promise<void> => {
-    // This action might implicitly call getLessons, ensure conditions are met
-    const newLessons = await callAction(() => checkAndGenerateNewLessonsAction());
-    if (newLessons && newLessons.length > 0) {
-      // Refresh the list to include the new lessons
-      await refreshLessons();
-      toast.success('New lessons generated based on your progress!');
-    } else {
-      logger.info("checkAndGenerateNewLessonsAction completed but returned no new lessons.");
-      // Optionally inform the user if needed, or just refresh silently
-      await refreshLessons(); // Refresh even if no new lessons generated to ensure consistency
-    }
   };
 
   const processLessonRecording = async (
@@ -324,16 +410,20 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
 
   const clearError = () => setError(null);
 
+  // Expose refreshLessons which is just an alias for getLessons now
+  const refreshLessons = getLessons;
+
   return (
     <LessonContext.Provider
       value={{
         currentLesson,
         lessons,
         loading,
+        isGeneratingInitial, // Expose new state
         error,
         initialized,
         clearError,
-        getLessons: refreshLessons, // Expose refresh directly
+        getLessons, // Expose getLessons
         getLessonById,
         createLesson,
         updateLesson,
@@ -344,7 +434,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
         setCurrentLesson,
         checkAndGenerateNewLessons,
         processLessonRecording,
-        refreshLessons, // Keep refreshLessons exposed if needed externally
+        refreshLessons, // Keep alias if used elsewhere
       }}
     >
       {children}
