@@ -1,25 +1,15 @@
-import { ILessonRepository } from '@/lib/interfaces/all-interfaces';
 import logger from '@/utils/logger';
-import {
-  LessonModel,
-  LessonStep,
-  UserProfileModel,
-} from '@/models/AppAllModels.model';
+import { UserProfileModel } from '@/models/AppAllModels.model';
 import prisma from '@/lib/prisma';
-import { SubscriptionStatus } from '@prisma/client';
+import { Prisma, SubscriptionStatus } from '@prisma/client';
 import { createSupabaseServerClient } from '@/utils/supabase/server';
 import { SupabaseClient } from '@supabase/supabase-js';
 import supabaseAdmin from '@/utils/supabase/admin';
 
 export interface IUserRepository {
   getUserProfile(userId: string): Promise<UserProfileModel | null>;
-  createUserProfile(
-    profile: Partial<UserProfileModel>
-  ): Promise<UserProfileModel>;
-  updateUserProfile(
-    userId: string,
-    profile: Partial<UserProfileModel>
-  ): Promise<UserProfileModel>;
+  createUserProfile(profileData: { userId: string; email: string }): Promise<UserProfileModel>; // Simplified input
+  updateUserProfile(userId: string, profile: Partial<UserProfileModel>): Promise<UserProfileModel>;
   deleteUserProfile(userId: string): Promise<void>;
 }
 
@@ -27,11 +17,8 @@ export class UserRepository implements IUserRepository {
   private supabase: SupabaseClient | null = null;
 
   constructor() {
-    // For server-side usage, create Supabase client
     if (typeof window === 'undefined') {
-      // Initialize supabase synchronously but mark it as potentially null
       this.supabase = null;
-      // Create a helper method to get the client when needed
       this.getSupabaseClient = async () => {
         if (!this.supabase) {
           this.supabase = await createSupabaseServerClient() as SupabaseClient | null;
@@ -39,356 +26,244 @@ export class UserRepository implements IUserRepository {
         return this.supabase;
       };
     }
-    // For client-side usage, use the passed authService
-  
   }
 
   private getSupabaseClient?: () => Promise<SupabaseClient | null>;
 
-  async getSession() {
-    // Server-side session handling
+  // Helper to get authenticated session (server-side)
+  private async getSession() {
     if (typeof window === 'undefined' && this.getSupabaseClient) {
       const supabase = await this.getSupabaseClient();
-      if (!supabase) {
-        throw new Error('No auth service available')
-      }
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
-      if (error || !session?.user?.id) {
-        throw new Error('Unauthorized');
-      }
+      if (!supabase) throw new Error('Supabase client not available');
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw new Error(`Supabase getSession error: ${error.message}`);
+      if (!session?.user?.id) throw new Error('Unauthorized: No active session');
       return session;
     }
-   
-    throw new Error('No auth service available');
+    throw new Error('getSession can only be called server-side in this repository');
   }
 
+  // Maps Prisma User (with onboarding) to UserProfileModel
+  private mapToUserProfile(user: Prisma.UserGetPayload<{ include: { onboarding: true } }>): UserProfileModel {
+    return {
+      id: user.id,
+      userId: user.id,
+      email: user.email || '',
+      name: user.name || undefined,
+      nativeLanguage: user.onboarding?.nativeLanguage || undefined,
+      targetLanguage: user.onboarding?.targetLanguage || undefined,
+      proficiencyLevel: user.onboarding?.proficiencyLevel || undefined,
+      learningPurpose: user.onboarding?.learningPurpose || undefined,
+      onboardingCompleted: user.onboarding?.completed || false,
+      initialAssessmentCompleted: user.onboarding?.initialAssessmentCompleted || false,
+      subscriptionStatus: user.subscriptionStatus,
+      subscriptionId: user.subscriptionId,
+      subscriptionPlan: user.subscriptionPlan,
+      trialStartDate: user.trialStartDate,
+      trialEndDate: user.trialEndDate,
+      subscriptionStartDate: user.subscriptionStartDate,
+      subscriptionEndDate: user.subscriptionEndDate,
+      billingCycle: user.billingCycle,
+      paymentMethodId: user.paymentMethodId,
+      stripeCustomerId: user.stripeCustomerId,
+      cancelAtPeriodEnd: user.cancelAtPeriodEnd,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  // Fetches the user profile, returns null if not found. Does NOT create.
   async getUserProfile(userId: string): Promise<UserProfileModel | null> {
     try {
-      // First ensure the user is authorized to access this profile
       const session = await this.getSession();
       if (session.user.id !== userId) {
         logger.error(`Unauthorized attempt to get profile. Logged in user: ${session.user.id}, Requested user: ${userId}`);
         throw new Error('Unauthorized to access this profile');
       }
 
-      let user = await prisma.user.findUnique({
+      const user = await prisma.user.findUnique({
         where: { id: userId },
         include: { onboarding: true },
       });
 
-      // If user doesn't exist in DB, but we have an authenticated session user, create the profile.
       if (!user) {
-        logger.warn(`User profile not found in DB for authenticated user ${userId}. Attempting to create.`);
-        // Ensure email is available from the session user
-        if (!session.user.email) {
-            logger.error(`Cannot create profile for user ${userId}: Email is missing from session.`);
-            throw new Error('User email not found in session, cannot create profile.');
-        }
-        // Call createUserProfile which handles the creation logic and returns the UserProfileModel
-        // createUserProfile already checks for existing user again, so it's safe.
-        return await this.createUserProfile({ userId: userId, email: session.user.email });
+        logger.info(`User profile not found in DB for user ${userId}.`);
+        return null; // Explicitly return null if not found
       }
 
-      // If user exists, map Prisma User to UserProfileModel
-      return {
-        id: user.id,
-        userId: user.id, // Ensure userId is mapped
-        email: user.email || '',
-        name: user.name || undefined,
-        nativeLanguage: user.onboarding?.nativeLanguage || undefined,
-        targetLanguage: user.onboarding?.targetLanguage || undefined,
-        proficiencyLevel: user.onboarding?.proficiencyLevel || undefined,
-        learningPurpose: user.onboarding?.learningPurpose || undefined,
-        onboardingCompleted: user.onboarding?.completed || false,
-        initialAssessmentCompleted: user.onboarding?.initialAssessmentCompleted || false,
-        subscriptionStatus: user.subscriptionStatus,
-        subscriptionId: user.subscriptionId,
-        subscriptionPlan: user.subscriptionPlan,
-        trialStartDate: user.trialStartDate,
-        trialEndDate: user.trialEndDate,
-        subscriptionStartDate: user.subscriptionStartDate,
-        subscriptionEndDate: user.subscriptionEndDate,
-        billingCycle: user.billingCycle,
-        paymentMethodId: user.paymentMethodId,
-        stripeCustomerId: user.stripeCustomerId,
-        cancelAtPeriodEnd: user.cancelAtPeriodEnd,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      };
+      return this.mapToUserProfile(user);
     } catch (error) {
-      logger.error('Error fetching user profile:', error);
-      throw error; // Re-throw the original error
+      // Don't log expected "Unauthorized" as error here, let caller handle
+      if (!(error instanceof Error && error.message.startsWith('Unauthorized'))) {
+        logger.error(`Error fetching user profile for ${userId}:`, error);
+      }
+      throw error; // Re-throw other errors
     }
   }
 
-
-  async createUserProfile(
-    profile: Partial<UserProfileModel>
-  ): Promise<UserProfileModel> {
+  // Creates the user profile. Assumes it doesn't exist. Handles email conflict.
+  async createUserProfile(profileData: { userId: string; email: string }): Promise<UserProfileModel> {
+    const { userId, email } = profileData;
+    logger.info(`Attempting to create profile for user ${userId} with email ${email}`);
     try {
-      // Verify session first - optional since this might be called during registration
-      // when session isn't fully established yet
-      const session = await this.getSession();
-      logger.info('session', session);
-      if (session.user.id !== profile.userId) {
-        throw new Error('Unauthorized to create this profile');
-      }
+      // No need to re-verify session here if called from an authenticated context like UserProfileProvider
 
-      const { userId, email } = profile;
-
-      logger.info('creating user in repo', profile);
-
-      if (!userId || !email) {
-        throw new Error(
-          'Missing required fields: userId and email are required'
-        );
-      }
-
-      // Check if user already exists
-      const existingUser = await prisma.user.findUnique({
-        where: { id: userId },
-      });
-
-      if (existingUser) {
-        // If user exists but we're trying to create a profile, return the existing user profile
-        const existingProfile = await this.getUserProfile(userId);
-        if (existingProfile) {
-          return existingProfile;
-        }
-        throw new Error(
-          'User already exists but profile could not be retrieved'
-        );
-      }
-
-      // Create the user with minimal information
+      // Create the user with minimal information and default onboarding
       const user = await prisma.user.create({
         data: {
-          id: profile.userId!,
-          email: profile.email!,
-          subscriptionStatus: SubscriptionStatus.NONE,
-          subscriptionEndDate: null,
+          id: userId,
+          email: email,
+          subscriptionStatus: SubscriptionStatus.NONE, // Default status
           onboarding: {
-            create: { steps: {}, completed: false },
+            create: { steps: {}, completed: false }, // Default onboarding state
           },
         },
         include: { onboarding: true },
       });
 
-      // Return a valid UserProfileModel with defaults for missing fields
-      return {
-        id: user.id,
-        userId: user.id,
-        email: user.email!,
-        onboardingCompleted: false,
-        initialAssessmentCompleted: false,
-        subscriptionStatus: user.subscriptionStatus,
-        subscriptionEndDate: user.subscriptionEndDate,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      };
+      logger.info(`Successfully created profile for user ${userId}`);
+      return this.mapToUserProfile(user);
+
     } catch (error: any) {
-      logger.error('Error creating user profile:', error);
-
-      // If Prisma says “P2002 unique constraint on email” → fetch the existing record
-      if (
-        error.code === 'P2002' &&
-        Array.isArray(error.meta?.target) &&
-        (error.meta.target as string[]).includes('email')
-      ) {
-        logger.warn(
-          'UserRepository.createUserProfile: email already exists—fetching existing profile'
-        );
-        // fetch by userId (or by email)
-        return (await this.getUserProfile(profile.userId!))!;
+      // Handle unique constraint violation (likely email)
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        logger.warn(`UserRepository.createUserProfile: Unique constraint violation (likely email: ${email}). Attempting to fetch existing profile for user ${userId}.`);
+        // Attempt to fetch the existing profile by userId, as the email conflict implies the user might exist under that ID
+        const existingUser = await prisma.user.findUnique({
+          where: { id: userId },
+          include: { onboarding: true },
+        });
+        if (existingUser) {
+          logger.info(`Found existing profile for user ${userId} after email conflict.`);
+          return this.mapToUserProfile(existingUser);
+        } else {
+          // This is an unusual state: email exists, but user ID doesn't match? Log and throw.
+          logger.error(`Critical error: Email ${email} exists, but user ${userId} not found after P2002 error.`);
+          throw new Error(`Failed to resolve profile conflict for email ${email}.`);
+        }
       }
-
+      // Log and re-throw other errors
+      logger.error(`Error creating user profile for ${userId}:`, error);
       throw error;
     }
   }
 
-  async updateUserProfile(
-    userId: string,
-    profile: Partial<UserProfileModel>
-  ): Promise<UserProfileModel> {
+  // Updates the user profile.
+  async updateUserProfile(userId: string, profile: Partial<UserProfileModel>): Promise<UserProfileModel> {
     try {
-      // First ensure the user is authorized to update this profile
       const session = await this.getSession();
       if (session.user.id !== userId) {
         throw new Error('Unauthorized to update this profile');
       }
 
-      // Extract onboarding specific fields
       const onboardingData: any = {};
+      if ('nativeLanguage' in profile) onboardingData.nativeLanguage = profile.nativeLanguage;
+      if ('targetLanguage' in profile) onboardingData.targetLanguage = profile.targetLanguage;
+      if ('proficiencyLevel' in profile) onboardingData.proficiencyLevel = profile.proficiencyLevel;
+      if ('learningPurpose' in profile) onboardingData.learningPurpose = profile.learningPurpose;
+      if ('onboardingCompleted' in profile) onboardingData.completed = profile.onboardingCompleted;
+      if ('initialAssessmentCompleted' in profile) onboardingData.initialAssessmentCompleted = profile.initialAssessmentCompleted;
 
-      if ('nativeLanguage' in profile)
-        onboardingData.nativeLanguage = profile.nativeLanguage;
-      if ('targetLanguage' in profile)
-        onboardingData.targetLanguage = profile.targetLanguage;
-      if ('proficiencyLevel' in profile)
-        onboardingData.proficiencyLevel = profile.proficiencyLevel;
-      if ('learningPurpose' in profile)
-        onboardingData.learningPurpose = profile.learningPurpose;
-      if ('onboardingCompleted' in profile)
-        onboardingData.completed = profile.onboardingCompleted;
-      if ('initialAssessmentCompleted' in profile)
-        onboardingData.initialAssessmentCompleted =
-          profile.initialAssessmentCompleted;
+      const userUpdateData: Prisma.UserUpdateInput = {
+        name: profile.name,
+        // Add other direct User fields if needed (e.g., subscription fields handled by webhooks)
+      };
 
-      // Update the user and their onboarding data
+      // Only include onboarding update if there's data for it
+      if (Object.keys(onboardingData).length > 0) {
+        userUpdateData.onboarding = {
+          upsert: {
+            // Provide minimal create data, Prisma requires it even if we expect update
+            create: { steps: {}, completed: false, ...onboardingData },
+            update: onboardingData,
+          },
+        };
+      }
+
       const user = await prisma.user.update({
         where: { id: userId },
-        data: {
-          name: profile.name,
-          onboarding: {
-            upsert: {
-              create: {
-                ...onboardingData,
-                steps: {},
-              },
-              update: onboardingData,
-            },
-          },
-        },
-        include: {
-          onboarding: true,
-        },
+        data: userUpdateData,
+        include: { onboarding: true },
       });
 
-      return {
-        id: user.id,
-        userId: user.id,
-        email: user.email || '',
-        // name: user.name || null,
-        // nativeLanguage: user.onboarding?.nativeLanguage || null,
-        // targetLanguage: user.onboarding?.targetLanguage || null,
-        // proficiencyLevel: user.onboarding?.proficiencyLevel || null,
-        // learningPurpose: user.onboarding?.learningPurpose || null,
-        onboardingCompleted: user.onboarding?.completed || false,
-        initialAssessmentCompleted:
-          user.onboarding?.initialAssessmentCompleted || false,
-        subscriptionStatus: user.subscriptionStatus,
-        subscriptionEndDate: user.subscriptionEndDate || null,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      };
+      return this.mapToUserProfile(user);
     } catch (error) {
-      logger.error('Error updating user profile:', error);
+      logger.error(`Error updating user profile for ${userId}:`, error);
       throw error;
     }
   }
 
+  // Deletes the user profile and associated data.
   async deleteUserProfile(userId: string): Promise<void> {
     try {
-      // Verify authorization
       const session = await this.getSession();
       if (session.user.id !== userId) {
-        logger.error(
-          `Unauthorized delete attempt. Session user: ${session.user.id}, Target: ${userId}`
-        );
+        logger.error(`Unauthorized delete attempt. Session user: ${session.user.id}, Target: ${userId}`);
         throw new Error('Unauthorized: You can only delete your own profile.');
       }
 
-      logger.warn(`Starting deletion for user: ${userId}`);
+      logger.warn(`Starting deletion process for user: ${userId}`);
 
-      // Step 1: Delete all user-related data first
-      await prisma.$transaction([
-        // Delete lesson steps first
-        prisma.lessonStep.deleteMany({
-          where: {
-            lesson: {
-              userId: userId
-            }
-          }
-        }),
-        // Then delete lessons
-        prisma.lesson.deleteMany({
-          where: {
-            userId: userId
-          }
-        }),
-        // Delete onboarding data
-        prisma.onboarding.deleteMany({
-          where: {
-            userId: userId
-          }
-        }),
-        // Finally delete the user
-        prisma.user.delete({
-          where: { id: userId }
-        })
-      ]);
+      // Use Prisma transaction for atomicity
+      await prisma.$transaction(async (tx) => {
+        // Delete related data first (adjust based on your schema relations and cascade settings)
+        // Example: Delete LessonSteps, Lessons, Onboarding, AudioMetrics, Progress etc.
+        // If cascade deletes are set up in Prisma schema, some of these might be automatic.
+        await tx.lessonStep.deleteMany({ where: { lesson: { userId: userId } } });
+        await tx.audioMetrics.deleteMany({ where: { OR: [{ lesson: { userId: userId } }, { assessmentLesson: { userId: userId } }] } });
+        await tx.lesson.deleteMany({ where: { userId: userId } });
+        await tx.assessmentStep.deleteMany({ where: { assessment: { userId: userId } } });
+        await tx.assessmentLesson.deleteMany({ where: { userId: userId } });
+        await tx.onboarding.deleteMany({ where: { userId: userId } });
+        await tx.payment.deleteMany({ where: { userId: userId } }); // Assuming Payment model exists
+        await tx.topicProgress.deleteMany({ where: { learningProgress: { userId: userId } } });
+        await tx.wordProgress.deleteMany({ where: { learningProgress: { userId: userId } } });
+        await tx.learningProgress.deleteMany({ where: { userId: userId } });
 
-      logger.info(`DB deletion complete: ${userId}`);
-
-      // Step 2: Delete auth user (server-side only)
-      if (typeof window === 'undefined' && this.getSupabaseClient) {
-            
-        // Use admin API for user deletion
-        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(
-          userId
-        );
-        
-
-        if (authError) {
-          logger.error(`Auth deletion failed: ${authError.message}`, {
-            userId,
-          });
-          throw new Error(`Failed to delete auth user: ${authError.message}`); 
-        }
-        logger.info(`Auth user deleted: ${userId}`);
-      }
-
-      logger.warn(`Deletion completed for: ${userId}`);
-    } catch (error: any) {
-      logger.error(`Error during user profile deletion for userId: ${userId}`, {
-        code: error.code,
-        message: error.message,
-        stack: error.stack,
+        // Finally, delete the user record itself
+        await tx.user.delete({ where: { id: userId } });
+        logger.info(`DB deletion transaction complete for user: ${userId}`);
       });
 
-      // Handle specific Prisma errors
-      if (error.code === 'P2025') {
-        // Record to delete not found
-        logger.warn(
-          `User profile not found in DB for deletion (userId: ${userId}). Might have been already deleted.`
-        );
-        // Consider this a success case as the user is gone from DB.
-        // Still attempt Auth deletion just in case.
-        try {
-          logger.info(
-            `Attempting Auth Provider deletion for potentially orphaned user: ${userId}`
-          );
-          if (typeof window === 'undefined' && this.getSupabaseClient) {
-            const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(
-              userId
-            );
-
-            if (authError) {
-              logger.error(
-                `Failed to delete potentially orphaned user ${userId} from Auth Provider: ${
-                  authError.message || authError
-                }`
-              );
-            } else {
-              logger.info(
-                `Successfully deleted potentially orphaned user ${userId} from Auth Provider.`
-              );
-            }
-          }
-        } catch (authCatchError: any) {
-          logger.error(
-            `Exception during Auth Provider deletion for potentially orphaned user ${userId}:`,
-            authCatchError
-          );
+      // Delete the user from the Auth provider (Supabase Auth)
+      if (typeof window === 'undefined') { // Ensure server-side context
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        if (authError) {
+          // Log error but don't necessarily throw if DB deletion succeeded,
+          // as the user might be partially deleted. Depends on desired behavior.
+          logger.error(`Auth Provider user deletion failed for ${userId}: ${authError.message}`);
+          // Consider throwing a specific error if auth deletion failure is critical
+          // throw new Error(`Failed to delete user from Auth Provider: ${authError.message}`);
+        } else {
+          logger.info(`Auth Provider user deleted successfully: ${userId}`);
         }
-        return; // Exit successfully
       }
 
-      // Re-throw other database or unexpected errors
+      logger.warn(`Deletion process fully completed for user: ${userId}`);
+
+    } catch (error: any) {
+      // Handle specific Prisma "Record not found" error during deletion gracefully
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        logger.warn(`User profile or related data not found during deletion for userId: ${userId}. Assuming already deleted.`);
+        // Attempt Auth deletion just in case it's an orphaned auth user
+        if (typeof window === 'undefined') {
+          try {
+            const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+            if (authError && authError.message !== 'User not found') { // Ignore "User not found" error here
+              logger.error(`Auth Provider deletion failed for potentially orphaned user ${userId}: ${authError.message}`);
+            } else if (!authError) {
+              logger.info(`Auth Provider user deleted successfully for potentially orphaned user ${userId}.`);
+            }
+          } catch (authCatchError) {
+            logger.error(`Exception during Auth Provider deletion for potentially orphaned user ${userId}:`, authCatchError);
+          }
+        }
+        return; // Consider deletion successful if record wasn't found
+      }
+      // Log and re-throw other errors
+      logger.error(`Error during user profile deletion for userId: ${userId}:`, error);
       throw new Error(`Failed to delete user profile: ${error.message}`);
     }
   }
 }
+// --- NEW CODE END ---
