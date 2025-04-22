@@ -87,6 +87,7 @@ IGNORED_ITEMS=(
     # OS Generated Files
     ".DS_Store"
     "Thumbs.db"
+    "tsconfig.tsbuildinfo"
     # This script's output file
     "$OUTPUT_FILENAME"
 )
