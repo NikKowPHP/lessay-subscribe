@@ -1,4 +1,3 @@
-// File: src/context/lesson-context.tsx
 'use client';
 
 import { createContext, useCallback, useContext, useState, useEffect, useRef } from 'react';
@@ -26,16 +25,18 @@ import { useUpload } from '@/hooks/use-upload';
 import { RecordingBlob } from '@/lib/interfaces/all-interfaces';
 import { useAuth } from '@/context/auth-context';
 import { Result } from '@/lib/server-actions/_withErrorHandling';
-import { usePathname } from 'next/navigation'; // Import usePathname
+import { usePathname } from 'next/navigation';
 import { useOnboarding } from './onboarding-context';
 import { useError } from '@/hooks/useError';
+// Import AppInitializer context
+import { useAppInitializer } from './app-initializer-context';
 
 interface LessonContextType {
   currentLesson: LessonModel | null;
   lessons: LessonModel[];
   loading: boolean;
   error: string | null;
-  initialized: boolean;
+  initialized: boolean; // Tracks if lessons have been fetched *at least once* successfully for the current session/conditions
   clearError: () => void;
   getLessons: () => Promise<LessonModel[] | undefined>;
   getLessonById: (lessonId: string) => Promise<LessonModel | null>;
@@ -57,8 +58,6 @@ interface LessonContextType {
     lessonId: string,
     stepId: string,
     userResponse: string
-    // correct: boolean
-    // errorPatterns?: string[]
   ) => Promise<LessonStep | AssessmentStepModel>;
   getStepHistory: (lessonId: string, stepId: string) => Promise<LessonStep[]>;
   setCurrentLesson: (lesson: LessonModel | null) => void;
@@ -78,17 +77,18 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   const { uploadFile } = useUpload();
   const { user } = useAuth();
   const { isOnboardingComplete, onboarding } = useOnboarding();
+  const { status: appInitializerStatus } = useAppInitializer(); // Get initializer status
   const [lessons, setLessons] = useState<LessonModel[]>([]);
   const [currentLesson, setCurrentLesson] = useState<LessonModel | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Start as false, only true during actual fetch
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
-  const prevIsOnboardingComplete = useRef<boolean>(isOnboardingComplete);
+  const [initialized, setInitialized] = useState(false); // Tracks if lessons have been fetched *at least once* successfully
   const { showError } = useError();
-  const pathname = usePathname(); // Get current pathname
+  const pathname = usePathname();
 
   const callAction = useCallback(async <T,>(action: () => Promise<Result<T>>): Promise<T> => {
     setLoading(true);
+    setError(null);
     try {
       const { data, error } = await action();
       if (error) {
@@ -96,52 +96,111 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
         showError(error);
         throw new Error(error);
       }
-      return data! as T;
+      if (data === undefined) {
+        throw new Error('Action returned successfully but with undefined data.');
+      }
+      return data;
+    } catch (err) {
+      if (!(err instanceof Error && error === err.message)) {
+        const message = err instanceof Error ? err.message : 'An unknown error occurred';
+        setError(message);
+        showError(message);
+      }
+      throw err;
     } finally {
       setLoading(false);
     }
-  }, [showError]); // Added showError dependency
+  }, [showError, error]); // Added `error` dependency
 
-  /**
-   *  fetch lessons and store them
-   */
   const refreshLessons = useCallback(async (): Promise<LessonModel[]> => {
-    logger.info('LessonContext: Refreshing lessons...');
-    // No user, no lessons
-    if (!user) {
-        logger.warn('LessonContext: Skipping refresh, no user.');
-        setLessons([]); // Clear lessons if user logs out
-        setInitialized(false); // Reset initialized state on logout
-        return [];
+    logger.info('LessonContext: Attempting to refresh lessons...');
+
+    // --- Pre-conditions for fetching ---
+    if (appInitializerStatus !== 'idle') {
+      logger.warn('LessonContext: Skipping refresh, app not initialized.');
+      return lessons; // Return current (likely empty) lessons
     }
+    if (!user) {
+      logger.warn('LessonContext: Skipping refresh, no user.');
+      setLessons([]);
+      setInitialized(false);
+      return [];
+    }
+    if (!isOnboardingComplete) {
+      logger.warn('LessonContext: Skipping refresh, onboarding not complete.');
+      setLessons([]);
+      setInitialized(false);
+      return [];
+    }
+    // Only fetch if on the lessons page
+    if (pathname !== '/app/lessons') {
+      logger.info('LessonContext: Skipping refresh, not on lessons page.', { pathname });
+      // Don't clear lessons if navigating away, keep existing state
+      return lessons;
+    }
+    // --- End Pre-conditions ---
+
+    logger.info('LessonContext: Conditions met, proceeding with lesson fetch.');
     try {
-      // *** Add Guard ***
-      if (!onboarding?.initialAssessmentCompleted) {
-        logger.warn("Skipping lesson fetch: Initial assessment not completed.");
-        setLessons([]); // Clear existing lessons if any
-        return [];
-      }
-      // *** End Guard ***
       const data = await callAction(() => getLessonsAction());
       setLessons(data);
-      logger.info(`LessonContext: Refreshed lessons, count: ${data.length}`);
+      setInitialized(true); // Mark as initialized *after* successful fetch
+      logger.info(`LessonContext: Refreshed lessons, count: ${data.length}. Initialized: true.`);
       return data;
     } catch (refreshError) {
       logger.error('LessonContext: Failed to refresh lessons', refreshError);
-      // Error is already handled by callAction (state set, toast shown)
-      setLessons([]); // Clear lessons on error? Or keep stale data? Clearing might be safer.
-      return []; // Return empty array on failure
+      setLessons([]); // Clear lessons on error
+      setInitialized(false); // Reset initialized on error? Maybe keep true if previously successful? Let's reset for now.
+      return [];
     }
-  }, [callAction, user, onboarding?.initialAssessmentCompleted]);
+  }, [callAction, user, appInitializerStatus, isOnboardingComplete, pathname, lessons]); // Added dependencies
 
-  // 1) Fetch one by ID
-  const getLessonById = async (id: string): Promise<LessonModel| null> => {
+  // Effect to trigger initial fetch/refresh based on conditions
+  useEffect(() => {
+    logger.debug('LessonProvider: Initial fetch effect triggered.', { appInitializerStatus, user: !!user, isOnboardingComplete, pathname, initialized });
+
+    // Conditions to trigger the fetch:
+    // 1. App Initializer must be idle.
+    // 2. User must be logged in.
+    // 3. Onboarding must be complete.
+    // 4. Must be on the lessons page.
+    // 5. Lessons haven't been successfully initialized yet OR onboarding was just completed (handled implicitly by isOnboardingComplete change).
+    if (
+      appInitializerStatus === 'idle' &&
+      user &&
+      isOnboardingComplete &&
+      pathname === '/app/lessons' &&
+      !initialized // Only run if not yet initialized under these conditions
+    ) {
+      logger.info('LessonProvider: Conditions met for initial lesson fetch/refresh.');
+      refreshLessons(); // Call refreshLessons which now contains all checks
+    } else {
+      logger.debug('LessonProvider: Conditions not met for initial fetch/refresh.');
+    }
+
+    // Reset state if user logs out or app initializer status changes from idle
+    if (!user || (appInitializerStatus !== 'idle' && appInitializerStatus !== 'initializing')) {
+      if (initialized || lessons.length > 0) {
+        logger.info('LessonProvider: Resetting lessons state due to user logout or app status change.');
+        setLessons([]);
+        setCurrentLesson(null);
+        setInitialized(false);
+        setError(null);
+      }
+    }
+
+  }, [appInitializerStatus, user, isOnboardingComplete, pathname, initialized, refreshLessons]);
+
+
+  // --- Other context methods (remain largely unchanged) ---
+
+  const getLessonById = async (id: string): Promise<LessonModel | null> => {
+    // Consider adding checks here if needed, though typically called when lesson list is already populated
     const lesson = await callAction(() => getLessonByIdAction(id));
     setCurrentLesson(lesson);
     return lesson;
   };
 
-  // 3) Create
   const createLesson = async (ld: {
     focusArea: string;
     targetSkills: string[];
@@ -153,7 +212,6 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     return lesson;
   };
 
-  // 4) Update
   const updateLesson = async (
     lessonId: string,
     lessonData: Partial<LessonModel>
@@ -166,50 +224,59 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     return lesson;
   };
 
-  // 5) Complete
   const completeLesson = async (
     lessonId: string,
-    sessionRecording: Blob | null
+    sessionRecording: Blob | null // Keep signature, even if not used directly here
   ): Promise<LessonModel> => {
+    // completeLessonAction likely triggers the analysis including recording if needed
     const lesson = await callAction(() => completeLessonAction(lessonId));
     setLessons((prev) =>
       prev.map((l) => (l.id === lessonId ? lesson : l))
     );
     if (currentLesson?.id === lessonId) setCurrentLesson(lesson);
+    // Potentially trigger checkAndGenerateNewLessons after completion?
+    // checkAndGenerateNewLessons(); // Or handle this elsewhere
     return lesson;
   };
 
-  // 6) Delete
   const deleteLesson = async (lessonId: string): Promise<void> => {
     await callAction(() => deleteLessonAction(lessonId));
     setLessons((prev) => prev.filter((l) => l.id !== lessonId));
     if (currentLesson?.id === lessonId) setCurrentLesson(null);
   };
 
-  // 7) Record a step
   const recordStepAttempt = async (
     lessonId: string,
     stepId: string,
     userResponse: string
   ): Promise<LessonStep | AssessmentStepModel> => {
-    const step = await callAction(() => recordStepAttemptAction(
+    // No global loading for step attempts
+    const { data: step, error: stepError } = await recordStepAttemptAction(
       lessonId,
       stepId,
       userResponse
-    ));
+    );
+    if (stepError) {
+      setError(stepError);
+      showError(stepError);
+      throw new Error(stepError);
+    }
+    if (!step) {
+      throw new Error('Step attempt action returned no data.');
+    }
+    // Update local currentLesson state optimistically or based on response
     setCurrentLesson((prev) => {
-      if (!prev) return prev;
+      if (!prev || prev.id !== lessonId) return prev;
       return {
         ...prev,
         steps: prev.steps.map((s) =>
-          s.stepNumber === step.stepNumber ? { ...s, ...step } : s
+          s.id === stepId ? { ...s, ...step } : s // Use ID for matching
         ),
       };
     });
     return step;
   };
 
-  // 8) Step history
   const getStepHistory = async (
     lessonId: string,
     stepId: string
@@ -221,14 +288,20 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
     return history;
   };
 
-  // 9) Generate new based on progress
   const checkAndGenerateNewLessons = async (): Promise<void> => {
-    await callAction(() => checkAndGenerateNewLessonsAction());
-    setLessons((prev) => [...prev]);
-    toast.success('New lessons generated based on your progress!');
+    // This action might implicitly call getLessons, ensure conditions are met
+    const newLessons = await callAction(() => checkAndGenerateNewLessonsAction());
+    if (newLessons && newLessons.length > 0) {
+      // Refresh the list to include the new lessons
+      await refreshLessons();
+      toast.success('New lessons generated based on your progress!');
+    } else {
+      logger.info("checkAndGenerateNewLessonsAction completed but returned no new lessons.");
+      // Optionally inform the user if needed, or just refresh silently
+      await refreshLessons(); // Refresh even if no new lessons generated to ensure consistency
+    }
   };
 
-  // 10) Process audio recordings
   const processLessonRecording = async (
     sessionRecording: RecordingBlob,
     lesson: LessonModel,
@@ -241,140 +314,13 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       recordingSize,
       lesson
     ));
+    // Update local state after processing
+    setLessons((prev) =>
+      prev.map((l) => (l.id === processedLesson.id ? processedLesson : l))
+    );
+    if (currentLesson?.id === processedLesson.id) setCurrentLesson(processedLesson);
     return processedLesson;
   };
-
-
-  //
-  // 1) Initial fetch when `user` first becomes available
-  //
-  useEffect(() => {
-    if (!user) return;
-
-    // Don't fetch immediately on login if not on lessons page
-    if (pathname === '/app/lessons') {
-      refreshLessons()
-        .then(() => setInitialized(true))
-        .catch(() => {
-          /* error already handled in callAction */
-        });
-    } else {
-      // If user logs in but isn't on lessons page, mark as initialized
-      // but don't fetch lessons yet.
-      setInitialized(true);
-    }
-  }, [user, refreshLessons, pathname]); // Added pathname dependency
-
-  // --- OLD CODE START ---
-  // src/context/lesson-context.tsx
-
-    // //
-    // // 2) Subsequent fetch any time we navigate into `/app/lessons`
-    // //
-    // useEffect(() => {
-    //   const justCompletedOnboarding =
-    //     prevIsOnboardingComplete.current === false && isOnboardingComplete === true;
-
-    //   // Update the ref *after* comparison for the next render
-    //   prevIsOnboardingComplete.current = isOnboardingComplete;
-
-    //   // Fetch lessons if:
-    //   // 1. We have a user AND
-    //   // 2. EITHER this is the first time loading after user logged in (!initialized)
-    //   //    OR onboarding was *just* completed in this render cycle.
-    //   if (user && (!initialized || justCompletedOnboarding)) {
-    //     logger.info('LessonProvider: Triggering refreshLessons', {
-    //       userId: user.id,
-    //       initialized,
-    //       justCompletedOnboarding,
-    //     });
-    //     refreshLessons()
-    //       .then((fetchedLessons) => {
-    //         // Only set initialized to true after the *first* successful fetch for this user session
-    //         if (!initialized && fetchedLessons.length >= 0) { // Check >= 0 to handle case where 0 lessons is valid
-    //           setInitialized(true);
-    //           logger.info('LessonProvider: Initialized.');
-    //         }
-    //       })
-    //       .catch(() => {
-    //         /* error handled in refreshLessons/callAction */
-    //         // Do not set initialized on error
-    //       });
-    //   } else {
-    //     logger.debug('LessonProvider: Skipping refreshLessons', {
-    //       userId: user?.id,
-    //       initialized,
-    //       justCompletedOnboarding,
-    //       isOnboardingComplete, // Log current onboarding state
-    //     });
-    //   }
-
-    //   // Reset initialized state if user logs out
-    //   if (!user && initialized) {
-    //       logger.info('LessonProvider: User logged out, resetting initialized state.');
-    //       setInitialized(false);
-    //       setLessons([]); // Clear lessons immediately on logout
-    //   }
-
-    // }, [user, isOnboardingComplete, initialized, refreshLessons]);
-  // --- OLD CODE END ---
-
-  // --- NEW CODE START ---
-  // src/context/lesson-context.tsx
-
-    //
-    // 2) Subsequent fetch/generation logic, now tied to the /app/lessons route
-    //
-    useEffect(() => {
-      const justCompletedOnboarding =
-        prevIsOnboardingComplete.current === false && isOnboardingComplete === true;
-
-      // Update the ref *after* comparison for the next render
-      prevIsOnboardingComplete.current = isOnboardingComplete;
-
-      // Fetch/Generate lessons ONLY if:
-      // 1. We have a user AND
-      // 2. We are on the '/app/lessons' page AND
-      // 3. EITHER this is the first time loading lessons after login/onboarding (!initialized)
-      //    OR onboarding was *just* completed in this render cycle.
-      if (user && pathname === '/app/lessons' && (!initialized || justCompletedOnboarding)) {
-        logger.info('LessonProvider: Triggering refreshLessons on /app/lessons', {
-          userId: user.id,
-          initialized,
-          justCompletedOnboarding,
-          pathname,
-        });
-        refreshLessons()
-          .then((fetchedLessons) => {
-            // Only set initialized to true after the *first* successful fetch for this user session on the lessons page
-            if (!initialized && fetchedLessons.length >= 0) { // Check >= 0 to handle case where 0 lessons is valid
-              setInitialized(true);
-              logger.info('LessonProvider: Initialized on /app/lessons.');
-            }
-          })
-          .catch(() => {
-            /* error handled in refreshLessons/callAction */
-            // Do not set initialized on error
-          });
-      } else {
-        logger.debug('LessonProvider: Skipping refreshLessons', {
-          userId: user?.id,
-          pathname,
-          initialized,
-          justCompletedOnboarding,
-          isOnboardingComplete, // Log current onboarding state
-        });
-      }
-
-      // Reset initialized state if user logs out (regardless of path)
-      if (!user && initialized) {
-          logger.info('LessonProvider: User logged out, resetting initialized state.');
-          setInitialized(false);
-          setLessons([]); // Clear lessons immediately on logout
-      }
-
-    }, [user, isOnboardingComplete, initialized, refreshLessons, pathname]); // Added pathname dependency
-  // --- NEW CODE END ---
 
   const clearError = () => setError(null);
 
@@ -387,7 +333,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
         error,
         initialized,
         clearError,
-        getLessons: refreshLessons,
+        getLessons: refreshLessons, // Expose refresh directly
         getLessonById,
         createLesson,
         updateLesson,
@@ -398,7 +344,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
         setCurrentLesson,
         checkAndGenerateNewLessons,
         processLessonRecording,
-        refreshLessons,
+        refreshLessons, // Keep refreshLessons exposed if needed externally
       }}
     >
       {children}
@@ -413,3 +359,4 @@ export const useLesson = () => {
   }
   return context;
 };
+// --- NEW CODE END ---
