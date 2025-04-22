@@ -14,23 +14,23 @@
 
 ## Phase 1: App Initializer Implementation
 
--   [ ] **Design App Initializer:**
-    -   [ ] Decide on implementation strategy (HOC, Context/Hook, Layout Logic).
-    -   [ ] Define sequence: Auth Check -> Profile Fetch/Create -> Onboarding Check/Create -> Lesson Fetch (conditional).
-    -   [ ] Plan global loading state management.
--   [ ] **Implement Global Loading State:**
-    -   [ ] Create state for app initialization status (`initializing`, `idle`, `error`).
-    -   [ ] Display full-page loading indicator during initialization.
--   [ ] **Integrate Profile Fetch/Create Logic:**
-    -   [ ] Check for authenticated user (`useAuth`).
-    -   [ ] Call `getUserProfileAction` if authenticated.
-    -   [ ] Call `createUserProfileAction` if profile not found (handle null/error from `getUserProfileAction`).
-    -   [ ] Implement error handling for profile fetch/create.
--   [ ] **Integrate Onboarding Check/Create Logic:**
-    -   [ ] Call `getOnboardingAction` / `getStatusAction` after profile is confirmed.
-    -   [ ] Call `createOnboardingAction` if onboarding doesn't exist.
-    -   [ ] Store onboarding status/data.
-    -   [ ] Implement error handling for onboarding fetch/create.
+-   [x] **Design App Initializer:**
+    -   [x] Decide on implementation strategy (HOC, Context/Hook, Layout Logic).
+    -   [x] Define sequence: Auth Check -> Profile Fetch/Create -> Onboarding Check/Create -> Lesson Fetch (conditional).
+    -   [x] Plan global loading state management.
+-   [x] **Implement Global Loading State:**
+    -   [x] Create state for app initialization status (`initializing`, `idle`, `error`).
+    -   [x] Display full-page loading indicator during initialization.
+-   [x] **Integrate Profile Fetch/Create Logic:**
+    -   [x] Check for authenticated user (`useAuth`).
+    -   [x] Call `getUserProfileAction` if authenticated.
+    -   [x] Call `createUserProfileAction` if profile not found (handle null/error from `getUserProfileAction`).
+    -   [x] Implement error handling for profile fetch/create.
+-   [x] **Integrate Onboarding Check/Create Logic:**
+    -   [x] Call `getOnboardingAction` / `getStatusAction` after profile is confirmed.
+    -   [x] Call `createOnboardingAction` if onboarding doesn't exist.
+    -   [x] Store onboarding status/data.
+    -   [x] Implement error handling for onboarding fetch/create.
 -   [ ] **Implement Conditional Redirection:**
     -   [ ] Redirect to `/app/login` if no user.
     -   [ ] Redirect to `/app/onboarding` if user exists but onboarding is needed/incomplete.
