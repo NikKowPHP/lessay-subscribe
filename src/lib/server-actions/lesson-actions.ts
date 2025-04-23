@@ -12,6 +12,7 @@ import AIService from '@/services/ai.service';
 import { GoogleTTS } from '@/services/google-tts.service';
 import { uploadFile } from '@/utils/vercel_blob-upload';
 import { withServerErrorHandling, Result } from './_withErrorHandling'
+import { revalidatePath } from 'next/cache';
 
 // TODO: Convert to container
 function createLessonService() {
@@ -127,7 +128,10 @@ export async function generateNewLessonsAction(): Promise<Result<LessonModel[]>>
 export async function checkAndGenerateNewLessonsAction(): Promise<Result<LessonModel[]>> {
   return withServerErrorHandling(async () => {
     const svc = createLessonService();
-    return await svc.checkAndGenerateNewLessons();
+    const newLessons = await svc.checkAndGenerateNewLessons();
+    // Revalidate the lessons page path to show new lessons
+    revalidatePath('/app/lessons');
+    return newLessons;
   });
 }
 

@@ -484,7 +484,8 @@ export default class LessonService {
       assessmentTopics,
       suggestedTopicsFromAudioAnalysys, // Pass suggested topics from audio analysis
       learningPurposeTopics,
-      languageConfig.proficiencyLevel
+      languageConfig.proficiencyLevel,
+      1
     );
 
     logger.info('Starting lesson generation for topics', { selectedTopics });
@@ -507,7 +508,8 @@ export default class LessonService {
     assessmentTopics: string[],
     audioMetricsTopics: string[],
     learningPurposeTopics: string[],
-    proficiencyLevel: string
+    proficiencyLevel: string,
+    numberOfTopicsToGenerate: number = 3 // Make the quantity configurable, default to 3
   ): string[] {
     // Create a map to score topics based on their source and frequency
     const topicScores: Record<string, number> = {};
@@ -541,14 +543,14 @@ export default class LessonService {
       });
     }
 
-    // Sort topics by score and limit to top 3
+    // Sort topics by score and limit to the desired number of topics
     const sortedTopics = Object.entries(topicScores)
       .sort((a, b) => b[1] - a[1])
       .map(([topic]) => topic)
-      .slice(0, 3);
+      .slice(0, numberOfTopicsToGenerate);
 
-    // If we somehow ended up with less than 3 topics, fill with defaults
-    if (sortedTopics.length < 3) {
+    // If we ended up with less than the desired number of topics, fill with defaults
+    if (sortedTopics.length < numberOfTopicsToGenerate) {
       const defaultTopics = [
         'Daily Conversations',
         'Practical Vocabulary',
@@ -556,7 +558,7 @@ export default class LessonService {
       ];
 
       for (const topic of defaultTopics) {
-        if (sortedTopics.length < 3 && !sortedTopics.includes(topic)) {
+        if (sortedTopics.length < numberOfTopicsToGenerate && !sortedTopics.includes(topic)) {
           sortedTopics.push(topic);
         }
       }
@@ -778,7 +780,7 @@ export default class LessonService {
         logger.warn(
           'Learning progress not found for user, proceeding with lesson metrics only.',
           { userId }
-        );
+       );
       }
     } catch (error) {
       logger.error(
@@ -865,6 +867,7 @@ export default class LessonService {
 
     // Flatten and return all new lessons
     const lessonsNested = await Promise.all(lessonPromises);
+    logger.debug('lessons nested in generate based on progress', lessonsNested);
     return lessonsNested.flat();
   }
 
@@ -873,7 +876,6 @@ export default class LessonService {
     completedLessons: LessonModel[],
     learningProgress: LearningProgressModel | null
   ): {
-    // ... (existing fields) ...
     avgAccuracy: number;
     avgPronunciationScore: number;
     avgGrammarScore: number;

@@ -504,10 +504,10 @@ Generate a complete, single lesson focused on a specific topic, adhering strictl
         *   \`translation\`: Should be \`null\`.
         *   \`expectedAnswer\`: Must be \`null\`.
         *   \`maxAttempts\`: 1.
-    *   **\`new_word\`**: Use to introduce new vocabulary or short phrases.
-        *   \`content\`: The new word/phrase in **${targetLanguage}**.
-        *   \`translation\`: The meaning in **${sourceLanguage}**.
-        *   \`expectedAnswer\`: The *same* word/phrase in **${targetLanguage}** (for repetition/pronunciation practice).
+    *   **\`new_word\`**: Use to introduce new vocabulary within a sentence context.
+        *   \`content\`: A sentence in **${targetLanguage}** that uses the new word/phrase.
+        *   \`translation\`: The meaning of the *sentence* in **${sourceLanguage}**.
+        *   \`expectedAnswer\`: The *same sentence* from the \`content\` field in **${targetLanguage}** (for repetition/pronunciation practice).
         *   \`maxAttempts\`: 3.
     *   **\`practice\` / \`prompt\`**: Use for exercises testing recall, application, or simple production.
         *   \`content\`: The question or instruction, usually in **${sourceLanguage}** (e.g., "How do you say X?", "Translate Y").
@@ -603,9 +603,9 @@ ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
         {
           "stepNumber": 2,
           "type": "new_word",
-          "content": "WordIn${targetLanguage}",
-          "translation": "MeaningIn${sourceLanguage}",
-          "expectedAnswer": "WordIn${targetLanguage}", // Same as content for repetition
+          "content": "Sentence using the new word in ${targetLanguage}.",
+          "translation": "Meaning of the sentence in ${sourceLanguage}.",
+          "expectedAnswer": "Sentence using the new word in ${targetLanguage}.", // Same as content for repetition
           "maxAttempts": 3 // Should be 3 for new_word/practice/prompt
         },
         {
@@ -624,7 +624,7 @@ ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
           "expectedAnswer": null, // MUST be null
           "maxAttempts": 1
         },
-        // ... more steps (5-8 total) ...
+        // ... more steps (13-20 total) ...
         {
           "stepNumber": 15, // Example final step
           "type": "summary",
