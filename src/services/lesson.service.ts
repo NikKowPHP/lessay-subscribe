@@ -41,6 +41,7 @@ import LearningProgressService from './learning-progress.service';
 import { LearningProgressRepository } from '@/repositories/learning-progress.repository';
 
 import { randomUUID } from 'crypto';
+import { createElement } from 'react';
 
 interface LessonGenerationConfig {
   defaultLanguage: string;
@@ -475,10 +476,13 @@ export default class LessonService {
     const learningPurposeTopics = this.getTopicsFromLearningPurpose(
       languageConfig.learningPurpose
     );
+    const suggestedTopicsFromAudioAnalysys = adaptiveRequest?.detailedAudioAnalysis?.suggestedTopics || [];
+
+    logger.debug('suggested topics form audio analysys', suggestedTopicsFromAudioAnalysys);
 
     const selectedTopics = this.selectPrioritizedTopics(
       assessmentTopics,
-      [], // audioMetricsTopics seems unused in original code
+      suggestedTopicsFromAudioAnalysys, // Pass suggested topics from audio analysis
       learningPurposeTopics,
       languageConfig.proficiencyLevel
     );
@@ -737,10 +741,11 @@ export default class LessonService {
   async checkAndGenerateNewLessons(): Promise<LessonModel[]> {
     const currentLessons = await this.lessonRepository.getLessons();
     logger.info('currentLessons', { currentLessons });
-    logger.info('GENERATING NEW LESSONS BASED ON PROGRESS');
     // If there are no lessons or not all are complete, just return
     if (currentLessons.length === 0) throw new Error('No lessons found');
     const allComplete = currentLessons.every((lesson) => lesson.completed);
+
+    logger.info('GENERATING NEW LESSONS BASED ON PROGRESS if neccessary', allComplete);
     if (!allComplete) return [];
 
     const newLessons = await this.generateNewLessonsBasedOnProgress();
@@ -774,7 +779,6 @@ export default class LessonService {
           'Learning progress not found for user, proceeding with lesson metrics only.',
           { userId }
         );
-        // Handle case where progress doesn't exist yet - maybe create a default one?
       }
     } catch (error) {
       logger.error(
@@ -808,6 +812,7 @@ export default class LessonService {
       proficiencyLevel,
       learningProgress
     );
+    logger.debug('focus areas for generating new lessons', focusAreas);
 
     // Generate new lessons for each focus area
     const lessonPromises = focusAreas.map(async (topic) => {
@@ -819,6 +824,7 @@ export default class LessonService {
         learningProgress, // Pass learningProgress
         topic
       );
+      logger.debug('adaptive request to generate a new lesson', adaptiveRequest);
 
       // Generate lesson with adaptive data when available
       const generatedResult = await this.lessonGeneratorService.generateLesson(
@@ -851,6 +857,8 @@ export default class LessonService {
           return this.createLesson(lessonData);
         })
       );
+
+      logger.debug('created lessons', createdLessons);
 
       return createdLessons;
     });

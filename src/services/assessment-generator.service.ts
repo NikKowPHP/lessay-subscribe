@@ -59,18 +59,18 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   ) {
     this.aiService = aiService;
     this.useMock = process.env.NEXT_PUBLIC_MOCK_ASSESSMENT_GENERATOR ===
-    'true';
+      'true';
     this.useAudioGeneratorMock = process.env.NEXT_PUBLIC_MOCK_AUDIO_GENERATOR ===
-    'true';
-    
+      'true';
+
     this.useAudioUploadMock = process.env.NEXT_PUBLIC_USE_AUDIO_UPLOAD_MOCK ===
-    'true';
+      'true';
     // this.useAudioUploadMock = false;
     this.ttsService = ttsService;
     this.uploadFunction = uploadFunction;
-    
-    logger.info('AssessmentGeneratorService initialized', { 
-      useMock: this.useMock, 
+
+    logger.info('AssessmentGeneratorService initialized', {
+      useMock: this.useMock,
       useAudioGeneratorMock: this.useAudioGeneratorMock,
       useAudioUploadMock: this.useAudioUploadMock
     });
@@ -112,12 +112,12 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
         logger.info('Generated prompts for assessment', { prompts });
 
         // aiResponse = await retryOperation(() =>
-          aiResponse = await this.aiService.generateContent(
-            '', // No file URI needed
-            prompts.userPrompt,
-            prompts.systemPrompt,
-            models.gemini_2_0_flash
-          )
+        aiResponse = await this.aiService.generateContent(
+          '', // No file URI needed
+          prompts.userPrompt,
+          prompts.systemPrompt,
+          models.gemini_2_0_flash
+        )
         // );
       }
       // TODO: add validation and try again if it fails
@@ -139,19 +139,34 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
   private getUserResponses(assessmentLesson: AssessmentLesson): { stepId: string; response: string; allResponses: string[] }[] {
     try {
       // Collect all user responses from the steps
+
       const userResponses = assessmentLesson.steps
         .filter(step => step.attempts > 0)
         .map(step => {
-          // Get responses from history if available, otherwise use single response
-          const responseHistory = step.userResponseHistory 
-            ? (JSON.parse(step.userResponseHistory as string) as string[]) 
-            : [];
-            
+
+          let responseHistory: string[] = [];
+          const historyValue = step.userResponseHistory; // This is the JsonValue from Prisma
+
+          if (historyValue !== null && historyValue !== undefined) {
+            if (Array.isArray(historyValue) && historyValue.every(item => typeof item === 'string')) {
+              // It's already a string array, which is the ideal case
+              responseHistory = historyValue;
+            } else if (typeof historyValue === 'string') {
+              // It's a plain string, wrap it in an array
+              responseHistory = [historyValue];
+              logger.warn('userResponseHistory was a plain string, treating as single-item history', { history: historyValue });
+            } else {
+              // It's some other unexpected type (object, number, boolean), treat as empty
+              logger.error('userResponseHistory was an unexpected type', { type: typeof historyValue, history: historyValue });
+              responseHistory = [];
+            }
+          }
+
           // Use the most recent response (either from history or the single field)
-          const latestResponse = responseHistory.length > 0 
-            ? responseHistory[responseHistory.length - 1] 
+          const latestResponse = responseHistory.length > 0
+            ? responseHistory[responseHistory.length - 1]
             : (step.userResponse || '');
-            
+
           return {
             stepId: step.id,
             response: latestResponse,
@@ -160,8 +175,8 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
           };
         });
 
-      logger.info('Collected user responses for analysis', { 
-        responseCount: userResponses.length 
+      logger.info('Collected user responses for analysis', {
+        responseCount: userResponses.length
       });
       return userResponses;
     } catch (error) {
@@ -236,14 +251,14 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
             );
           // Convert base64 string to Buffer
           const audioBuffer = Buffer.from(audioBase64, 'base64');
-          
+
           if (this.useAudioUploadMock) {
             const audioFile = this.createAudioFile(audioBuffer, `content_step_${step.stepNumber}.mp3`);
             step.contentAudioUrl = await this.saveAudioLocally(audioFile, 'lessay/assessmentStep/audio');
           } else {
             step.contentAudioUrl = await this.uploadAudioFile(audioBuffer, 'lessay/assessmentStep/audio');
           }
-          
+
           if (step.expectedAnswer) {
             const answerAudioBase64 =
               await MockAssessmentGeneratorService.generateAudioForStep(
@@ -251,7 +266,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
                 language
               );
             const answerAudioBuffer = Buffer.from(answerAudioBase64, 'base64');
-            
+
             if (this.useAudioUploadMock) {
               const audioFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
               step.expectedAnswerAudioUrl = await this.saveAudioLocally(audioFile, 'lessay/assessmentStep/audio');
@@ -273,12 +288,12 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
           const audioBase64 = await retryOperation(() =>
             this.ttsService.synthesizeSpeech(step.content, sourceLanguage, voice)
           );
-          
+
           // Convert base64 string to Buffer
           const audioBuffer = Buffer.from(audioBase64, 'base64');
-          
+
           let contentAudioUrl: string;
-          
+
           // Check if we should save locally or upload to Vercel Blob
           if (this.useAudioUploadMock) {
             const audioFile = this.createAudioFile(audioBuffer, `content_step_${step.stepNumber}.mp3`);
@@ -286,7 +301,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
           } else {
             contentAudioUrl = await this.uploadAudioFile(audioBuffer, 'lessay/assessmentStep/audio');
           }
-          
+
           logger.info('audio for content saved/uploaded', contentAudioUrl);
           step.contentAudioUrl = contentAudioUrl;
 
@@ -300,12 +315,12 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
                 voice
               )
             );
-            
+
             // Convert base64 string to Buffer
             const answerAudioBuffer = Buffer.from(answerAudioBase64, 'base64');
-            
+
             let answerAudioUrl: string;
-            
+
             // Check if we should save locally or upload to Vercel Blob
             if (this.useAudioUploadMock) {
               const audioFile = this.createAudioFile(answerAudioBuffer, `answer_step_${step.stepNumber}.mp3`);
@@ -313,7 +328,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
             } else {
               answerAudioUrl = await this.uploadAudioFile(answerAudioBuffer, 'lessay/assessmentStep/audio');
             }
-            
+
             logger.info('audio for expectedAnswer saved/uploaded', answerAudioUrl);
             step.expectedAnswerAudioUrl = answerAudioUrl;
           }
@@ -328,28 +343,28 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
       throw error;
     }
   }
-  
+
   // Helper method to save files locally in public folder
   private async saveAudioLocally(file: File, pathPrefix: string): Promise<string> {
     try {
       // Create the directory structure if it doesn't exist
       const publicDir = path.join(process.cwd(), 'public');
       const targetDir = path.join(publicDir, pathPrefix);
-      
+
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
       }
-      
+
       // Generate a unique filename with timestamp
       const timestamp = Date.now();
       const filename = `${timestamp}-${file.name}`;
       const filePath = path.join(targetDir, filename);
-      
+
       // Convert File to Buffer and save
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       fs.writeFileSync(filePath, buffer);
-      
+
       // Return the URL path that can be used in browser
       return `/${pathPrefix}/${filename}`;
     } catch (error) {
@@ -357,14 +372,14 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
       throw error;
     }
   }
-  
+
   // Helper method to create a File from audio buffer
   private createAudioFile(
     audioBuffer: string | Buffer | ArrayBuffer, // Updated to also accept Buffer
     filename: string
   ): File {
     let blob: Blob;
-  
+
     // If the audioBuffer is a Node.js Buffer, convert it to an ArrayBuffer before proceeding.
     if (typeof audioBuffer !== 'string' && Buffer.isBuffer(audioBuffer)) {
       audioBuffer = audioBuffer.buffer.slice(
@@ -372,14 +387,14 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
         audioBuffer.byteOffset + audioBuffer.byteLength
       ) as ArrayBuffer;
     }
-  
+
     logger.info(
       'audioBuffer',
       typeof audioBuffer === 'string'
         ? audioBuffer.slice(0, 100)
         : 'ArrayBuffer received'
     );
-  
+
     if (typeof audioBuffer === 'string') {
       // If it's a base64 string, convert it to a Blob using Buffer
       const base64Data = audioBuffer.includes(',')
@@ -391,7 +406,7 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
       // If it's already an ArrayBuffer
       blob = new Blob([audioBuffer], { type: 'audio/mp3' });
     }
-  
+
     return new File([blob], filename, { type: 'audio/mp3' });
   }
 
@@ -451,8 +466,8 @@ class AssessmentGeneratorService implements IAssessmentGeneratorService {
     sourceLanguage: string,
     proficiencyLevel: string
   ): { userPrompt: string; systemPrompt: string } {
-    
-      const systemPrompt = `## ROLE: Language Assessment Designer (Onboarding & Voice-Focused)
+
+    const systemPrompt = `## ROLE: Language Assessment Designer (Onboarding & Voice-Focused)
 
 You are an expert language assessment designer specializing in creating **initial onboarding assessments** to evaluate proficiency in **${targetLanguage}** for learners whose native language is **${sourceLanguage}**.
 
@@ -553,7 +568,7 @@ Generate a single JSON object containing a \`steps\` array. Each object in the a
   ]
 }
 \`\`\``;
-    
+
     return {
       systemPrompt,
       userPrompt

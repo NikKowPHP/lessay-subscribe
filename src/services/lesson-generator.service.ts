@@ -538,10 +538,9 @@ Generate a complete, single lesson focused on a specific topic, adhering strictl
 ## PROVIDED ADAPTIVE CONTEXT (Use this to personalize the lesson):
 
 ${contexts.overallProgress || 'Overall Progress: No specific data provided.'}
-${
-  contexts.performanceMetrics ||
-  'Recent Performance: No specific data provided.'
-}
+${contexts.performanceMetrics ||
+      'Recent Performance: No specific data provided.'
+      }
 ${contexts.audioAnalysis || 'Audio Analysis: No specific data provided.'}
 ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
 `;
@@ -562,7 +561,7 @@ ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
     **INSTRUCTIONS:**
     
     1.  **Use Adaptive Context:** Personalize the lesson content based on the provided context below. Focus on addressing weaknesses and reinforcing learning goals.
-    2.  **Structure (5-8 Steps):** Follow a standard pedagogical flow:
+    2.  **Structure (15+ Steps):** Follow a standard pedagogical flow:
         *   Start with an \`instruction\` step (intro).
         *   Introduce new concepts/vocabulary using \`new_word\` steps.
         *   Include several \`practice\` or \`prompt\` steps for active recall and application.
@@ -576,13 +575,11 @@ ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
     5.  **Voice-First:** Keep text concise and clear for audio delivery and voice input.
     
     **ADAPTIVE CONTEXT FOR THIS LESSON:**
-    ${
-      contexts.overallProgress || 'Overall Progress: No specific data provided.'
-    }
-    ${
-      contexts.performanceMetrics ||
+    ${contexts.overallProgress || 'Overall Progress: No specific data provided.'
+      }
+    ${contexts.performanceMetrics ||
       'Recent Performance: No specific data provided.'
-    }
+      }
     ${contexts.audioAnalysis || 'Audio Analysis: No specific data provided.'}
     ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
     
@@ -592,7 +589,7 @@ ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
     
     \`\`\`json
     {
-      "focusArea": "Lesson Topic (e.g., ${topic})",
+      "focusArea": "Lesson Topic ",
       "targetSkills": ["Skill 1", "Skill 2", "..."], // List skills addressed
       "steps": [
         {
@@ -629,7 +626,7 @@ ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
         },
         // ... more steps (5-8 total) ...
         {
-          "stepNumber": 7, // Example final step
+          "stepNumber": 15, // Example final step
           "type": "summary",
           "content": "Summary text in ${sourceLanguage}...",
           "translation": null,
@@ -655,12 +652,10 @@ ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
         - Trajectory: ${progress.learningTrajectory}
         - Strengths: ${progress.persistentStrengths.slice(0, 3).join(', ')}
         - Weaknesses: ${progress.persistentWeaknesses.slice(0, 3).join(', ')}
-        - Low Mastery Topics: ${
-          progress.lowMasteryTopics?.slice(0, 3).join(', ') || 'None'
-        }
-        - Vocabulary Needs: ${
-          progress.lowMasteryWordsCount || 0
-        } words needing practice`;
+        - Low Mastery Topics: ${progress.lowMasteryTopics?.slice(0, 3).join(', ') || 'None'
+      }
+        - Vocabulary Needs: ${progress.lowMasteryWordsCount || 0
+      } words needing practice`;
   }
 
   private buildPerformanceContext(
@@ -670,15 +665,13 @@ ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
     return `
         Recent Performance:
         - Accuracy: ${metrics.avgAccuracy?.toFixed(0) || 'N/A'}%
-        - Pronunciation: ${
-          metrics.avgPronunciationScore?.toFixed(0) || 'N/A'
-        }/100
+        - Pronunciation: ${metrics.avgPronunciationScore?.toFixed(0) || 'N/A'
+      }/100
         - Grammar: ${metrics.avgGrammarScore?.toFixed(0) || 'N/A'}/100
         - Vocabulary: ${metrics.avgVocabularyScore?.toFixed(0) || 'N/A'}/100
         - Top Strengths: ${metrics.strengths.slice(0, 2).join(', ') || 'None'}
-        - Top Weaknesses: ${
-          metrics.weaknesses.slice(0, 2).join(', ') || 'None'
-        }`;
+        - Top Weaknesses: ${metrics.weaknesses.slice(0, 2).join(', ') || 'None'
+      }`;
   }
 
   private buildAudioAnalysisContext(
@@ -687,22 +680,20 @@ ${contexts.previousLesson || 'Previous Lesson: No specific data provided.'}
     if (!audio) return '';
     return `
         Audio Analysis:
-        - Problematic Sounds: ${
-          audio.problematicSounds.slice(0, 3).join(', ') || 'None'
-        }
+        - Problematic Sounds: ${audio.problematicSounds.slice(0, 3).join(', ') || 'None'
+      }
         - Grammar Focus: ${audio.grammarRulesToReview
-          .slice(0, 2)
-          .map((r) => `${r.rule} (${r.priority})`)
-          .join(', ')}
+        .slice(0, 2)
+        .map((r) => `${r.rule} (${r.priority})`)
+        .join(', ')}
         - Vocabulary Expansion: ${audio.vocabularyAreasForExpansion
-          .slice(0, 2)
-          .map(
-            (v) => `${v.topic}: ${v.suggestedVocabulary.slice(0, 3).join(', ')}`
-          )
-          .join('; ')}
-        - Suggested Focus: ${
-          audio.nextSkillTargets.slice(0, 2).join(', ') || 'None'
-        }`;
+        .slice(0, 2)
+        .map(
+          (v) => `${v.topic}: ${v.suggestedVocabulary.slice(0, 3).join(', ')}`
+        )
+        .join('; ')}
+        - Suggested Focus: ${audio.nextSkillTargets.slice(0, 2).join(', ') || 'None'
+      }`;
   }
 
   private buildPreviousLessonContext(
