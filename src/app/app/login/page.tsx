@@ -88,7 +88,7 @@ export default function LoginPage() {
           </h2>
           {isRegistering && (
             <p className="mt-2 text-center text-sm text-gray-600">
-              We're creating a new account for you...
+              We&apos;re creating a new account for you...
             </p>
           )}
         </div>
@@ -162,11 +162,10 @@ export default function LoginPage() {
           </div> */}
 
           <div className="text-sm text-center text-gray-600">
-            Enter your email and password to continue. If you don't have an account yet, we'll create one for you.
+            Enter your email and password to continue. If you don&apos;t have an account yet, we&apos;ll create one for you.
           </div>
         </form>
       </div>
     </div>
   )
 }
-// --- NEW CODE END ---

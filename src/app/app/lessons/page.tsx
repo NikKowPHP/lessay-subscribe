@@ -98,7 +98,7 @@ export default function LessonsPage() {
             No Lessons Found Yet
           </h2>
           <p className="text-neutral-10 mb-6">
-            It seems your initial lessons haven't been generated or loaded correctly.
+            It seems your initial lessons haven&apos;t been generated or loaded correctly.
           </p>
           <button
             onClick={() => {

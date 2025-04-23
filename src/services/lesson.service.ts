@@ -407,6 +407,7 @@ export default class LessonService {
         languageConfig.sourceLanguage,
         adaptiveRequest
       );
+      
 
       const lessonItems = Array.isArray(generatedResult.data)
         ? generatedResult.data
@@ -807,6 +808,8 @@ export default class LessonService {
       completedLessons,
       learningProgress
     );
+
+    logger.debug('aggregatedMetrics in generateNewLessonsBasedOnProgress', aggregatedMetrics);
 
     // Determine focus areas based on aggregated metrics
     const focusAreas = this.determineFocusAreas(

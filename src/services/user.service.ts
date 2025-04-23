@@ -22,13 +22,27 @@ export default class UserService {
     }
   }
 
-
   async createUserProfile(profile: Partial<UserProfileModel>): Promise<UserProfileModel> {
+    // Validate that essential fields are present
+    if (!profile.userId || !profile.email) {
+      const missingFields = [];
+      if (!profile.userId) missingFields.push('userId');
+      if (!profile.email) missingFields.push('email');
+      const errorMessage = `UserService.createUserProfile: Missing required fields: ${missingFields.join(', ')}`;
+      logger.error(errorMessage, { profile });
+      throw new Error(errorMessage);
+    }
+
     try {
-      return await this.userRepository.createUserProfile(profile)
+      // Now we know userId and email are strings
+      const profileData = {
+        userId: profile.userId,
+        email: profile.email,
+      };
+      return await this.userRepository.createUserProfile(profileData);
     } catch (error) {
-      logger.error('Error in UserService.createUserProfile:', error)
-      throw error
+      logger.error('Error in UserService.createUserProfile:', error);
+      throw error;
     }
   }
 
@@ -40,7 +54,6 @@ export default class UserService {
       throw error
     }
   }
-
 
   /**
   * Deletes a user's profile and all associated data.
