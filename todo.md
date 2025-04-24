@@ -35,13 +35,15 @@
         -   Option B: Store the key file content in a secure environment variable (e.g., `GOOGLE_CREDENTIALS_BASE64`) and configure the client library to use it.
     -   Update `.env.example` and documentation regarding necessary Google Cloud credentials.
     -   Ensure the key file is added to `.gitignore`.
--   [ ] **Create Backend API Route/Server Action:**
-    -   Create a new API route (e.g., `src/app/api/stt/route.ts`) or a Server Action (`src/lib/server-actions/stt-actions.ts`).
-    -   This endpoint will receive audio data from the client.
--   [ ] **Implement Audio Reception:**
-    -   Modify the backend endpoint/action to accept audio data. This will likely involve handling `multipart/form-data` if sending Blob/File, or potentially raw audio buffers if using another method.
-    -   Parse the incoming request to extract the audio data and necessary metadata (e.g., target language code, sample rate if known).
--   [ ] **Implement Google STT API Call:**
+-   [x] **Create Backend API Route/Server Action:**
+    -   Create a **Server Action** in `src/lib/server-actions/stt-actions.ts`.
+    -   The Server Action should be an exported async function (e.g., `export async function transcribeAudio(formData: FormData)`) that receives audio data and metadata from the client.
+    -   Ensure the Server Action is invoked from the frontend using the framework's server action mechanism (e.g., `formAction`, `use server`, or similar).
+-   [x] **Implement Audio Reception:**
+    -   Update the Server Action to accept audio data via a `FormData` parameter (for `multipart/form-data` uploads).
+    -   Extract the audio file/blob and any metadata (e.g., `targetLanguage`, `sampleRate`) from the `FormData` object.
+    -   Validate the received data and handle errors gracefully.
+-   [x] **Implement Google STT API Call:**
     -   Instantiate the Google Cloud Speech client using the configured credentials.
     -   Configure the `RecognitionConfig`:
         -   Set `encoding` (e.g., `WEBM_OPUS` if using MediaRecorder with default Opus, `LINEAR16` if sending raw PCM).
