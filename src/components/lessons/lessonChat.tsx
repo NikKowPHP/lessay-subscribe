@@ -155,64 +155,59 @@ export default function LessonChat({
         };
 
         mediaRecorderRef.current.onstop = async () => {
-            logger.info('MediaRecorder onstop triggered.');
-            setIsRecording(false);
-
-            if (audioChunksRef.current.length === 0) {
-                 logger.warn('onstop: No audio chunks recorded, likely stopped too quickly or no input.');
-                 setIsProcessingSTT(false);
-                 streamRef.current?.getTracks().forEach(track => track.stop());
-                 streamRef.current = null;
-                 if ((mediaRecorderRef.current as any)?._resolveStopPromise) {
-                     (mediaRecorderRef.current as any)._resolveStopPromise();
-                 }
-                 return;
-            }
-
-            const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-            const recordingDuration = Date.now() - recordingStartTimeRef.current;
-            logger.info(`Recording stopped. Duration: ${recordingDuration}ms, Size: ${audioBlob.size} bytes, Chunks: ${audioChunksRef.current.length}`);
-
-            const filename = `recording-${Date.now()}.webm`;
-            const recordingFile = new File([audioBlob], filename, { type: mimeType }) as RecordingBlob;
-            recordingFile.recordingTime = recordingDuration;
-            recordingFile.recordingSize = audioBlob.size;
-            recordingFile.lastModified = Date.now();
-
-            setFullSessionRecording(recordingFile);
-
-            if (isMockMode) {
-                const url = URL.createObjectURL(audioBlob);
-                setRecordingAudioURL(url);
-                logger.info('Mock mode: Created object URL for playback:', url);
-            }
-
-            if (!isMockMode) {
+          logger.info('MediaRecorder onstop triggered.');
+          setIsRecording(false);
+      
+          if (audioChunksRef.current.length === 0) {
+               logger.warn('onstop: No audio chunks recorded, likely stopped too quickly or no input.');
+               // Ensure STT processing state is reset if it was potentially set before stopping
+               setIsProcessingSTT(false); // Add this line
+               streamRef.current?.getTracks().forEach(track => track.stop());
+               streamRef.current = null;
+               // Resolve promise if exists (from stopRecordingCompletely)
+               if ((mediaRecorderRef.current as any)?._resolveStopPromise) {
+                   (mediaRecorderRef.current as any)._resolveStopPromise();
+               }
+               return;
+          }
+      
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+          const recordingDuration = Date.now() - recordingStartTimeRef.current;
+          logger.info(`Recording stopped. Duration: ${recordingDuration}ms, Size: ${audioBlob.size} bytes, Chunks: ${audioChunksRef.current.length}`);
+      
+          const filename = `recording-${Date.now()}.webm`;
+          const recordingFile = new File([audioBlob], filename, { type: mimeType }) as RecordingBlob;
+          recordingFile.recordingTime = recordingDuration; // Custom property
+          recordingFile.recordingSize = audioBlob.size;    // Custom property
+          // REMOVE THIS LINE: recordingFile.lastModified = Date.now();
+      
+          setFullSessionRecording(recordingFile); // Store the valid File object
+      
+          // --- The rest of the onstop logic for STT ---
+          if (!isMockMode) {
               setIsProcessingSTT(true); // Set processing state
               setFeedback('Processing speech...');
               setUserResponse(''); // Clear previous response visually
+      
               const formData = new FormData();
-              formData.append('audio', recordingFile, filename);
+              formData.append('audio', recordingFile, filename); // Use the valid recordingFile
               formData.append('languageCode', mapLanguageToCode(targetLanguage));
-              // Set sampleRate and encoding based on what MediaRecorder *actually* used
-              const actualMimeType = mediaRecorderRef.current?.mimeType || mimeType; // Use recorder's mimeType if available
-              const encoding = actualMimeType.includes('opus') ? 'WEBM_OPUS' : 'LINEAR16'; // Basic assumption
-              const sampleRateHertz = actualMimeType.includes('opus') ? '48000' : '16000'; // Default sample rates assumption
-              logger.info(`Determined STT params: encoding=${encoding}, sampleRateHertz=${sampleRateHertz} from mimeType=${actualMimeType}`);
-              formData.append('sampleRateHertz', sampleRateHertz); // Pass determined sample rate
-              formData.append('encoding', encoding); // Pass determined encoding
-
+              // Determine encoding/sampleRate (current logic is okay as a starting point)
+              const actualMimeType = mediaRecorderRef.current?.mimeType || mimeType;
+              const encoding = actualMimeType.includes('opus') ? 'WEBM_OPUS' : 'LINEAR16';
+              const sampleRateHertz = actualMimeType.includes('opus') ? '48000' : '16000';
+              formData.append('sampleRateHertz', sampleRateHertz);
+              formData.append('encoding', encoding);
+      
               try {
                   logger.info('Sending audio to STT server action...');
-                  const result = await transcribeAudio(formData); // Receive response
+                  const result = await transcribeAudio(formData); // Call the server action
                   logger.info('STT server action response:', result);
-
-                  // --> Check for error in the response structure <--
-                  if (result.error) throw new Error(result.error); // Handle backend error
-
-                  // --> Handle successful response <--
+      
+                  if (result.error) throw new Error(result.error);
+      
                   if (result.transcript !== undefined) {
-                      setUserResponse(result.transcript); // Update userResponse state
+                      setUserResponse(result.transcript);
                       const currentStep = lesson.steps[currentStepIndex];
                       if (currentStep) {
                           logger.info('Submitting step automatically with STT transcript:', result.transcript);
@@ -222,30 +217,37 @@ export default function LessonChat({
                           logger.warn('No current step found after receiving STT transcript.');
                       }
                   } else {
-                      // Handle case where STT returns success but no transcript
                       logger.warn('STT returned successfully but without a transcript.');
                       setFeedback('Could not understand speech.');
                   }
-              } catch (sttError) { // --> Handle error response <--
+              } catch (sttError) {
                   logger.error('Error during STT processing:', sttError);
                   const errorMsg = sttError instanceof Error ? sttError.message : 'Speech processing failed.';
-                  setFeedback(`Error: ${errorMsg}`); // Update feedback state
-                  toast.error(`Speech recognition failed: ${errorMsg}`); // Show toast error
+                  setFeedback(`Error: ${errorMsg}`);
+                  toast.error(`Speech recognition failed: ${errorMsg}`);
               } finally {
-                  // --> Set processing state to false on success OR error <--
                   setIsProcessingSTT(false);
-                  setFeedback(''); // Clear feedback message after handling
+                  // Consider clearing feedback only on success or after a delay
+                  // setFeedback('');
               }
+          } else { // Handle Mock mode if needed
+              const url = URL.createObjectURL(audioBlob);
+              setRecordingAudioURL(url);
+              logger.info('Mock mode: Created object URL for playback:', url);
           }
-
-            streamRef.current?.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-            logger.info('Stream tracks stopped in onstop.');
-
-            if ((mediaRecorderRef.current as any)?._resolveStopPromise) {
-                (mediaRecorderRef.current as any)._resolveStopPromise();
-            }
-        };
+      
+      
+          // Stop stream tracks
+          streamRef.current?.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+          logger.info('Stream tracks stopped in onstop.');
+      
+          // Resolve promise if exists (from stopRecordingCompletely)
+          if ((mediaRecorderRef.current as any)?._resolveStopPromise) {
+              (mediaRecorderRef.current as any)._resolveStopPromise();
+          }
+      };
+      
 
         mediaRecorderRef.current.onerror = (event) => {
             logger.error('MediaRecorder error:', event);

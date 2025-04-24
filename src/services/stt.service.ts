@@ -1,40 +1,82 @@
-import { SpeechClient } from '@google-cloud/speech';
+import { SpeechClient } from '@google-cloud/speech'; // Keep SpeechClient import
 import { google } from '@google-cloud/speech/build/protos/protos'; // For types
 import logger from '@/utils/logger';
 
-// Ensure GOOGLE_APPLICATION_CREDENTIALS is set in your environment for this to work
-let speechClient: SpeechClient | null = null;
-try {
-    speechClient = new SpeechClient();
-    logger.info('Google SpeechClient initialized successfully.');
-} catch (error) {
-    logger.error('Failed to initialize Google SpeechClient:', error);
-    // Depending on requirements, you might want to throw here or handle initialization failure downstream
-}
-
 export interface SttRequestConfig {
-    audioBytes: Buffer; // Raw audio data
-    encoding: 'WEBM_OPUS' | 'LINEAR16' | string; // Allow string for flexibility, but define common ones
+    audioBytes: Buffer;
+    encoding: 'WEBM_OPUS' | 'LINEAR16' | string;
     sampleRateHertz: number;
-    languageCode: string; // e.g., 'en-US'
+    languageCode: string;
     enableAutomaticPunctuation?: boolean;
-    model?: string; // e.g., 'telephony_short', 'latest_long'
-    // Add other relevant RecognitionConfig fields as needed
+    model?: string;
 }
 
 export interface SttResponse {
     transcript: string;
-    // Add other relevant fields from the response if needed (e.g., confidence, word timings)
 }
 
 export interface ISttService {
     transcribe(config: SttRequestConfig): Promise<SttResponse>;
 }
 
+// --- Initialize Client with Credential Handling ---
+let speechClient: SpeechClient | null = null;
+try {
+    // Define a variable to hold the options object for the constructor
+    let clientOptions: ConstructorParameters<typeof SpeechClient>[0] = {}; // Use ConstructorParameters to get the type
+
+    // Check if running in an environment with Base64 credentials
+    if (process.env.GOOGLE_CREDENTIALS_BASE64) {
+        let decodedCredentials = '';
+        try {
+            logger.info('STT Service: Found GOOGLE_CREDENTIALS_BASE64, decoding...');
+            let rawBase64 = process.env.GOOGLE_CREDENTIALS_BASE64.trim().replace(/%/g, '');
+            decodedCredentials = Buffer.from(rawBase64, 'base64').toString('utf-8');
+
+            const credentials = JSON.parse(decodedCredentials);
+            // Assign credentials directly to the options object
+            clientOptions = { credentials };
+            logger.info('STT Service: Using decoded Base64 credentials.');
+
+        } catch (error) {
+            logger.error(
+                'STT Service: Failed to decode/parse GOOGLE_CREDENTIALS_BASE64. Falling back.',
+                {
+                    base64Start: process.env.GOOGLE_CREDENTIALS_BASE64?.substring(0, 20),
+                    decodedStart: decodedCredentials?.substring(0, 100),
+                    error: (error as Error).message
+                }
+            );
+            // Fallback: clientOptions remains empty, allowing library default behavior
+            clientOptions = {};
+        }
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        logger.info(
+            `STT Service: Using GOOGLE_APPLICATION_CREDENTIALS file path: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`
+        );
+        // No need to set clientOptions, library handles the env var automatically
+    } else {
+        logger.warn(
+            'STT Service: Neither GOOGLE_CREDENTIALS_BASE64 nor GOOGLE_APPLICATION_CREDENTIALS is set. Attempting Application Default Credentials (ADC).'
+        );
+        // No need to set clientOptions, library handles ADC automatically
+    }
+
+    // Instantiate the client with the potentially populated options object
+    speechClient = new SpeechClient(clientOptions);
+    logger.info('Google SpeechClient initialized successfully (using determined credentials).');
+
+} catch (error) {
+    logger.error('Failed to initialize Google SpeechClient:', error);
+    // speechClient remains null, transcribe method will throw
+}
+// --- End Client Initialization ---
+
+
 export class GoogleSttService implements ISttService {
     async transcribe(config: SttRequestConfig): Promise<SttResponse> {
         if (!speechClient) {
-            throw new Error('Google SpeechClient is not initialized. Check credentials and logs.');
+            throw new Error('Google SpeechClient is not initialized. Check credentials (Base64, file path, or ADC) and logs.');
         }
 
         const {
@@ -42,22 +84,20 @@ export class GoogleSttService implements ISttService {
             encoding,
             sampleRateHertz,
             languageCode,
-            enableAutomaticPunctuation = true, // Default to true
-            model = 'default', // Default model, consider 'telephony_short' or others based on use case
+            enableAutomaticPunctuation = true,
+            model = 'default',
         } = config;
 
         const recognitionConfig: google.cloud.speech.v1.IRecognitionConfig = {
-            encoding: encoding as unknown as google.cloud.speech.v1.RecognitionConfig.AudioEncoding, // Cast needed
+            encoding: encoding as unknown as google.cloud.speech.v1.RecognitionConfig.AudioEncoding,
             sampleRateHertz: sampleRateHertz,
             languageCode: languageCode,
             enableAutomaticPunctuation: enableAutomaticPunctuation,
             model: model,
-            // Add other config options here if passed in SttRequestConfig
-            // e.g., enableWordTimeOffsets: config.enableWordTimeOffsets,
         };
 
         const audio = {
-            content: audioBytes.toString('base64'), // API expects base64 encoded string
+            content: audioBytes.toString('base64'),
         };
 
         const requestPayload: google.cloud.speech.v1.IRecognizeRequest = {
@@ -68,17 +108,16 @@ export class GoogleSttService implements ISttService {
         try {
             logger.info(`Sending STT request to Google Cloud for language: ${languageCode}, encoding: ${encoding}, rate: ${sampleRateHertz}`);
             const [response] = await speechClient.recognize(requestPayload);
-            logger.debug('Received STT response from Google Cloud:', response);
+            logger.debug('Received STT response from Google Cloud:', JSON.stringify(response)); // Log full response for debug
 
-            // Process the response to extract the most likely transcript
             const transcription = response.results
                 ?.map(result => result.alternatives?.[0]?.transcript)
-                .filter(transcript => transcript !== undefined) // Filter out undefined transcripts
-                .join('\n') ?? ''; // Join results and provide empty string if null/undefined
+                .filter(transcript => transcript !== undefined)
+                .join('\n') ?? '';
 
             if (!transcription && response.results && response.results.length > 0) {
                 logger.warn('Google STT API returned results but no valid transcriptions found.');
-            } else if (!response.results || !response.results.length) {
+            } else if (!response.results || response.results.length === 0) {
                 logger.warn('Google STT API returned no results.');
             }
 
@@ -86,14 +125,7 @@ export class GoogleSttService implements ISttService {
 
         } catch (error) {
             logger.error('Error calling Google Cloud STT API:', error);
-            // Re-throw or handle specific Google API errors
             throw new Error(`Google STT API request failed: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 }
-
-// Optional: Factory function (similar to auth service)
-// export function getSttService(): ISttService {
-//     // Add logic here to potentially return a mock service based on environment variables
-//     return new GoogleSttService();
-// }
