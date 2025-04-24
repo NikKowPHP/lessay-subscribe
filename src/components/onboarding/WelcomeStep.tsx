@@ -8,7 +8,7 @@ interface WelcomeStepProps {
 export default function WelcomeStep({ onNext, loading }: WelcomeStepProps) {
   console.log('tts quality', process.env.NEXT_PUBLIC_MOCK_TTS_QUALITY);
   return (
-    <div className="text-center animate-fade-in">
+    <div className="text-center animate-fade-in px-4">
       <h2 className="text-3xl font-semibold text-foreground">
         Welcome to Language Learning
       </h2>

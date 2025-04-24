@@ -29,7 +29,7 @@ export default function LearningPurposeStep({
   ]
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in px-4">
       <h2 className="text-3xl font-semibold text-foreground">
         Why Are You Learning {formData.targetLanguage}?
       </h2>

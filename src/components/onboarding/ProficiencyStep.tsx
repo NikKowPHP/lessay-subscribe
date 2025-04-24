@@ -33,7 +33,7 @@ export default function ProficiencyStep({
   ]
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in px-4">
       <h2 className="text-3xl font-semibold text-foreground">
         Your {formData.targetLanguage} Proficiency Level
       </h2>
