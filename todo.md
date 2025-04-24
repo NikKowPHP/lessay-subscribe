@@ -66,15 +66,15 @@
 
 ## Phase 2: Frontend Integration (`LessonChat.tsx`)
 
--   [ ] **Remove Web Speech API Integration:**
+-   [x] **Remove Web Speech API Integration:**
     -   Delete all code related to `window.webkitSpeechRecognition`.
     -   Remove state variables like `isListening`, `recognitionRef`, `realtimeTranscript` (or repurpose `isListening` to mean "processing on server").
     -   Remove event handlers (`onstart`, `onresult`, `onerror`, `onend`).
     -   Remove silence detection logic based on Web Speech API results (`silenceTimerRef` related to `onresult`).
--   [ ] **Adapt Audio Recording Logic:**
+-   [x] **Adapt Audio Recording Logic:**
     -   Keep the `MediaRecorder` setup (`initializeRecorder`, `startRecording`, `pauseRecording`, `stopRecordingCompletely`).
     -   Ensure `mediaRecorder.onstop` correctly gathers the audio chunks into a final `Blob` or `File` object.
--   [ ] **Implement Audio Sending:**
+-   [x] **Implement Audio Sending:**
     -   Modify the `stopRecording` (or a new `sendAudioToServer`) function:
         -   When recording stops (manually or automatically), get the final audio `Blob`/`File`.
         -   Use `fetch` or a library like `axios` to send this audio data to the new backend API endpoint/action created in Phase 1.
