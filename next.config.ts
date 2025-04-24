@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverActions: {
+    bodySizeLimit: '5mb', // Increase the limit (e.g., to 5MB or adjust as needed)
+  },
   env: {
     // Properly configure base URL for all environments
     NEXT_PUBLIC_BASE_URL: process.env.VERCEL_URL
