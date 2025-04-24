@@ -188,43 +188,55 @@ export default function LessonChat({
             }
 
             if (!isMockMode) {
-                setIsProcessingSTT(true);
-                setFeedback('Processing speech...');
-                setUserResponse('');
-                const formData = new FormData();
-                formData.append('audio', recordingFile, filename);
-                formData.append('languageCode', mapLanguageToCode(targetLanguage));
-                formData.append('sampleRateHertz', '48000');
-                formData.append('encoding', 'WEBM_OPUS');
+              setIsProcessingSTT(true); // Set processing state
+              setFeedback('Processing speech...');
+              setUserResponse(''); // Clear previous response visually
+              const formData = new FormData();
+              formData.append('audio', recordingFile, filename);
+              formData.append('languageCode', mapLanguageToCode(targetLanguage));
+              // Set sampleRate and encoding based on what MediaRecorder *actually* used
+              const actualMimeType = mediaRecorderRef.current?.mimeType || mimeType; // Use recorder's mimeType if available
+              const encoding = actualMimeType.includes('opus') ? 'WEBM_OPUS' : 'LINEAR16'; // Basic assumption
+              const sampleRateHertz = actualMimeType.includes('opus') ? '48000' : '16000'; // Default sample rates assumption
+              logger.info(`Determined STT params: encoding=${encoding}, sampleRateHertz=${sampleRateHertz} from mimeType=${actualMimeType}`);
+              formData.append('sampleRateHertz', sampleRateHertz); // Pass determined sample rate
+              formData.append('encoding', encoding); // Pass determined encoding
 
-                try {
-                    logger.info('Sending audio to STT server action...');
-                    const result = await transcribeAudio(formData);
-                    logger.info('STT server action response:', result);
-                    if (result.error) throw new Error(result.error);
-                    if (result.transcript !== undefined) {
-                        setUserResponse(result.transcript);
-                        const currentStep = lesson.steps[currentStepIndex];
-                        if (currentStep) {
-                            logger.info('Submitting step automatically with STT transcript:', result.transcript);
-                            await handleSubmitStep(currentStep, result.transcript);
-                        } else {
-                            logger.warn('No current step found after receiving STT transcript.');
-                        }
-                    } else {
-                        logger.warn('STT returned successfully but without a transcript.');
-                        setFeedback('Could not understand speech.');
-                    }
-                } catch (sttError) {
-                    logger.error('Error during STT processing:', sttError);
-                    const errorMsg = sttError instanceof Error ? sttError.message : 'Speech processing failed.';
-                    setFeedback(`Error: ${errorMsg}`);
-                    toast.error(`Speech recognition failed: ${errorMsg}`);
-                } finally {
-                    setIsProcessingSTT(false);
-                    setFeedback('');
-                }
-            }
+              try {
+                  logger.info('Sending audio to STT server action...');
+                  const result = await transcribeAudio(formData); // Receive response
+                  logger.info('STT server action response:', result);
+
+                  // --> Check for error in the response structure <--
+                  if (result.error) throw new Error(result.error); // Handle backend error
+
+                  // --> Handle successful response <--
+                  if (result.transcript !== undefined) {
+                      setUserResponse(result.transcript); // Update userResponse state
+                      const currentStep = lesson.steps[currentStepIndex];
+                      if (currentStep) {
+                          logger.info('Submitting step automatically with STT transcript:', result.transcript);
+                          // Trigger handleSubmitStep logic
+                          await handleSubmitStep(currentStep, result.transcript);
+                      } else {
+                          logger.warn('No current step found after receiving STT transcript.');
+                      }
+                  } else {
+                      // Handle case where STT returns success but no transcript
+                      logger.warn('STT returned successfully but without a transcript.');
+                      setFeedback('Could not understand speech.');
+                  }
+              } catch (sttError) { // --> Handle error response <--
+                  logger.error('Error during STT processing:', sttError);
+                  const errorMsg = sttError instanceof Error ? sttError.message : 'Speech processing failed.';
+                  setFeedback(`Error: ${errorMsg}`); // Update feedback state
+                  toast.error(`Speech recognition failed: ${errorMsg}`); // Show toast error
+              } finally {
+                  // --> Set processing state to false on success OR error <--
+                  setIsProcessingSTT(false);
+                  setFeedback(''); // Clear feedback message after handling
+              }
+          }
 
             streamRef.current?.getTracks().forEach(track => track.stop());
             streamRef.current = null;

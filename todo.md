@@ -80,7 +80,7 @@
         -   Use `fetch` or a library like `axios` to send this audio data to the new backend API endpoint/action created in Phase 1.
         -   Use `FormData` to package the audio blob/file along with metadata (target language code).
         -   Set `isProcessing` state to true while waiting for the server response.
--   [ ] **Handle Server Response:**
+-   [x] **Handle Server Response:**
     -   Receive the transcript response from the backend endpoint/action.
     -   On successful response:
         -   Update the `userResponse` state with the received transcript.
