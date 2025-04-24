@@ -15,134 +15,143 @@
 
 
 
+Okay, here is a detailed TODO list for migrating the current batch Google STT implementation to a real-time streaming approach using WebSockets.
 
+```markdown
+# TODO: Implement Real-Time Speech Recognition using Google Streaming STT
 
-# TODO: Integrate Google Cloud Speech-to-Text v1 API into LessonChat
-
-**Goal:** Replace the browser's Web Speech API (`webkitSpeechRecognition`) with the server-processed Google Cloud Speech-to-Text v1 API for more reliable and consistent speech recognition across browsers and potentially better accuracy.
+**Goal:** Replace the current batch STT (record -> stop -> send -> transcribe -> result) with a real-time streaming approach where audio is sent as it's recorded, and transcripts (interim and final) are received progressively.
 
 ---
 
-## Phase 1: Backend Setup (API Endpoint / Server Action)
+## Phase 1: Backend Setup (WebSocket Server & Streaming STT Integration)
 
--   [x] **Install Google Cloud Speech Client Library:**
-    -   Add `@google-cloud/speech` to project dependencies (`npm install @google-cloud/speech` or equivalent).
--   [x] **Set up Google Cloud Authentication:**
-    -   Create a Google Cloud Service Account with the "Cloud Speech API User" role.
-    -   Download the service account key JSON file.
-    -   **Securely** store the credentials:
-        -   Option A: Set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to the path of the key file (preferred for local/server environments).
-        -   Option B: Store the key file content in a secure environment variable (e.g., `GOOGLE_CREDENTIALS_BASE64`) and configure the client library to use it.
-    -   Update `.env.example` and documentation regarding necessary Google Cloud credentials.
-    -   Ensure the key file is added to `.gitignore`.
--   [x] **Create Backend API Route/Server Action:**
-    -   Create a **Server Action** in `src/lib/server-actions/stt-actions.ts`.
-    -   The Server Action should be an exported async function (e.g., `export async function transcribeAudio(formData: FormData)`) that receives audio data and metadata from the client.
-    -   Ensure the Server Action is invoked from the frontend using the framework's server action mechanism (e.g., `formAction`, `use server`, or similar).
--   [x] **Implement Audio Reception:**
-    -   Update the Server Action to accept audio data via a `FormData` parameter (for `multipart/form-data` uploads).
-    -   Extract the audio file/blob and any metadata (e.g., `targetLanguage`, `sampleRate`) from the `FormData` object.
-    -   Validate the received data and handle errors gracefully.
--   [x] **Implement Google STT API Call:**
-    -   Instantiate the Google Cloud Speech client using the configured credentials.
-    -   Configure the `RecognitionConfig`:
-        -   Set `encoding` (e.g., `WEBM_OPUS` if using MediaRecorder with default Opus, `LINEAR16` if sending raw PCM).
-        -   Set `sampleRateHertz` (e.g., 48000 for Opus, 16000 or higher for LINEAR16). **Crucial for accuracy.**
-        -   Set `languageCode` based on the `targetLanguage` passed from the client.
-        -   Enable `automaticPunctuation`.
-        -   Consider `model` selection (e.g., `telephony`, `latest_long`, `medical_dictation` - `default` or `telephony_short` might be suitable).
-        -   Set `enableWordTimeOffsets` or `enableWordConfidence` if needed for advanced feedback later.
-    -   Configure the `RecognitionAudio`:
-        -   Pass the received audio `content` (as Base64 string or Buffer).
-    -   Make the `recognize` API call to Google Cloud STT.
--   [x] **Handle API Response:**
-    -   Process the response from Google Cloud STT.
-    -   Extract the transcript from the `results`. Handle cases with multiple results or alternatives if necessary (usually take the first result's first alternative with highest confidence).
-    -   Handle potential errors returned by the Google API (e.g., authentication errors, quota limits, invalid arguments).
--   [x] **Return Transcript to Client:**
-    -   Send the extracted transcript (or an error message) back to the client in a structured JSON response.
--   [x] **Add Authentication/Authorization:**
-    -   Secure the backend endpoint/action. Ensure only authenticated users associated with the lesson can submit STT requests. Use Supabase session validation.
+-   [ ] **Choose WebSocket Library:**
+    -   Decide between `ws` (lower-level) or `socket.io` (more features). (`ws` is often sufficient).
+    -   Install the chosen library (`npm install ws @types/ws` or `npm install socket.io`).
+-   [ ] **Set up WebSocket Server:**
+    -   **Integration Strategy:** Determine how the WebSocket server runs alongside Next.js (e.g., custom server setup, separate process, Vercel Edge function limitations - research required for deployment). *Initial development might use a simple Node.js server alongside the Next.js dev server.*
+    -   **Server Initialization:** Create a basic WebSocket server instance (`new WebSocket.Server(...)`).
+    -   **Connection Handling (`wss.on('connection', ...)`):**
+        -   Establish logic for when a new client connects.
+        -   Implement authentication/authorization (e.g., verify a token sent during handshake or initial message). Associate the WebSocket connection with the authenticated user ID.
+        -   Prepare to manage state per connection (STT stream, config).
+-   [ ] **Google Streaming STT Integration:**
+    -   **Instantiate `SpeechClient`:** Reuse or adapt existing instantiation from `stt.service.ts`.
+    -   **Create STT Stream per Connection:** For *each* new WebSocket connection:
+        -   Call `speechClient.streamingRecognize()` to create a new duplex stream for Google STT.
+        -   Handle potential errors during stream creation.
+    -   **Configure `StreamingRecognitionConfig`:**
+        -   Receive necessary config from the client on connection or first message (e.g., `languageCode`, potentially `sampleRateHertz`, `encoding`).
+        -   Set `interimResults: true` to receive real-time updates.
+        -   Set `singleUtterance: false` (usually default) to allow continuous speech.
+        -   Set `enableAutomaticPunctuation: true`.
+        -   Consider `model` selection.
+    -   **Send Initial Config to Google:** Write the `StreamingRecognitionConfig` to the Google STT stream immediately after establishing it.
+    -   **Handle Incoming Audio Chunks (WebSocket `onmessage`):**
+        -   Define a message format (e.g., JSON or raw Buffer) for receiving audio chunks from the client.
+        -   When an audio chunk message arrives via WebSocket:
+            -   Forward the raw audio data (`audioContent`) to the corresponding Google STT stream (`googleStream.write({ audioContent: ... })`).
+            -   Handle potential backpressure or errors from `googleStream.write`.
+    -   **Handle Transcripts from Google (Google Stream `ondata`):**
+        -   Listen for the `'data'` event on the Google STT stream.
+        -   Process the received `StreamingRecognitionResult`.
+        -   Distinguish between `isFinal: true` and `isFinal: false` (interim) results.
+        -   Extract the transcript text (`result.alternatives[0].transcript`).
+        -   Send the transcript (both interim and final) back to the *correct* client over its WebSocket connection. Define a message format (e.g., `{ type: 'interim' | 'final', transcript: '...' }`).
+    -   **Handle Google Stream Errors (Google Stream `onerror`):**
+        -   Listen for the `'error'` event on the Google STT stream.
+        -   Log the error.
+        -   Send an error message back to the client via WebSocket.
+        -   Potentially close the WebSocket connection or the Google stream.
+    -   **Handle Connection Closure (WebSocket `onclose`, Google Stream `onend`):**
+        -   When a WebSocket connection closes (client disconnects):
+            -   Ensure the corresponding Google STT stream is properly closed (`googleStream.end()`).
+            -   Clean up any associated server-side resources/state.
+        -   Handle the `'end'` event from the Google stream.
+-   [ ] **State Management:**
+    -   Implement a mechanism to map WebSocket connections to their respective Google STT streams and user context (e.g., using a `Map` with connection IDs or user IDs as keys).
+-   [ ] **Deployment Considerations:**
+    -   **Vercel:** Research limitations of Serverless/Edge functions for persistent WebSocket connections. May require a different hosting solution or architecture (e.g., Vercel Hobby with a custom server, or a dedicated WebSocket provider).
+    -   **Other:** Configure environment (port, security) for the WebSocket server.
 
 ## Phase 2: Frontend Integration (`LessonChat.tsx`)
 
--   [x] **Remove Web Speech API Integration:**
-    -   Delete all code related to `window.webkitSpeechRecognition`.
-    -   Remove state variables like `isListening`, `recognitionRef`, `realtimeTranscript` (or repurpose `isListening` to mean "processing on server").
-    -   Remove event handlers (`onstart`, `onresult`, `onerror`, `onend`).
-    -   Remove silence detection logic based on Web Speech API results (`silenceTimerRef` related to `onresult`).
--   [x] **Adapt Audio Recording Logic:**
-    -   Keep the `MediaRecorder` setup (`initializeRecorder`, `startRecording`, `pauseRecording`, `stopRecordingCompletely`).
-    -   Ensure `mediaRecorder.onstop` correctly gathers the audio chunks into a final `Blob` or `File` object.
--   [x] **Implement Audio Sending:**
-    -   Modify the `stopRecording` (or a new `sendAudioToServer`) function:
-        -   When recording stops (manually or automatically), get the final audio `Blob`/`File`.
-        -   Use `fetch` or a library like `axios` to send this audio data to the new backend API endpoint/action created in Phase 1.
-        -   Use `FormData` to package the audio blob/file along with metadata (target language code).
-        -   Set `isProcessing` state to true while waiting for the server response.
--   [x] **Handle Server Response:**
-    -   Receive the transcript response from the backend endpoint/action.
-    -   On successful response:
-        -   Update the `userResponse` state with the received transcript.
-        -   Trigger the `handleSubmitStep` logic using the received transcript.
-        -   Set `isProcessing` state to false.
-    -   On error response:
-        -   Display an appropriate error message to the user (update `feedback` state or use toast).
-        -   Set `isProcessing` state to false.
--   [ ] **Update UI State and Controls:**
-    -   Modify the `ChatInput` component and the main microphone button logic:
-        -   The button should now toggle `startRecording` and `stopRecording`.
-        -   While recording, the button could show a "Stop Recording" state.
-        -   After stopping and sending, display a "Processing..." state (using `isProcessing`). Disable the button during processing.
-        -   Remove the visual "Listening..." indicator tied to the old Web Speech API state.
-        -   The text area (`userResponse`) should primarily display the *final* transcript received from the server, not real-time updates. Consider clearing it before starting a new recording.
--   [ ] **Refine Silence Detection (Client-Side):**
-    -   The previous silence detection relied on `onresult`. A new approach is needed if auto-submission after pauses is desired.
-    -   Option A (Simpler): Remove auto-submission. User explicitly clicks "Stop Recording" or a "Submit" button after speaking.
-    -   Option B (More Complex): Implement client-side silence detection using `AudioContext` and `AnalyserNode` to monitor the input stream *during* recording and call `stopRecording` automatically after a pause. This adds significant complexity. Start with Option A.
+-   [ ] **WebSocket Client Implementation:**
+    -   **Establish Connection:**
+        -   Create a WebSocket connection (`new WebSocket(...)`) pointing to your backend WebSocket server URL. Manage the connection lifecycle (e.g., in a `useEffect` hook, connect on mount/when needed, disconnect on unmount).
+        -   Handle potential connection errors.
+    -   **`onopen` Handler:**
+        -   Once connected, send an initial message containing necessary configuration (language code, user auth token if needed).
+    -   **`onmessage` Handler:**
+        -   Listen for messages from the server (interim transcripts, final transcripts, errors).
+        -   Update component state based on received messages (e.g., update displayed transcript).
+        -   Trigger `handleSubmitStep` *only* when a *final* transcript is received.
+    -   **`onerror` Handler:**
+        -   Handle WebSocket errors (e.g., display message to user, attempt reconnection).
+    -   **`onclose` Handler:**
+        -   Handle WebSocket closure (e.g., update UI state, cleanup).
+-   [ ] **Adapt `MediaRecorder` Logic:**
+    -   **`ondataavailable`:**
+        -   Instead of pushing to `audioChunksRef`, directly send the `event.data` Blob over the *active* WebSocket connection.
+        -   Consider chunk size (`timeslice` option in `mediaRecorder.start(timeslice)`) to send data frequently (e.g., every 100-250ms).
+        -   Handle potential need to convert Blob to ArrayBuffer or Base64 before sending, depending on server expectations.
+    -   **`startRecording`:**
+        -   Initiate `MediaRecorder.start(timeslice)`.
+        -   Ensure WebSocket connection is established *before* starting.
+        -   Update UI state to "Recording".
+    -   **`stopRecording`:**
+        -   Call `mediaRecorder.stop()`.
+        -   Send an "end of stream" message to the WebSocket server *if* your protocol requires it (Google STT often detects end of audio automatically, but explicit signal might be good).
+        -   Update UI state (e.g., "Waiting for final transcript...").
+        -   *Do not* process the final blob locally or send it in batch anymore.
+-   [ ] **Update UI State & Controls:**
+    -   **Microphone Button:** Logic changes:
+        -   Idle -> Click -> Connecting WebSocket (show spinner?) -> Connected -> Start MediaRecorder & Send Config -> Recording (show stop/pause icon)
+        -   Recording -> Click -> Stop MediaRecorder & Send End Signal (optional) -> Waiting for Final Transcript (show processing/disabled state?) -> Idle
+    -   **Transcript Display:** Update the text area (`userResponse` state or a new `displayedTranscript` state) with *interim* results for immediate feedback. Overwrite with *final* results.
+    -   **Submission:** Remove manual submission triggers (like silence detection based on Web Speech or Enter key). Submission is now implicitly triggered by the server sending a *final* transcript.
+    -   **Feedback Area:** Display connection status, interim results, final results, and error messages clearly.
+-   [ ] **Remove Batch STT Call:** Delete the code that calls the `transcribeAudio` server action from `onstop`.
 
 ## Phase 3: Configuration & Cleanup
 
 -   [ ] **Environment Variables:**
-    -   Ensure `GOOGLE_APPLICATION_CREDENTIALS` or `GOOGLE_CREDENTIALS_BASE64` is configured correctly in all relevant environments (local, Vercel).
+    -   Add `NEXT_PUBLIC_WEBSOCKET_URL` (or similar) for the client to connect to.
+    -   Update backend environment variables if needed (e.g., WebSocket port).
+    -   Ensure Google Cloud credentials setup is documented and working for the chosen backend deployment strategy.
 -   [ ] **Refactor & Cleanup:**
-    -   Remove unused state variables, refs, and functions related to Web Speech API.
-    -   Ensure consistent error handling and user feedback.
-    -   Review component props and context interactions.
--   [ ] **Documentation:**
-    -   Update any internal documentation regarding the STT implementation change and necessary setup (Google Cloud).
+    -   Remove the `transcribeAudio` server action (or repurpose if still needed for other features).
+    -   Clean up `LessonChat.tsx`: remove unused state (`isProcessingSTT`, maybe `audioChunksRef` if not needed elsewhere), simplify logic related to batch submission.
+    -   Ensure robust error handling on both client and server for WebSocket issues and STT API errors.
+-   [ ] **Documentation:** Update internal docs about the real-time architecture, WebSocket setup, and deployment considerations.
 
 ## Phase 4: Testing
 
--   [ ] **Backend Endpoint/Action Tests:**
-    -   Write unit/integration tests for the API route/server action.
-    -   Mock the Google Cloud Speech client.
-    -   Test successful transcript generation.
-    -   Test handling of invalid audio data.
-    -   Test handling of Google API errors (e.g., auth, quota).
-    -   Test authentication/authorization logic.
--   [ ] **Frontend Component Tests (`LessonChat.tsx`):**
-    -   Update existing tests or write new ones using `@testing-library/react`.
-    -   Mock `fetch` calls to the backend STT endpoint.
-    -   Test starting and stopping recording.
-    -   Test the "Processing..." state update.
-    -   Test handling of successful transcript responses (updating `userResponse`, calling `handleSubmitStep`).
-    -   Test handling of error responses from the backend.
-    -   Verify UI changes (button states, feedback messages).
--   [ ] **End-to-End Testing (Manual/Automated):**
-    -   Perform manual tests in different browsers to ensure recording and STT processing work correctly.
-    -   Consider automated E2E tests if feasible.
+-   [ ] **Backend WebSocket Server Tests:**
+    -   Unit/Integration tests using a mock WebSocket client.
+    -   Mock the Google `SpeechClient` and its streaming methods.
+    -   Test connection lifecycle (connect, auth, disconnect).
+    -   Test message routing (audio chunks -> Google, Google transcripts -> client).
+    -   Test Google STT stream management (creation, error handling, closure).
+    -   Test error propagation back to the client.
+-   [ ] **Frontend `LessonChat.tsx` Tests:**
+    -   Use `@testing-library/react`.
+    -   Mock the global `WebSocket` object to simulate server interactions.
+    -   Test establishing connection (`onopen`).
+    -   Test sending audio data chunks via `mediaRecorder.ondataavailable`.
+    -   Test receiving and displaying interim/final transcripts (`onmessage`).
+    -   Test triggering `handleSubmitStep` on final transcript.
+    -   Test UI state updates (button text/disabled state, feedback messages).
+    -   Test error handling (`onerror`, `onclose`).
+-   [ ] **End-to-End Testing:** Crucial for verifying the real-time flow. Test in various network conditions if possible.
 
 ## Phase 5: Potential Enhancements (Future TODOs)
 
--   [ ] **Implement Streaming Recognition:**
-    -   Replace the batch POST request with a WebSocket connection.
-    -   Stream audio chunks from `MediaRecorder` (`ondataavailable`) to the backend.
-    -   Backend streams audio to Google STT Streaming API.
-    -   Backend sends back interim and final transcripts via WebSocket.
-    -   Update frontend to display interim results for better UX.
--   [ ] **Improve Error Handling:** Provide more specific feedback based on Google API error codes.
--   [ ] **Optimize Audio Format/Encoding:** Experiment with different encodings (`LINEAR16`, `FLAC`) and sample rates for cost/accuracy balance.
--   [ ] **Advanced Configuration:** Allow users to select specific recognition models or features if applicable.
+-   [ ] Implement more sophisticated client-side silence detection (using `AudioContext`) to automatically stop recording/signal end-of-speech if Google's endpointing isn't sufficient.
+-   [ ] Add robust WebSocket reconnection logic on the client.
+-   [ ] Display word timings or confidence scores if enabled in Google STT config and sent back from the server.
+-   [ ] Optimize audio chunk size and sending frequency.
+-   [ ] Investigate alternative deployment strategies for WebSockets on Vercel (e.g., third-party services like Pusher, Ably, or managing a separate persistent server).
 
----
+```
