@@ -136,13 +136,13 @@ export async function checkAndGenerateNewLessonsAction(): Promise<Result<LessonM
 }
 
 export async function processLessonRecordingAction(
-  sessionRecording: Blob,
-  recordingTime: number,
-  recordingSize: number,
+  sessionRecording: Blob | null, // <-- Allow null
+  recordingTime: number | null,  // <-- Allow null
+  recordingSize: number | null,  // <-- Allow null
   lesson: LessonModel
 ): Promise<Result<LessonModel>> {
   return withServerErrorHandling(async () => {
-    validateLessonRecording(sessionRecording, recordingTime, recordingSize, lesson);
+    // validateLessonRecording(sessionRecording, recordingTime, recordingSize, lesson);
     const svc = createLessonService();
     return await svc.processLessonRecording(
       sessionRecording,
@@ -154,14 +154,12 @@ export async function processLessonRecordingAction(
 }
 
 function validateLessonRecording(
-  sessionRecording: Blob,
-  recordingTime: number,
-  recordingSize: number,
+  sessionRecording: Blob | null,
+  recordingTime: number | null,
+  recordingSize: number ,
   lesson: LessonModel
 ) {
-  if (!sessionRecording) {
-    throw new Error('No session recording provided');
-  }
+
   if (!lesson) {
     throw new Error('No lesson provided');
   }

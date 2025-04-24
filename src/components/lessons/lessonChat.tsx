@@ -109,68 +109,68 @@ export default function LessonChat({
   const [lessonReadyToComplete, setLessonReadyToComplete] = useState(false);
   const pathname = usePathname();
   const showBackButton = pathname.includes('/lessons');
-  const stopRecordingCompletely = useCallback(() => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== 'inactive'
-    ) {
-      try {
-        mediaRecorderRef.current.stop(); // onstop handler will set state and process blob
-        logger.info('Recording stopped completely triggered');
-        // setIsRecording(false); // Let onstop handle this
-      } catch (error) {
-        logger.error('Error stopping recording completely:', error);
-        setIsRecording(false); // Ensure state is correct on error
-      }
-    }
-  }, []);
+  // const stopRecordingCompletely = useCallback(() => {
+  //   if (
+  //     mediaRecorderRef.current &&
+  //     mediaRecorderRef.current.state !== 'inactive'
+  //   ) {
+  //     try {
+  //       mediaRecorderRef.current.stop(); // onstop handler will set state and process blob
+  //       logger.info('Recording stopped completely triggered');
+  //       // setIsRecording(false); // Let onstop handle this
+  //     } catch (error) {
+  //       logger.error('Error stopping recording completely:', error);
+  //       // setIsRecording(false); // Ensure state is correct on error
+  //     }
+  //   }
+  // }, []);
 
   // Start session recording function
-  const startRecording = useCallback(() => {
-    if (!mediaRecorderRef.current || isRecording) {
-      logger.warn('Media recorder not initialized or already recording');
-      return;
-    }
-    try {
-      if (mediaRecorderRef.current.state === 'inactive') {
-        recordingStartTimeRef.current = Date.now();
-        recordingPausedTimeRef.current = 0; // Reset pause time on new start
-        audioChunksRef.current = []; // Clear previous chunks
-        mediaRecorderRef.current.start(1000); // Collect data every second
-        setIsRecording(true);
-        logger.info('Recording started');
-      } else if (mediaRecorderRef.current.state === 'paused') {
-        mediaRecorderRef.current.resume();
-        // Adjust start time based on pause duration
-        recordingStartTimeRef.current +=
-          Date.now() - recordingPausedTimeRef.current;
-        recordingPausedTimeRef.current = 0; // Reset pause time
-        setIsRecording(true);
-        logger.info('Recording resumed');
-      }
-    } catch (error) {
-      logger.error('Error starting recording:', error);
-      setIsRecording(false);
-    }
-  }, [isRecording]);
+  // const startRecording = useCallback(() => {
+  //   if (!mediaRecorderRef.current || isRecording) {
+  //     logger.warn('Media recorder not initialized or already recording');
+  //     return;
+  //   }
+  //   try {
+  //     if (mediaRecorderRef.current.state === 'inactive') {
+  //       recordingStartTimeRef.current = Date.now();
+  //       recordingPausedTimeRef.current = 0; // Reset pause time on new start
+  //       audioChunksRef.current = []; // Clear previous chunks
+  //       mediaRecorderRef.current.start(1000); // Collect data every second
+  //       setIsRecording(true);
+  //       logger.info('Recording started');
+  //     } else if (mediaRecorderRef.current.state === 'paused') {
+  //       mediaRecorderRef.current.resume();
+  //       // Adjust start time based on pause duration
+  //       recordingStartTimeRef.current +=
+  //         Date.now() - recordingPausedTimeRef.current;
+  //       recordingPausedTimeRef.current = 0; // Reset pause time
+  //       setIsRecording(true);
+  //       logger.info('Recording resumed');
+  //     }
+  //   } catch (error) {
+  //     logger.error('Error starting recording:', error);
+  //     setIsRecording(false);
+  //   }
+  // }, [isRecording]);
 
   // Pause recording function
-  const pauseRecording = useCallback(() => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state === 'recording'
-    ) {
-      try {
-        mediaRecorderRef.current.pause();
-        recordingPausedTimeRef.current = Date.now(); // Record pause time
-        setIsRecording(false);
-        logger.info('Recording paused');
-      } catch (error) {
-        logger.error('Error pausing recording:', error);
-        setIsRecording(false); // Ensure state is correct on error
-      }
-    }
-  }, []);
+  // const pauseRecording = useCallback(() => {
+  //   if (
+  //     mediaRecorderRef.current &&
+  //     mediaRecorderRef.current.state === 'recording'
+  //   ) {
+  //     try {
+  //       mediaRecorderRef.current.pause();
+  //       recordingPausedTimeRef.current = Date.now(); // Record pause time
+  //       setIsRecording(false);
+  //       logger.info('Recording paused');
+  //     } catch (error) {
+  //       logger.error('Error pausing recording:', error);
+  //       setIsRecording(false); // Ensure state is correct on error
+  //     }
+  //   }
+  // }, []);
 
   const pauseListening = useCallback(() => {
     if (!recognitionRef.current || !isListening) return;
@@ -202,9 +202,9 @@ export default function LessonChat({
         if (isListening) {
           pauseListening();
         }
-        if (isRecording) {
-          pauseRecording();
-        }
+        // if (isRecording) {
+        //   pauseRecording();
+        // }
 
         // Handle instruction, summary, feedback steps (Auto-advance logic)
         if (
@@ -247,7 +247,7 @@ export default function LessonChat({
           } else {
             // Last step was non-interactive, complete the lesson
             logger.info('Last step was non-interactive. Completing lesson.');
-            stopRecordingCompletely(); // Stop recording fully
+            // stopRecordingCompletely(); // Stop recording fully
             setLessonCompleted(true);
             // Handle mock mode completion button display
             if (isMockMode) {
@@ -338,7 +338,7 @@ export default function LessonChat({
           logger.info(
             'Last step was interactive and correct. Completing lesson.'
           );
-          stopRecordingCompletely(); // Stop recording fully
+          // stopRecordingCompletely(); // Stop recording fully
           setLessonCompleted(true);
 
           // Handle mock mode completion button display
@@ -357,7 +357,7 @@ export default function LessonChat({
         logger.error('LessonChat: Error in handleSubmitStep', { error });
         // Ensure listening/recording state is reset on error
         if (isListening) pauseListening();
-        if (isRecording) pauseRecording(); // Use pause instead of stop completely on error? Maybe pause is better.
+        // if (isRecording) pauseRecording(); // Use pause instead of stop completely on error? Maybe pause is better.
       }
     },
     [
@@ -368,8 +368,8 @@ export default function LessonChat({
       isListening,
       isRecording,
       pauseListening,
-      pauseRecording,
-      stopRecordingCompletely,
+      // pauseRecording,
+      // stopRecordingCompletely,
       isMockMode,
       // Add other state setters used inside if they aren't stable refs/dispatchers
       setChatHistory,
@@ -524,9 +524,9 @@ export default function LessonChat({
               if (!isListening) {
                 startListening();
               }
-              if (!isRecording) {
-                startRecording();
-              }
+              // if (!isRecording) {
+              //   startRecording();
+              // }
             } else {
               logger.info(
                 'Next step is non-interactive. Not starting listening/recording automatically.'
@@ -587,7 +587,7 @@ export default function LessonChat({
     isListening, // To check if already listening
     isRecording, // To check if already recording
     startListening, // Function ref
-    startRecording, // Function ref
+    // startRecording, // Function ref
     handleSubmitStep, // Function ref for auto-advance
     userResponse, // Needed for handleSubmitStep
     // Removed pauseListening/pauseRecording as they aren't explicitly called here now
@@ -833,113 +833,113 @@ export default function LessonChat({
   }, [userResponse, isListening]);
 
   // Update the toggleListening function to handle silence timer
-  useEffect(() => {
-    const initializeRecorder = async () => {
-      try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          logger.error('Media devices API not supported in this browser');
-          return;
-        }
+  // useEffect(() => {
+  //   const initializeRecorder = async () => {
+  //     try {
+  //       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  //         logger.error('Media devices API not supported in this browser');
+  //         return;
+  //       }
 
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-          video: false,
-        });
+  //       const stream = await navigator.mediaDevices.getUserMedia({
+  //         audio: {
+  //           echoCancellation: true,
+  //           noiseSuppression: true,
+  //           autoGainControl: true,
+  //         },
+  //         video: false,
+  //       });
 
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm')
-          ? 'audio/webm'
-          : 'audio/mp4';
+  //       const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+  //         ? 'audio/webm'
+  //         : 'audio/mp4';
 
-        mediaRecorderRef.current = new MediaRecorder(stream, {
-          mimeType: mimeType,
-        });
+  //       mediaRecorderRef.current = new MediaRecorder(stream, {
+  //         mimeType: mimeType,
+  //       });
 
-        audioChunksRef.current = [];
+  //       audioChunksRef.current = [];
 
-        mediaRecorderRef.current.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
+  //       mediaRecorderRef.current.ondataavailable = (event) => {
+  //         if (event.data.size > 0) {
+  //           audioChunksRef.current.push(event.data);
+  //         }
+  //       };
 
-        mediaRecorderRef.current.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, {
-            type: mimeType,
-          });
+  //       mediaRecorderRef.current.onstop = () => {
+  //         const audioBlob = new Blob(audioChunksRef.current, {
+  //           type: mimeType,
+  //         });
 
-          // Calculate recording metrics
-          const recordingDuration =
-            Date.now() -
-            recordingStartTimeRef.current -
-            (recordingPausedTimeRef.current || 0);
-          const recordingSize = audioBlob.size;
+  //         // Calculate recording metrics
+  //         const recordingDuration =
+  //           Date.now() -
+  //           recordingStartTimeRef.current -
+  //           (recordingPausedTimeRef.current || 0);
+  //         const recordingSize = audioBlob.size;
 
-          // Create a new blob with the metadata
-          const recordingWithMetadata = new Blob([audioBlob], {
-            type: mimeType,
-          }) as RecordingBlob;
+  //         // Create a new blob with the metadata
+  //         const recordingWithMetadata = new Blob([audioBlob], {
+  //           type: mimeType,
+  //         }) as RecordingBlob;
 
-          // Add metadata properties
-          recordingWithMetadata.lastModified = Date.now();
-          recordingWithMetadata.recordingTime = recordingDuration;
-          recordingWithMetadata.recordingSize = recordingSize;
+  //         // Add metadata properties
+  //         recordingWithMetadata.lastModified = Date.now();
+  //         recordingWithMetadata.recordingTime = recordingDuration;
+  //         recordingWithMetadata.recordingSize = recordingSize;
 
-          logger.info('Recording completed with metadata', {
-            size: recordingSize,
-            duration: recordingDuration,
-            lastModified: recordingWithMetadata.lastModified,
-          });
+  //         logger.info('Recording completed with metadata', {
+  //           size: recordingSize,
+  //           duration: recordingDuration,
+  //           lastModified: recordingWithMetadata.lastModified,
+  //         });
 
-          // Set the full session recording, which will trigger the useEffect
-          setFullSessionRecording(recordingWithMetadata);
+  //         // Set the full session recording, which will trigger the useEffect
+  //         setFullSessionRecording(recordingWithMetadata);
 
-          // Create URL for playback in mock mode
-          if (isMockMode) {
-            const url = URL.createObjectURL(audioBlob);
-            setRecordingAudioURL(url);
-          }
-        };
-      } catch (error) {
-        logger.error('Error initializing media recorder:', error);
-      }
-    };
-    // TODO: STOP RECORDING AFTER 10 SECONDS
-    // TODO: initialize rerorder when user starts speaking
+  //         // Create URL for playback in mock mode
+  //         if (isMockMode) {
+  //           const url = URL.createObjectURL(audioBlob);
+  //           setRecordingAudioURL(url);
+  //         }
+  //       };
+  //     } catch (error) {
+  //       logger.error('Error initializing media recorder:', error);
+  //     }
+  //   };
+  //   // TODO: STOP RECORDING AFTER 10 SECONDS
+  //   // TODO: initialize rerorder when user starts speaking
 
-    initializeRecorder();
+  //   initializeRecorder();
 
-    return () => {
-      // Clean up the recorder and stream on unmount
-      if (
-        mediaRecorderRef.current &&
-        mediaRecorderRef.current.state !== 'inactive'
-      ) {
-        mediaRecorderRef.current.stop();
-      }
+  //   return () => {
+  //     // Clean up the recorder and stream on unmount
+  //     if (
+  //       mediaRecorderRef.current &&
+  //       mediaRecorderRef.current.state !== 'inactive'
+  //     ) {
+  //       mediaRecorderRef.current.stop();
+  //     }
 
-      // Clean up any object URLs we created
-      if (recordingAudioURL) {
-        URL.revokeObjectURL(recordingAudioURL);
-      }
-    };
-  }, []);
+  //     // Clean up any object URLs we created
+  //     if (recordingAudioURL) {
+  //       URL.revokeObjectURL(recordingAudioURL);
+  //     }
+  //   };
+  // }, []);
 
   // Stop recording on component unmount
-  useEffect(() => {
-    return () => {
-      if (
-        mediaRecorderRef.current &&
-        mediaRecorderRef.current.state !== 'inactive'
-      ) {
-        mediaRecorderRef.current.stop();
-        logger.info('Recording stopped on component unmount');
-      }
-    };
-  }, []);
+  // useEffect(() => {
+  //   return () => {
+  //     if (
+  //       mediaRecorderRef.current &&
+  //       mediaRecorderRef.current.state !== 'inactive'
+  //     ) {
+  //       mediaRecorderRef.current.stop();
+  //       logger.info('Recording stopped on component unmount');
+  //     }
+  //   };
+  // }, []);
 
   const toggleListening = () => {
     // Set the user interaction flag to true on the first manual click
@@ -956,12 +956,12 @@ export default function LessonChat({
       logger.info('Manual pause triggered.');
       manuallyStoppedRef.current = true;
       pauseListening();
-      pauseRecording(); // Also pause recording when manually pausing listening
+      // pauseRecording(); // Also pause recording when manually pausing listening
     } else {
       logger.info('Manual start triggered.');
       manuallyStoppedRef.current = false;
       startListening();
-      startRecording(); // Also start recording when manually starting listening
+      // startRecording(); // Also start recording when manually starting listening
     }
   };
 
@@ -1023,24 +1023,24 @@ export default function LessonChat({
   };
 
   // Add effect to handle recording audio ended event
-  useEffect(() => {
-    const handleRecordingEnded = () => {
-      setIsPlayingRecording(false);
-    };
+  // useEffect(() => {
+  //   const handleRecordingEnded = () => {
+  //     setIsPlayingRecording(false);
+  //   };
 
-    if (recordingAudioRef.current) {
-      recordingAudioRef.current.addEventListener('ended', handleRecordingEnded);
-    }
+  //   if (recordingAudioRef.current) {
+  //     recordingAudioRef.current.addEventListener('ended', handleRecordingEnded);
+  //   }
 
-    return () => {
-      if (recordingAudioRef.current) {
-        recordingAudioRef.current.removeEventListener(
-          'ended',
-          handleRecordingEnded
-        );
-      }
-    };
-  }, []);
+  //   return () => {
+  //     if (recordingAudioRef.current) {
+  //       recordingAudioRef.current.removeEventListener(
+  //         'ended',
+  //         handleRecordingEnded
+  //       );
+  //     }
+  //   };
+  // }, []);
 
   const handleSkip = () => {
     const currentStep = lesson.steps[currentStepIndex] as LessonStep;
@@ -1059,7 +1059,8 @@ export default function LessonChat({
     // Call onComplete ONLY when the button is clicked in mock mode
     if (fullSessionRecording) {
       // Ensure recording is available
-      onComplete(fullSessionRecording);
+      // onComplete(fullSessionRecording);
+      onComplete(null)
     } else {
       logger.warn(
         'Complete Lesson clicked in mock mode, but no recording available yet.'
@@ -1071,16 +1072,19 @@ export default function LessonChat({
 
   // Add this useEffect to trigger onComplete when recording is ready
   useEffect(() => {
-    if (fullSessionRecording && lessonCompleted && !loading && !isMockMode) {
-      logger.info('Lesson completed with recording', {
-        recordingSize: fullSessionRecording.size,
-        recordingTime: (fullSessionRecording as any).recordingTime,
-      });
+    // if (fullSessionRecording && lessonCompleted && !loading && !isMockMode) {
+    if (!loading && !isMockMode && lessonCompleted && !loading) {
+      // logger.info('Lesson completed with recording', {
+      //   recordingSize: fullSessionRecording.size,
+      //   recordingTime: (fullSessionRecording as any).recordingTime,
+      // });
 
       // Call onComplete with the recording
-      onComplete(fullSessionRecording);
+      // onComplete(fullSessionRecording);
+      onComplete(null);
     }
-  }, [fullSessionRecording, lessonCompleted, loading, onComplete, isMockMode]);
+  // }, [fullSessionRecording, lessonCompleted, loading, onComplete, isMockMode]);
+  }, [lessonCompleted, loading, onComplete, isMockMode]);
 
   return (
     lesson && (
