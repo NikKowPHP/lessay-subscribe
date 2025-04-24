@@ -55,13 +55,13 @@
     -   Configure the `RecognitionAudio`:
         -   Pass the received audio `content` (as Base64 string or Buffer).
     -   Make the `recognize` API call to Google Cloud STT.
--   [ ] **Handle API Response:**
+-   [x] **Handle API Response:**
     -   Process the response from Google Cloud STT.
     -   Extract the transcript from the `results`. Handle cases with multiple results or alternatives if necessary (usually take the first result's first alternative with highest confidence).
     -   Handle potential errors returned by the Google API (e.g., authentication errors, quota limits, invalid arguments).
--   [ ] **Return Transcript to Client:**
+-   [x] **Return Transcript to Client:**
     -   Send the extracted transcript (or an error message) back to the client in a structured JSON response.
--   [ ] **Add Authentication/Authorization:**
+-   [x] **Add Authentication/Authorization:**
     -   Secure the backend endpoint/action. Ensure only authenticated users associated with the lesson can submit STT requests. Use Supabase session validation.
 
 ## Phase 2: Frontend Integration (`LessonChat.tsx`)
