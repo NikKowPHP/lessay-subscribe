@@ -2,9 +2,10 @@ import React from 'react';
 
 interface ChatInputProps {
   userResponse: string;
-  isListening: boolean;
+  isListening: boolean; // This will represent isRecording from the parent
+  isProcessing?: boolean; // New prop for server STT loading state
   feedback: string;
-  onToggleListening: () => void;
+  onToggleListening: () => void; // This will be onToggleRecording
   onSubmit: () => void;
   disableSubmit: boolean;
   onSkip: () => void;
@@ -14,9 +15,10 @@ interface ChatInputProps {
 
 const ChatInput = React.memo(function ChatInput({
   userResponse,
-  isListening,
+  isListening, // Represents isRecording
+  isProcessing,
   feedback,
-  onToggleListening,
+  onToggleListening, // Will be onToggleRecording
   onSubmit,
   disableSubmit,
   disableSkip,
@@ -38,10 +40,10 @@ const ChatInput = React.memo(function ChatInput({
             onChange={handleTextChange}
             className="w-full h-full min-h-[60px] bg-transparent resize-none focus:outline-none"
             data-testid="text-input" 
-            placeholder={isListening ? 'Listening...' : 'Ready to listen'}
+            placeholder={isProcessing ? 'Processing...' : isListening ? 'Recording...' : 'Type or use microphone'}
           />
         ) : (
-          <div>{userResponse || (isListening ? 'Listening...' : 'Ready to listen')}</div>
+          <div>{userResponse || (isProcessing ? 'Processing...' : isListening ? 'Recording...' : 'Ready to record')}</div>
         )}
       </div>
       {feedback && (
@@ -51,12 +53,17 @@ const ChatInput = React.memo(function ChatInput({
         <button
           type="button"
           onClick={onToggleListening}
+          disabled={disableSubmit || isProcessing} // Disable if parent says so OR if processing
           className={`flex-1 py-2 px-4 border border-transparent rounded-[4px] shadow-sm text-sm font-medium text-white ${
-          isListening ? 'bg-accent-9 hover:bg-accent-10' : 'bg-accent-7 hover:bg-accent-8 disabled:opacity-50' // Add disabled style
-         } ${disableSubmit ? 'opacity-50 cursor-not-allowed' : ''
+            isProcessing
+              ? 'bg-neutral-5 hover:bg-neutral-6' // Style for processing
+              : isListening
+              ? 'bg-red-600 hover:bg-red-700' // Style for "Stop Recording"
+              : 'bg-accent-7 hover:bg-accent-8' // Style for "Start Recording"
+          } ${(disableSubmit || isProcessing) ? 'opacity-50 cursor-not-allowed' : ''
           } focus:outline-none focus:ring-2 focus:ring-accent-8`}
         >
-          {isListening ? 'Pause Listening' : 'Start Listening'}
+          {isProcessing ? 'Processing...' : isListening ? 'Stop Recording' : 'Start Recording'}
         </button>
         <button
           type="button"

@@ -45,7 +45,12 @@ export async function transcribeAudio(formData: FormData): Promise<TranscribeRes
         return { error: 'Invalid sampleRateHertz' };
     }
 
-    // TODO: Validate encoding against allowed types (e.g., 'WEBM_OPUS', 'LINEAR16')
+    // Validate encoding against allowed types
+    const allowedEncodings = ['WEBM_OPUS', 'LINEAR16'];
+    if (!allowedEncodings.includes(encodingStr)) {
+        console.error('STT Action: Invalid encoding.', { encodingStr });
+        return { error: `Invalid encoding: ${encodingStr}. Allowed types: ${allowedEncodings.join(', ')}` };
+    }
 
     // 3. Convert Blob to Buffer/Base64 for Google API
     const audioBytes = await audioBlob.arrayBuffer();

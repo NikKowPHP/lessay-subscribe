@@ -66,21 +66,21 @@
 
 ## Phase 2: Frontend Integration (`LessonChat.tsx`)
 
--   [ ] **Remove Web Speech API Integration:**
+-   [x] **Remove Web Speech API Integration:**
     -   Delete all code related to `window.webkitSpeechRecognition`.
     -   Remove state variables like `isListening`, `recognitionRef`, `realtimeTranscript` (or repurpose `isListening` to mean "processing on server").
     -   Remove event handlers (`onstart`, `onresult`, `onerror`, `onend`).
     -   Remove silence detection logic based on Web Speech API results (`silenceTimerRef` related to `onresult`).
--   [ ] **Adapt Audio Recording Logic:**
+-   [x] **Adapt Audio Recording Logic:**
     -   Keep the `MediaRecorder` setup (`initializeRecorder`, `startRecording`, `pauseRecording`, `stopRecordingCompletely`).
     -   Ensure `mediaRecorder.onstop` correctly gathers the audio chunks into a final `Blob` or `File` object.
--   [ ] **Implement Audio Sending:**
+-   [x] **Implement Audio Sending:**
     -   Modify the `stopRecording` (or a new `sendAudioToServer`) function:
         -   When recording stops (manually or automatically), get the final audio `Blob`/`File`.
         -   Use `fetch` or a library like `axios` to send this audio data to the new backend API endpoint/action created in Phase 1.
         -   Use `FormData` to package the audio blob/file along with metadata (target language code).
         -   Set `isProcessing` state to true while waiting for the server response.
--   [ ] **Handle Server Response:**
+-   [x] **Handle Server Response:**
     -   Receive the transcript response from the backend endpoint/action.
     -   On successful response:
         -   Update the `userResponse` state with the received transcript.
@@ -89,14 +89,14 @@
     -   On error response:
         -   Display an appropriate error message to the user (update `feedback` state or use toast).
         -   Set `isProcessing` state to false.
--   [ ] **Update UI State and Controls:**
+-   [x] **Update UI State and Controls:**
     -   Modify the `ChatInput` component and the main microphone button logic:
         -   The button should now toggle `startRecording` and `stopRecording`.
         -   While recording, the button could show a "Stop Recording" state.
         -   After stopping and sending, display a "Processing..." state (using `isProcessing`). Disable the button during processing.
         -   Remove the visual "Listening..." indicator tied to the old Web Speech API state.
         -   The text area (`userResponse`) should primarily display the *final* transcript received from the server, not real-time updates. Consider clearing it before starting a new recording.
--   [ ] **Refine Silence Detection (Client-Side):**
+-   [x] **Refine Silence Detection (Client-Side):**
     -   The previous silence detection relied on `onresult`. A new approach is needed if auto-submission after pauses is desired.
     -   Option A (Simpler): Remove auto-submission. User explicitly clicks "Stop Recording" or a "Submit" button after speaking.
     -   Option B (More Complex): Implement client-side silence detection using `AudioContext` and `AnalyserNode` to monitor the input stream *during* recording and call `stopRecording` automatically after a pause. This adds significant complexity. Start with Option A.
