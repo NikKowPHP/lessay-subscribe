@@ -490,3 +490,328 @@ Integrating the existing Flutter application with the new Next.js backend requir
     *   Evaluate how Hive is currently used for local data storage (e.g., via services like `lib/features/learn/services/deck/deck_localstorage_service.dart`, `lib/features/favorites/services/favorite_service.dart`, `lib/features/history/services/history_service.dart`, and repositories in `lib/features/learning/data/repositories/`).
     *   While local caching and offline support are valuable, the Next.js backend should become the primary source of truth for most dynamic and user-specific data (e.g., learning paths, assessment results, detailed progress).
     *   Adapt Hive usage primarily for caching fetched data to improve performance, managing user preferences that don't need to be server-synced constantly, or for basic offline support functionalities, rather than as a primary data store for server-authoritative data.
+
+
+## 7. Backend API Development Plan for Flutter Support
+
+To enable the Flutter application to fully interact with the Lessay platform, the following new API routes need to be developed in the Next.js backend. These routes will expose the necessary business logic currently handled by Server Actions or provide mobile-specific data views.
+
+### 7.1. General API Design Principles
+
+The new APIs developed for Flutter (and potentially other external clients) should adhere to the following principles:
+
+*   **RESTful or Resource-Oriented:** Design endpoints around resources (e.g., `/profile`, `/lessons`, `/onboarding`). While not strictly REST in all cases (some actions are operations), aim for clear resource identification.
+*   **Stateless & JWT Authenticated:** All protected endpoints must validate a Supabase JWT passed in the `Authorization: Bearer <token>` header. The server should not rely on session cookies for these APIs.
+*   **JSON for Data Exchange:** Use JSON exclusively for request and response bodies.
+*   **Standard HTTP Methods:** Utilize GET for retrieval, POST for creation, PUT for updates (or PATCH for partial updates), and DELETE for removal.
+*   **Clear Error Responses:** Implement consistent error handling with appropriate HTTP status codes and JSON error messages (see Section 7.1.1).
+*   **Idempotency where applicable:** For PUT/DELETE operations.
+*   **Data Validation:** Implement robust input validation on the backend for all incoming data to ensure data integrity and security.
+
+#### 7.1.1. Standardized API Error Response Structure
+
+All `/api/v1/...` endpoints should use a consistent JSON structure for error responses:
+
+```json
+{
+  "error": {
+    "code": "string", // Application-specific error code
+    "message": "string", // A descriptive error message
+    "details": "object | array | null" // Optional: Additional details, e.g., field validation errors
+  }
+}
+```
+
+**Common Application-Specific Error Codes (`error.code`):**
+
+*   `UNAUTHENTICATED`: Missing or invalid JWT. HTTP Status: 401.
+*   `FORBIDDEN`: User is authenticated but not authorized to perform the action. HTTP Status: 403.
+*   `VALIDATION_ERROR`: Input data failed validation. `details` object might contain field-specific errors. HTTP Status: 400.
+*   `RESOURCE_NOT_FOUND`: The requested resource does not exist. HTTP Status: 404.
+*   `CONFLICT_ERROR`: A conflict occurred, e.g., trying to create a resource that already exists. HTTP Status: 409.
+*   `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server. HTTP Status: 500.
+*   `EXTERNAL_SERVICE_ERROR`: An error occurred while communicating with an external service (e.g., AI provider). HTTP Status: 502 or 503.
+*   `OPERATION_FAILED`: A general error code for when a specific operation could not be completed. HTTP Status: 400 or 500.
+
+#### 7.1.2. JWT Authentication for `/api/v1/...` Routes
+
+Authentication for the new `/api/v1/...` routes intended for the Flutter client will be handled via Supabase JSON Web Tokens (JWTs).
+
+**Flow:**
+
+1.  **Client-Side (Flutter):**
+    *   The Flutter app authenticates the user directly with the Supabase project using the Supabase Flutter SDK.
+    *   Upon successful authentication, the Flutter app obtains a JWT (access token) from Supabase.
+2.  **API Request (Flutter to Next.js):**
+    *   For every request to a protected `/api/v1/...` endpoint on the Next.js backend, the Flutter app must include the JWT in the `Authorization` HTTP header with the `Bearer` scheme:
+        ```
+        Authorization: Bearer <SUPABASE_JWT_ACCESS_TOKEN>
+        ```
+3.  **Backend-Side (Next.js API Route):**
+    *   **Token Extraction:** The Next.js API route handler (or a dedicated middleware) will extract the JWT from the `Authorization` header.
+    *   **Token Validation:** The extracted JWT will be validated using the Supabase server-side library. This typically involves:
+        *   Initializing the Supabase client with the service role key (or anon key if appropriate for `auth.getUser(jwt)` context on server-side).
+        *   Calling a Supabase function like `supabase.auth.getUser(jwt)` (passing the token). This function verifies the token's signature, checks its expiration, and, if valid, returns the associated user object.
+    *   **User Context:** If the token is valid, the user's identity (e.g., `userId` from `await supabase.auth.getUser(jwt).data.user.id`) is established for the request. This `userId` is then used to authorize access to resources and perform operations on behalf of that user.
+    *   **Error Handling:**
+        *   If the `Authorization` header is missing or malformed, or if the token is invalid (e.g., expired, tampered, incorrect signature), the API route must return a `401 Unauthorized` HTTP status with the standardized error JSON (code: `UNAUTHENTICATED`).
+        *   If the token is valid but the user does not have permission for the specific action/resource, a `403 Forbidden` HTTP status should be returned (code: `FORBIDDEN`).
+
+This JWT validation logic can be implemented as a reusable helper function or a middleware pattern applied to all relevant `/api/v1/...` API routes to ensure consistent security.
+
+### 7.2. Required API Endpoint Groups
+
+The following subsections provide detailed specifications for example endpoints. Similar detail should be defined for all new API routes before implementation. Fields in DTOs are derived from Prisma schema models (e.g., `User`, `Onboarding`, `Lesson`, `AssessmentLesson`, `AudioMetrics`, `LearningProgress`) and existing Server Action parameters/return types.
+
+**User Profile Management (Base: `/api/v1/profile`)**
+
+*   **`GET /`**
+    *   **Objective:** Get the current authenticated user's profile.
+    *   **HTTP Method:** `GET`
+    *   **Path Parameters:** None.
+    *   **Query Parameters:** None.
+    *   **Request Body:** None.
+    *   **Success Response (200 OK - application/json):**
+        ```json
+        {
+          "id": "string", // User ID (from Supabase Auth)
+          "userId": "string", // Same as id, internal DB user ID
+          "email": "string",
+          "name": "string | null",
+          "nativeLanguage": "string | null",
+          "targetLanguage": "string | null",
+          "proficiencyLevel": "string | null (enum: beginner, intermediate, advanced)",
+          "learningPurpose": "string | null",
+          "onboardingCompleted": "boolean",
+          "initialAssessmentCompleted": "boolean",
+          "subscriptionStatus": "string (enum: NONE, TRIAL, ACTIVE, ...)",
+          "subscriptionEndDate": "string (ISO 8601 date-time) | null",
+          "createdAt": "string (ISO 8601 date-time)",
+          "updatedAt": "string (ISO 8601 date-time)"
+          // Other fields from UserProfileModel
+        }
+        ```
+    *   **Potential Error Responses:** `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND`, `500 INTERNAL_SERVER_ERROR`.
+    *   **Permissions/Notes:** Requires authenticated user. Wraps logic from `getUserProfileAction`.
+
+*   **`PUT /`**
+    *   **Objective:** Update the current authenticated user's profile.
+    *   **HTTP Method:** `PUT`
+    *   **Path Parameters:** None.
+    *   **Query Parameters:** None.
+    *   **Request Body (application/json):**
+        ```json
+        {
+          "name": "string | null",
+          "nativeLanguage": "string | null",
+          "targetLanguage": "string | null",
+          "proficiencyLevel": "string | null (enum: beginner, intermediate, advanced)",
+          "learningPurpose": "string | null"
+          // Only include fields to be updated.
+          // onboardingCompleted and initialAssessmentCompleted are typically managed by other flows.
+        }
+        ```
+    *   **Success Response (200 OK - application/json):** Returns the updated UserProfileModel (same structure as `GET /`).
+    *   **Potential Error Responses:** `400 VALIDATION_ERROR`, `401 UNAUTHENTICATED`, `500 INTERNAL_SERVER_ERROR`.
+    *   **Permissions/Notes:** Requires authenticated user. Wraps logic from `updateUserProfileAction`.
+
+**Onboarding & Initial Assessment (Base: `/api/v1/onboarding`)**
+
+*   **`GET /status`**
+    *   **Objective:** Get the current user's onboarding record, including completion status and preferences.
+    *   **HTTP Method:** `GET`
+    *   **Success Response (200 OK - application/json):**
+        ```json
+        // OnboardingModel structure
+        {
+          "id": "string",
+          "userId": "string",
+          "steps": "object", // JSON object showing completed steps, e.g., {"welcome": true, "languages": true}
+          "completed": "boolean", // Overall onboarding completion (before assessment)
+          "learningPurpose": "string | null",
+          "nativeLanguage": "string | null",
+          "targetLanguage": "string | null",
+          "proficiencyLevel": "string (enum) | null",
+          "initialAssessmentCompleted": "boolean",
+          "createdAt": "string (ISO 8601 date-time)",
+          "updatedAt": "string (ISO 8601 date-time)"
+        }
+        ```
+        *If no onboarding record exists, the backend might create a default one first and return it, or return a 404 if creation is not desired here.*
+    *   **Potential Error Responses:** `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND` (if no auto-creation), `500 INTERNAL_SERVER_ERROR`.
+    *   **Permissions/Notes:** Requires authenticated user. Wraps logic from `getOnboardingAction`.
+
+*   **`POST /steps/{stepName}`**
+    *   **Objective:** Update the user's progress for a specific onboarding step.
+    *   **HTTP Method:** `POST`
+    *   **Path Parameters:**
+        *   `stepName` (string, required): Name of the onboarding step (e.g., "languages", "purpose").
+    *   **Request Body (application/json):**
+        ```json
+        // Body structure depends on the step
+        // Example for "languages" step:
+        {
+          "nativeLanguage": "string, required",
+          "targetLanguage": "string, required"
+        }
+        // Example for "purpose" step:
+        {
+          "learningPurpose": "string, required"
+        }
+        ```
+    *   **Success Response (200 OK - application/json):** Returns the updated `OnboardingModel`.
+    *   **Potential Error Responses:** `400 VALIDATION_ERROR`, `401 UNAUTHENTICATED`, `500 INTERNAL_SERVER_ERROR`.
+    *   **Permissions/Notes:** Requires authenticated user. Wraps logic from `updateOnboardingAction`.
+
+*   **`GET /assessment`**
+    *   **Objective:** Get the initial assessment lesson for the user. If it doesn't exist, it may trigger generation.
+    *   **HTTP Method:** `GET`
+    *   **Success Response (200 OK - application/json):**
+        ```json
+        // AssessmentLesson structure (see prisma/schema.prisma)
+        {
+          "id": "string",
+          "userId": "string",
+          "description": "string | null",
+          "completed": "boolean",
+          "sourceLanguage": "string",
+          "targetLanguage": "string",
+          "metrics": "object | null", // Simplified view here, detailed in AudioMetrics
+          "proposedTopics": ["string"],
+          "summary": "string | null",
+          "sessionRecordingUrl": "string | null",
+          "steps": [ // Array of AssessmentStep objects
+            {
+              "id": "string",
+              "stepNumber": "integer",
+              "type": "string (enum: question, feedback, instruction, summary)",
+              "content": "string",
+              "contentAudioUrl": "string | null",
+              "expectedAnswer": "string | null",
+              "expectedAnswerAudioUrl": "string | null",
+              // ... other AssessmentStep fields
+            }
+          ]
+          // AudioMetrics might be a separate fetch or included if light enough
+        }
+        ```
+    *   **Potential Error Responses:** `401 UNAUTHENTICATED`, `500 INTERNAL_SERVER_ERROR` (if generation fails).
+    *   **Permissions/Notes:** Requires authenticated user. Wraps `getAssessmentLessonAction`.
+
+*   **`POST /assessment/steps/{stepId}/attempt`**
+    *   **Objective:** Records a user's attempt for an assessment step.
+    *   **HTTP Method:** `POST`
+    *   **Path Parameters:**
+        *   `stepId` (string, required): The ID of the assessment step.
+    *   **Request Body (application/json):**
+        ```json
+        {
+          "userResponse": "string, required" // The user's spoken answer, transcribed
+        }
+        ```
+    *   **Success Response (200 OK - application/json):**
+        ```json
+        // Updated AssessmentStep object
+        {
+          "id": "string",
+          "assessmentId": "string",
+          "stepNumber": "integer",
+          "type": "string",
+          "content": "string",
+          "userResponse": "string",
+          "correct": "boolean",
+          "attempts": "integer",
+          // ... other AssessmentStep fields
+        }
+        ```
+    *   **Potential Error Responses:** `400 VALIDATION_ERROR`, `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND`, `500 INTERNAL_SERVER_ERROR`.
+    *   **Permissions/Notes:** Requires authenticated user. Wraps `recordAssessmentStepAttemptAction`.
+
+**Lessons (Base: `/api/v1/lessons`)**
+
+*   **`GET /{lessonId}`**
+    *   **Objective:** Get a specific lesson by ID.
+    *   **HTTP Method:** `GET`
+    *   **Path Parameters:**
+        *   `lessonId` (string, required): The ID of the lesson.
+    *   **Success Response (200 OK - application/json):**
+        ```json
+        // LessonModel structure (see prisma/schema.prisma)
+        {
+          "id": "string",
+          "userId": "string",
+          "lessonId": "string", // Internal lesson identifier, e.g., "greetings-intro"
+          "focusArea": "string",
+          "targetSkills": ["string"],
+          "performanceMetrics": "object | null",
+          "completed": "boolean",
+          "sessionRecordingUrl": "string | null",
+          "steps": [ // Array of LessonStep objects
+            {
+              "id": "string",
+              "stepNumber": "integer",
+              "type": "string (enum: prompt, feedback, new_word, ...)",
+              "content": "string",
+              "contentAudioUrl": "string | null",
+              // ... other LessonStep fields
+            }
+          ]
+          // AudioMetrics might be a separate fetch or included
+        }
+        ```
+    *   **Potential Error Responses:** `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND`, `500 INTERNAL_SERVER_ERROR`.
+    *   **Permissions/Notes:** Requires authenticated user. Wraps `getLessonByIdAction`.
+
+*   **`POST /{lessonId}/audio`**
+    *   **Objective:** Submit full audio recording of a lesson for detailed `AudioMetrics` analysis.
+    *   **HTTP Method:** `POST`
+    *   **Path Parameters:**
+        *   `lessonId` (string, required): The ID of the lesson session.
+    *   **Request Body (multipart/form-data):**
+        *   `sessionRecording` (file, required): The audio blob.
+        *   `recordingTime` (number, required): Duration in milliseconds.
+        *   `recordingSize` (number, required): Size in bytes.
+    *   **Success Response (200 OK - application/json):**
+        ```json
+        // Updated LessonModel with AudioMetrics populated
+        {
+          // ... LessonModel fields ...
+          "audioMetrics": {
+            // AudioMetrics structure (see prisma/schema.prisma)
+            "id": "string",
+            "pronunciationScore": "number",
+            "fluencyScore": "number",
+            // ... other AudioMetrics fields ...
+          }
+        }
+        ```
+    *   **Potential Error Responses:** `400 VALIDATION_ERROR`, `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND`, `500 INTERNAL_SERVER_ERROR`, `502 EXTERNAL_SERVICE_ERROR` (if AI analysis fails).
+    *   **Permissions/Notes:** Requires authenticated user. Wraps `processLessonRecordingAction`.
+
+### 7.3. Next Steps for Backend Development
+
+The following high-level tasks would be required for @roo to implement the backend API support for the Flutter application:
+
+1.  **Define DTOs (Data Transfer Objects):** For each required API endpoint, precisely define the JSON request and response structures (schemas), including field names, dataTypes, and required/optional status. These will form the contract between the Flutter app and the Next.js backend. *(This document section provides examples for key endpoints).*
+2.  **Implement API Routes:**
+    *   Create new API route handlers under a versioned path (e.g., `src/app/api/v1/...`) for each of the endpoints outlined.
+    *   These handlers will parse incoming requests, validate data based on the defined DTOs, and call the appropriate existing service methods from `src/services/`.
+3.  **Implement JWT Authentication & Authorization:**
+    *   Develop or integrate a robust mechanism within each new API route (or via a shared middleware pattern specifically for `/api/v1/` routes) to:
+        *   Extract the Supabase JWT from the `Authorization: Bearer <token>` header.
+        *   Validate the token using Supabase server-side utilities (e.g., `await supabase.auth.getUser(jwt)`).
+        *   Retrieve the authenticated user's ID and use it for authorization checks (e.g., ensuring a user can only access/modify their own data).
+        *   Return `401 UNAUTHENTICATED` or `403 FORBIDDEN` responses (using the standardized error structure) as appropriate.
+4.  **Service Layer Interaction:** Ensure API routes correctly call the existing service methods, passing necessary parameters and handling their return values or errors.
+5.  **Error Handling:** Implement consistent error handling within API routes. Catch errors from service calls (including Prisma errors or custom exceptions) and transform them into standardized JSON error responses with appropriate HTTP status codes and application-specific error codes.
+6.  **Logging:** Add comprehensive logging within the API routes for request/response cycles, errors, and key operations to aid in debugging and monitoring.
+7.  **Testing:**
+    *   Write unit tests for any new logic within the API routes (e.g., data transformation, specific validation).
+    *   Write integration tests to verify that the API routes correctly interact with services and that authentication/authorization works as expected. Tools like Postman or automated API testing frameworks can be used.
+```
+
+---
+I have completed TODO #7. The "Backend API Development Plan for Flutter Support" section in `document.md` has been enhanced with details on standardized error responses, JWT authentication flow, and example DTOs for key API endpoints.
+
+This should provide @roo with a much clearer blueprint for implementing the new backend APIs.
+We are now ready to proceed with the actual implementation TODOs for @roo, or any other tasks you have in mind.
