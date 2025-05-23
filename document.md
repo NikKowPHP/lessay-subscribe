@@ -803,15 +803,376 @@ The following high-level tasks would be required for @roo to implement the backe
         *   Retrieve the authenticated user's ID and use it for authorization checks (e.g., ensuring a user can only access/modify their own data).
         *   Return `401 UNAUTHENTICATED` or `403 FORBIDDEN` responses (using the standardized error structure) as appropriate.
 4.  **Service Layer Interaction:** Ensure API routes correctly call the existing service methods, passing necessary parameters and handling their return values or errors.
-5.  **Error Handling:** Implement consistent error handling within API routes. Catch errors from service calls (including Prisma errors or custom exceptions) and transform them into standardized JSON error responses with appropriate HTTP status codes and application-specific error codes.
+5.  **Error Handling:** Implement consistent error handling within A\PI routes. Catch errors from service calls (including Prisma errors or custom exceptions) and transform them into standardized JSON error responses with appropriate HTTP status codes and application-specific error codes.
 6.  **Logging:** Add comprehensive logging within the API routes for request/response cycles, errors, and key operations to aid in debugging and monitoring.
 7.  **Testing:**
     *   Write unit tests for any new logic within the API routes (e.g., data transformation, specific validation).
     *   Write integration tests to verify that the API routes correctly interact with services and that authentication/authorization works as expected. Tools like Postman or automated API testing frameworks can be used.
 ```
+Okay, @roo, here's the detailed breakdown for enhancing Section 7 of `document.md`. This content should be integrated into that section to provide the necessary API specifications.
+
+
+### 7.1. General API Design Principles
+
+The new APIs developed for Flutter (and potentially other external clients) should adhere to the following principles:
+
+*   **RESTful or Resource-Oriented:** Design endpoints around resources (e.g., `/profile`, `/lessons`, `/onboarding`). While not strictly REST in all cases (some actions are operations), aim for clear resource identification.
+*   **Stateless & JWT Authenticated:** All protected endpoints must validate a Supabase JWT passed in the `Authorization: Bearer <token>` header. The server should not rely on session cookies for these APIs.
+*   **JSON for Data Exchange:** Use JSON exclusively for request and response bodies.
+*   **Standard HTTP Methods:** Utilize GET for retrieval, POST for creation, PUT for updates (or PATCH for partial updates), and DELETE for removal.
+*   **Clear Error Responses:** Implement consistent error handling with appropriate HTTP status codes and JSON error messages (see Section 7.1.1).
+*   **Idempotency where applicable:** For PUT/DELETE operations.
+*   **Data Validation:** Implement robust input validation on the backend for all incoming data to ensure data integrity and security.
+
+#### 7.1.1. Standardized API Error Response Structure
+
+All `/api/v1/...` endpoints should use a consistent JSON structure for error responses. When an error occurs, the API will respond with an appropriate HTTP status code and a JSON body formatted as follows:
+
+```json
+{
+  "error": {
+    "code": "string", // Application-specific error code
+    "message": "string", // A descriptive error message
+    "details": "object | array | null" // Optional: Additional details, e.g., field validation errors
+  }
+}
+```
+
+**Common Application-Specific Error Codes (`error.code`):**
+
+*   `UNAUTHENTICATED`: Missing or invalid JWT. HTTP Status: 401.
+*   `FORBIDDEN`: User is authenticated but not authorized to perform the action. HTTP Status: 403.
+*   `VALIDATION_ERROR`: Input data failed validation. `details` object might contain field-specific errors (e.g., `{"details": {"fieldName": "Error message for fieldName"}}`). HTTP Status: 400.
+*   `RESOURCE_NOT_FOUND`: The requested resource does not exist. HTTP Status: 404.
+*   `CONFLICT_ERROR`: A conflict occurred, e.g., trying to create a resource that already exists and shouldn't. HTTP Status: 409.
+*   `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server. HTTP Status: 500.
+*   `EXTERNAL_SERVICE_ERROR`: An error occurred while communicating with an external service (e.g., AI provider, payment gateway). HTTP Status: 502 (Bad Gateway) or 503 (Service Unavailable).
+*   `OPERATION_FAILED`: A general error code for when a specific operation could not be completed due to reasons not covered by other codes. HTTP Status: 400 or 500.
+
+#### 7.1.2. JWT Authentication for `/api/v1/...` Routes
+
+Authentication for the new `/api/v1/...` routes intended for the Flutter client will be handled via Supabase JSON Web Tokens (JWTs).
+
+**Flow:**
+
+1.  **Client-Side (Flutter):**
+    *   The Flutter app authenticates the user directly with the shared Supabase project using the Supabase Flutter SDK (e.g., `supabase-flutter`).
+    *   Upon successful authentication (login or registration), the Flutter app obtains a JWT (access token) from the Supabase session.
+2.  **API Request (Flutter to Next.js):**
+    *   For every request to a protected `/api/v1/...` endpoint on the Next.js backend, the Flutter app must include the JWT in the `Authorization` HTTP header using the `Bearer` scheme:
+        ```
+        Authorization: Bearer <SUPABASE_JWT_ACCESS_TOKEN>
+        ```
+3.  **Backend-Side (Next.js API Route):**
+    *   **Token Extraction:** In the Next.js API route handler (or a dedicated middleware for `/api/v1/` routes), the JWT must be extracted from the `Authorization` header. The token is the part after "Bearer ".
+    *   **Token Validation:**
+        *   Initialize a Supabase client instance using `createSupabaseServerClient()` from `src/utils/supabase/server.ts`.
+        *   Pass the extracted JWT to `supabase.auth.getUser(jwt)`. This Supabase method will:
+            *   Verify the token's signature against the Supabase project's JWT secret.
+            *   Check for token expiration.
+            *   If the token is valid, it returns an object containing the user data: `{ data: { user }, error: null }`. The `user` object will contain the `id` of the authenticated user.
+            *   If the token is invalid or expired, it returns `{ data: { user: null }, error: AuthError }`.
+    *   **User Context & Authorization:**
+        *   If `supabase.auth.getUser(jwt)` returns a valid user (`data.user` is not null), the `userId` from `data.user.id` is used to establish the user context for the request. This `userId` is then used to authorize access to resources (e.g., ensuring a user can only access/modify their own data) and perform operations.
+        *   Subsequent service calls (e.g., to `UserService`, `LessonService`) will use this `userId`.
+    *   **Error Handling:**
+        *   If the `Authorization` header is missing, malformed, or the token is invalid/expired (i.e., `supabase.auth.getUser(jwt)` returns an error or null user), the API route **must** return a `401 Unauthorized` HTTP status with the standardized error JSON: `{"error": {"code": "UNAUTHENTICATED", "message": "Authentication required. Please log in again."}}`.
+        *   If the token is valid but the authenticated user does not have permission for the specific action/resource (this would be checked by business logic, e.g., ensuring `userId` from token matches `userId` of the resource being accessed), a `403 Forbidden` HTTP status should be returned: `{"error": {"code": "FORBIDDEN", "message": "You do not have permission to perform this action."}}`.
+
+This JWT validation logic should be implemented as a reusable helper function or a middleware pattern applied to all relevant `/api/v1/...` API routes to ensure consistent and secure authentication.
+
+### 7.2. Required API Endpoint Groups
+
+The following subsections provide detailed DTO (Data Transfer Object) specifications for representative API endpoints. These are examples; similar detail should be defined for all new API routes before implementation.
+DTO fields are derived from Prisma schema models (e.g., `User`, `Onboarding`, `Lesson`, etc., found in `prisma/schema.prisma` and `src/models/AppAllModels.model.ts`) and existing Server Action parameters/return types. Timestamps should be in ISO 8601 format (e.g., `"2023-10-26T07:49:13.511Z"`). JSONB fields in Prisma are represented as JSON objects or arrays in DTOs.
 
 ---
-I have completed TODO #7. The "Backend API Development Plan for Flutter Support" section in `document.md` has been enhanced with details on standardized error responses, JWT authentication flow, and example DTOs for key API endpoints.
+#### **User Profile Management** (Base Path: `/api/v1/profile`)
+---
 
-This should provide @roo with a much clearer blueprint for implementing the new backend APIs.
-We are now ready to proceed with the actual implementation TODOs for @roo, or any other tasks you have in mind.
+*   **`GET /`**
+    *   **Objective:** Retrieve the current authenticated user's profile.
+    *   **HTTP Method & Path:** `GET /api/v1/profile/`
+    *   **Path Parameters:** None.
+    *   **Query Parameters:** None.
+    *   **Request Body:** None.
+    *   **Success Response (200 OK - `application/json`):**
+        ```json
+        {
+          "id": "string", // User ID (from Supabase Auth, also Prisma User ID)
+          "userId": "string", // Redundant, same as id. Consider removing from DTO if always same as 'id'.
+          "email": "string",
+          "name": "string | null",
+          "nativeLanguage": "string | null",
+          "targetLanguage": "string | null",
+          "proficiencyLevel": "string | null", // Enum: 'beginner', 'intermediate', 'advanced'
+          "learningPurpose": "string | null",
+          "onboardingCompleted": "boolean",
+          "initialAssessmentCompleted": "boolean",
+          "subscriptionStatus": "string", // Enum: 'NONE', 'TRIAL', 'ACTIVE', 'CANCELED', 'PAST_DUE', 'EXPIRED'
+          "subscriptionEndDate": "string (ISO 8601 date-time) | null",
+          "createdAt": "string (ISO 8601 date-time)",
+          "updatedAt": "string (ISO 8601 date-time)"
+          // Other relevant fields from UserProfileModel based on Prisma User & Onboarding
+        }
+        ```
+    *   **Potential Error Responses:**
+        *   `401 UNAUTHENTICATED`: If JWT is missing or invalid.
+        *   `404 RESOURCE_NOT_FOUND`: If the user profile does not exist in the database for the authenticated user.
+        *   `500 INTERNAL_SERVER_ERROR`: For unexpected server issues.
+    *   **Permissions/Notes:** Requires an authenticated user. This endpoint wraps the logic from `getUserProfileAction`.
+
+*   **`PUT /`**
+    *   **Objective:** Update the current authenticated user's profile.
+    *   **HTTP Method & Path:** `PUT /api/v1/profile/`
+    *   **Path Parameters:** None.
+    *   **Query Parameters:** None.
+    *   **Request Body (`application/json`):**
+        *Allowed fields for update. All fields are optional; only provided fields will be updated.*
+        ```json
+        {
+          "name": "string | null",
+          "nativeLanguage": "string | null",
+          "targetLanguage": "string | null",
+          "proficiencyLevel": "string | null", // Enum: 'beginner', 'intermediate', 'advanced'
+          "learningPurpose": "string | null"
+        }
+        ```
+    *   **Success Response (200 OK - `application/json`):** Returns the updated `UserProfileModel` (same structure as `GET /`).
+    *   **Potential Error Responses:**
+        *   `400 VALIDATION_ERROR`: If request body validation fails (e.g., invalid enum value for `proficiencyLevel`).
+        *   `401 UNAUTHENTICATED`: If JWT is missing or invalid.
+        *   `404 RESOURCE_NOT_FOUND`: If the user profile to update does not exist.
+        *   `500 INTERNAL_SERVER_ERROR`: For unexpected server issues.
+    *   **Permissions/Notes:** Requires an authenticated user. Wraps the logic from `updateUserProfileAction`.
+
+---
+#### **Onboarding & Initial Assessment** (Base Path: `/api/v1/onboarding`)
+---
+
+*   **`GET /status`**
+    *   **Objective:** Get the current user's onboarding record, including completion status and preferences. If no record exists, one should be created with default values.
+    *   **HTTP Method & Path:** `GET /api/v1/onboarding/status`
+    *   **Success Response (200 OK - `application/json`):**
+        ```json
+        // OnboardingModel structure (from src/models/AppAllModels.model.ts and prisma/schema.prisma)
+        {
+          "id": "string", // Onboarding record ID
+          "userId": "string", // Authenticated User ID
+          "steps": {}, // JSON object, e.g., {"welcome": true, "languages": true, "purpose": false, ...}
+          "completed": "boolean", // True if main onboarding steps (pre-assessment) are done
+          "learningPurpose": "string | null",
+          "nativeLanguage": "string | null",
+          "targetLanguage": "string | null",
+          "proficiencyLevel": "string | null", // Enum: 'beginner', 'intermediate', 'advanced'
+          "initialAssessmentCompleted": "boolean", // True if the initial language assessment flow is done
+          "createdAt": "string (ISO 8601 date-time)",
+          "updatedAt": "string (ISO 8601 date-time)"
+        }
+        ```
+    *   **Potential Error Responses:**
+        *   `401 UNAUTHENTICATED`.
+        *   `500 INTERNAL_SERVER_ERROR` (e.g., if fetching or default creation fails).
+    *   **Permissions/Notes:** Requires an authenticated user. Wraps logic from `getOnboardingAction` and potentially `createOnboardingAction` if no record exists.
+
+*   **`POST /steps/{stepName}`**
+    *   **Objective:** Update the user's progress for a specific onboarding step (e.g., after they select languages or define their learning purpose).
+    *   **HTTP Method & Path:** `POST /api/v1/onboarding/steps/{stepName}`
+    *   **Path Parameters:**
+        *   `stepName` (string, required): The name of the onboarding step being completed (e.g., "welcome", "languages", "purpose", "proficiency").
+    *   **Request Body (`application/json`):**
+        *Body structure depends on `stepName`. All fields are typically optional in the request, as `stepName` implies completion, but data specific to the step should be sent.*
+        ```json
+        // Example for "languages" step:
+        {
+          "nativeLanguage": "string",
+          "targetLanguage": "string"
+        }
+        // Example for "purpose" step:
+        {
+          "learningPurpose": "string"
+        }
+        // Example for "proficiency" step:
+        {
+          "proficiencyLevel": "string" // Enum: 'beginner', 'intermediate', 'advanced'
+        }
+        // For "welcome", body might be empty: {}
+        ```
+    *   **Success Response (200 OK - `application/json`):** Returns the updated `OnboardingModel` (same structure as `GET /status`).
+    *   **Potential Error Responses:** `400 VALIDATION_ERROR`, `401 UNAUTHENTICATED`, `500 INTERNAL_SERVER_ERROR`.
+    *   **Permissions/Notes:** Requires authenticated user. Wraps logic from `updateOnboardingAction`.
+
+*   **`POST /assessment/steps/{stepId}/attempt`**
+    *   **Objective:** Submit the user's response for a specific interactive step within the initial language assessment.
+    *   **HTTP Method & Path:** `POST /api/v1/onboarding/assessment/steps/{stepId}/attempt`
+    *   **Path Parameters:**
+        *   `stepId` (string, required): The ID of the `AssessmentStep` being attempted.
+    *   **Request Body (`application/json`):**
+        ```json
+        {
+          "userResponse": "string, required" // The user's transcribed spoken response, or "Acknowledged" for non-interactive steps.
+        }
+        ```
+    *   **Success Response (200 OK - `application/json`):**
+        ```json
+        // Updated AssessmentStep object (from src/models/AppAllModels.model.ts & prisma/schema.prisma)
+        {
+          "id": "string",
+          "assessmentId": "string",
+          "stepNumber": "integer",
+          "type": "string", // Enum: 'question', 'feedback', 'instruction', 'summary'
+          "content": "string",
+          "contentAudioUrl": "string | null",
+          "translation": "string | null",
+          "expectedAnswer": "string | null",
+          "expectedAnswerAudioUrl": "string | null",
+          "maxAttempts": "integer",
+          "userResponse": "string | null",
+          "userResponseHistory": "object | null", // JSONB, could be array of strings
+          "attempts": "integer",
+          "correct": "boolean",
+          "lastAttemptAt": "string (ISO 8601 date-time) | null",
+          "feedback": "string | null", // Feedback provided for this attempt
+          "createdAt": "string (ISO 8601 date-time)",
+          "updatedAt": "string (ISO 8601 date-time)"
+        }
+        ```
+    *   **Potential Error Responses:**
+        *   `400 VALIDATION_ERROR`: If `userResponse` is missing or invalid.
+        *   `401 UNAUTHENTICATED`.
+        *   `404 RESOURCE_NOT_FOUND`: If the `assessmentId` (derived from `stepId`) or `stepId` itself is not found.
+        *   `500 INTERNAL_SERVER_ERROR`.
+    *   **Permissions/Notes:** Requires authenticated user. Wraps `recordAssessmentStepAttemptAction` logic from `onboarding-actions.ts`. The `assessmentId` is inferred from the `stepId` on the backend.
+
+---
+#### **Lessons** (Base Path: `/api/v1/lessons`)
+---
+
+*   **`GET /{lessonId}`**
+    *   **Objective:** Fetch details for a specific lesson by its ID.
+    *   **HTTP Method & Path:** `GET /api/v1/lessons/{lessonId}`
+    *   **Path Parameters:**
+        *   `lessonId` (string, required): The ID of the `Lesson`.
+    *   **Query Parameters:** None.
+    *   **Request Body:** None.
+    *   **Success Response (200 OK - `application/json`):**
+        ```json
+        // LessonModel structure (from src/models/AppAllModels.model.ts & prisma/schema.prisma)
+        {
+          "id": "string",
+          "userId": "string",
+          "lessonId": "string", // Internal "slug" or generated ID for the lesson type/content
+          "focusArea": "string",
+          "targetSkills": ["string"], // Array of strings
+          "performanceMetrics": "object | null", // JSONB in Prisma
+          "completed": "boolean",
+          "createdAt": "string (ISO 8601 date-time)",
+          "updatedAt": "string (ISO 8601 date-time)",
+          "sessionRecordingUrl": "string | null",
+          "audioMetrics": "object | null", // AudioMetrics object (see below if included directly, or fetch separately)
+          "steps": [ // Array of LessonStep objects
+            {
+              "id": "string",
+              "lessonId": "string", // Parent lesson ID
+              "stepNumber": "integer",
+              "type": "string", // Enum: 'prompt', 'feedback', 'new_word', 'practice', 'instruction', 'summary'
+              "content": "string",
+              "contentAudioUrl": "string | null",
+              "translation": "string | null",
+              "expectedAnswer": "string | null",
+              "expectedAnswerAudioUrl": "string | null",
+              "userResponse": "string | null",
+              "userResponseHistory": "object | null", // JSONB, e.g., array of past responses
+              "attempts": "integer",
+              "maxAttempts": "integer",
+              "correct": "boolean",
+              "lastAttemptAt": "string (ISO 8601 date-time) | null",
+              "errorPatterns": ["string"] // Array of strings
+            }
+          ]
+        }
+        ```
+        *Optional: `audioMetrics` DTO (if returned nested):*
+        ```json
+        // (If audioMetrics is returned as part of the lesson DTO)
+        "audioMetrics": {
+          "id": "string",
+          "pronunciationScore": "number", // Float
+          "fluencyScore": "number", // Float
+          "grammarScore": "number", // Float
+          "vocabularyScore": "number", // Float
+          "overallPerformance": "number", // Float
+          "proficiencyLevel": "string", // CEFR
+          "learningTrajectory": "string", // Enum: 'steady', 'accelerating', 'plateauing'
+          "pronunciationAssessment": {}, // JSON object
+          "fluencyAssessment": {}, // JSON object
+          "grammarAssessment": {}, // JSON object
+          "vocabularyAssessment": {}, // JSON object
+          "exerciseCompletion": {}, // JSON object
+          "suggestedTopics": ["string"],
+          "grammarFocusAreas": ["string"],
+          "vocabularyDomains": ["string"],
+          "nextSkillTargets": ["string"],
+          "preferredPatterns": ["string"],
+          "effectiveApproaches": ["string"],
+          "audioRecordingUrl": "string | null",
+          "recordingDuration": "number | null" // Float, seconds
+        }
+        ```
+    *   **Potential Error Responses:** `401 UNAUTHENTICATED`, `403 FORBIDDEN` (if lesson doesn't belong to user), `404 RESOURCE_NOT_FOUND`, `500 INTERNAL_SERVER_ERROR`.
+    *   **Permissions/Notes:** Requires authenticated user. Wraps `getLessonByIdAction`.
+
+*   **`POST /{lessonId}/audio`**
+    *   **Objective:** Submit the full audio recording of a lesson session for detailed `AudioMetrics` analysis.
+    *   **HTTP Method & Path:** `POST /api/v1/lessons/{lessonId}/audio`
+    *   **Path Parameters:**
+        *   `lessonId` (string, required): The ID of the `Lesson` this audio belongs to.
+    *   **Request Body (`multipart/form-data`):**
+        *   `sessionRecording` (file, required): The audio blob/file (e.g., webm, mp3, m4a). The backend will handle storage (e.g., Vercel Blob) and processing.
+        *   `recordingTime` (number, required): Duration of the recording in milliseconds.
+        *   `recordingSize` (number, required): Size of the recording in bytes.
+    *   **Success Response (200 OK - `application/json`):** Returns the updated `LessonModel` with the `audioMetrics` field populated (same structure as `GET /{lessonId}` but `audioMetrics` will be present).
+    *   **Potential Error Responses:**
+        *   `400 VALIDATION_ERROR`: If required form data is missing or invalid.
+        *   `401 UNAUTHENTICATED`.
+        *   `403 FORBIDDEN` (if lesson doesn't belong to user).
+        *   `404 RESOURCE_NOT_FOUND`: If the `lessonId` is not found.
+        *   `500 INTERNAL_SERVER_ERROR` (e.g., file upload fails, AI analysis fails).
+        *   `502 EXTERNAL_SERVICE_ERROR` (if AI analysis service returns an error).
+    *   **Permissions/Notes:** Requires authenticated user. Wraps logic from `processLessonRecordingAction`.
+
+---
+*(Additional endpoint specifications for other groups like Learning Progress would follow a similar detailed format, referencing their respective Prisma models and Server Action logic).*
+
+### 7.3. Next Steps for Backend Development
+
+The following high-level tasks would be required for @roo to implement the backend API support for the Flutter application:
+
+1.  **Define DTOs (Data Transfer Objects):** For each required API endpoint, precisely define the JSON request and response structures (schemas), including field names, dataTypes, and required/optional status. These will form the contract between the Flutter app and the Next.js backend. *(This document section provides examples for key endpoints).*
+2.  **Implement API Routes:**
+    *   Create new API route handlers under a versioned path (e.g., `src/app/api/v1/...`) for each of the endpoints outlined.
+    *   These handlers will parse incoming requests, validate data based on the defined DTOs, and call the appropriate existing service methods from `src/services/`.
+3.  **Implement JWT Authentication & Authorization:**
+    *   Develop or integrate a robust mechanism within each new API route (or via a shared middleware pattern specifically for `/api/v1/` routes) to:
+        *   Extract the Supabase JWT from the `Authorization: Bearer <token>` header.
+        *   Validate the token using Supabase server-side utilities (e.g., `await supabase.auth.getUser(jwt)`).
+        *   Retrieve the authenticated user's ID and use it for authorization checks (e.g., ensuring a user can only access/modify their own data).
+        *   Return `401 UNAUTHENTICATED` or `403 FORBIDDEN` responses (using the standardized error structure) as appropriate.
+4.  **Service Layer Interaction:** Ensure API routes correctly call the existing service methods, passing necessary parameters and handling their return values or errors.
+5.  **Error Handling:** Implement consistent error handling within API routes. Catch errors from service calls (including Prisma errors or custom exceptions) and transform them into standardized JSON error responses with appropriate HTTP status codes and application-specific error codes.
+6.  **Logging:** Add comprehensive logging within the API routes for request/response cycles, errors, and key operations to aid in debugging and monitoring.
+7.  **Testing:**
+    *   Write unit tests for any new logic within the API routes (e.g., data transformation, specific validation).
+    *   Write integration tests to verify that the API routes correctly interact with services and that authentication/authorization works as expected. Tools like Postman or automated API testing frameworks can be used.
+
+```
+
+---
+
+This content should provide @roo with the detailed specifications needed.
+
+**TODO #7 (now marked as #1 in your list) is effectively completed by providing this information.**
+
+We can now proceed to **TODO #2 (Implement `GET /api/v1/profile/`)** from your list.
+
+Please confirm when @roo is ready for that task's detailed instructions.
