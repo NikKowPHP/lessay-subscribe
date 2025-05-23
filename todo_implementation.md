@@ -19,19 +19,19 @@
     *   **Status:** Pending
     *   **Details:** Authenticate via JWT, fetch profile using `UserService`, return `UserProfileModel` or standardized error.
 
-*   **[ ] TODO #X: Implement `PUT /api/v1/profile/`**
+*   **[x] TODO #X: Implement `PUT /api/v1/profile/`**
     *   **Objective:** Update the current authenticated user's profile.
     *   **Files:** `src/app/api/v1/profile/route.ts`
     *   **Status:** Pending
     *   **Details:** Authenticate via JWT, validate request body, use `UserService` to update, return updated `UserProfileModel`.
 
-*   **[ ] TODO #X: Implement `POST /api/v1/profile/`** (for initial creation if not handled by Supabase auth flow directly for profile table)
+*   **[x] TODO #X: Implement `POST /api/v1/profile/`** (for initial creation if not handled by Supabase auth flow directly for profile table)
     *   **Objective:** Create the current authenticated user's profile (idempotent).
     *   **Files:** `src/app/api/v1/profile/route.ts`
     *   **Status:** Pending
     *   **Details:** Authenticate via JWT, ensure profile doesn't exist or matches user, use `UserService` to create, return created `UserProfileModel`. *(Note: Current server actions (`createUserProfileAction`) handle this. Ensure API aligns with this logic, especially if profile creation is tied to the first login after Supabase user creation).*
 
-*   **[ ] TODO #X: Implement `DELETE /api/v1/profile/`**
+*   **[x] TODO #X: Implement `DELETE /api/v1/profile/`**
     *   **Objective:** Delete the current authenticated user's profile and their Supabase authentication account.
     *   **Files:** `src/app/api/v1/profile/route.ts`
     *   **Status:** Pending
@@ -40,31 +40,31 @@
 ### III. API Implementation - Onboarding & Initial Assessment (for @roo)
 *(Base Path: `/api/v1/onboarding`)*
 
-*   **[ ] TODO #X: Implement `GET /api/v1/onboarding/status`**
+*   **[x] TODO #X: Implement `GET /api/v1/onboarding/status`**
     *   **Objective:** Get the current user's onboarding status and preferences.
     *   **Status:** Pending
 
-*   **[ ] TODO #X: Implement `POST /api/v1/onboarding/steps/{stepName}`**
+*   **[x] TODO #X: Implement `POST /api/v1/onboarding/steps/{stepName}`**
     *   **Objective:** Update user's progress for a specific onboarding step.
     *   **Status:** Pending
 
-*   **[ ] TODO #X: Implement `POST /api/v1/onboarding/complete`**
+*   **[x] TODO #X: Implement `POST /api/v1/onboarding/complete`**
     *   **Objective:** Mark main onboarding (pre-assessment) as complete and trigger initial lesson generation.
     *   **Status:** Pending
 
-*   **[ ] TODO #X: Implement `GET /api/v1/onboarding/assessment`**
+*   **[x] TODO #X: Implement `GET /api/v1/onboarding/assessment`**
     *   **Objective:** Get/generate the user's initial assessment lesson.
     *   **Status:** Pending
 
-*   **[ ] TODO #X: Implement `POST /api/v1/onboarding/assessment/steps/{stepId}/attempt`**
+*   **[x] TODO #X: Implement `POST /api/v1/onboarding/assessment/steps/{stepId}/attempt`**
     *   **Objective:** Submit user's response for an assessment step.
     *   **Status:** Pending
 
-*   **[ ] TODO #X: Implement `POST /api/v1/onboarding/assessment/complete`**
+*   **[x] TODO #X: Implement `POST /api/v1/onboarding/assessment/complete`**
     *   **Objective:** Finalize assessment, calculate results.
     *   **Status:** Pending
 
-*   **[ ] TODO #X: Implement `POST /api/v1/onboarding/assessment/audio`**
+*   **[x] TODO #X: Implement `POST /api/v1/onboarding/assessment/audio`**
     *   **Objective:** Submit full assessment audio for detailed analysis.
     *   **Status:** Pending
 

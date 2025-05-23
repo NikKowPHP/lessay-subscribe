@@ -8,12 +8,11 @@ export class TTS {
     this.ttsEngine = ttsEngine;
   }
 
-  public async generateAudio(text: string, language: string) {
-    const voice = this.voiceToUse(language);
+  public async synthesizeSpeech(text: string, language: string, voice: string): Promise<string> {
     return await this.ttsEngine.synthesizeSpeech(text, language, voice);
   }
 
-  private voiceToUse(language: string) {
+  public getVoice(language: string, quality: 'basic' | 'hd'): string {
     return getTtsVoiceId(language);
   }
 }
