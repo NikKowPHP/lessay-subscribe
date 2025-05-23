@@ -71,30 +71,33 @@
 ### IV. API Implementation - Lessons (for @roo)
 *(Base Path: `/api/v1/lessons`)*
 
-*   **[ ] TODO #X: Implement `GET /api/v1/lessons/`**
+*   [x] TODO #X: Implement `GET /api/v1/lessons/`
     *   **Objective:** Retrieve a list of lessons for the current user.
-    *   **Status:** Pending
+    *   **Status:** Completed
 
-*   **[ ] TODO #X: Implement `GET /api/v1/lessons/{lessonId}`**
+*   [x] TODO #X: Implement `GET /api/v1/lessons/{lessonId}`
     *   **Objective:** Fetch details for a specific lesson.
-    *   **Status:** Pending
+    *   **Status:** Completed
 
-*   **[ ] TODO #X: Implement `POST /api/v1/lessons/{lessonId}/complete`**
+*   [x] TODO #X: Implement `POST /api/v1/lessons/{lessonId}/complete`
     *   **Objective:** Mark a lesson as completed.
-    *   **Status:** Pending
+    *   **Status:** Completed
 
-*   **[ ] TODO #X: Implement `POST /api/v1/lessons/{lessonId}/steps/{stepId}/attempt`**
+*   [x] TODO #X: Implement `POST /api/v1/lessons/{lessonId}/steps/{stepId}/attempt`
     *   **Objective:** Submit user's response for a lesson step.
-    *   **Status:** Pending
+    *   **Status:** Completed
 
-*   **[ ] TODO #X: Implement `POST /api/v1/lessons/{lessonId}/audio`**
+*   [x] TODO #X: Implement `POST /api/v1/lessons/{lessonId}/audio`
     *   **Objective:** Submit lesson audio for detailed analysis.
-    *   **Status:** Pending
+    *   **Status:** Completed
 
-*   **[ ] TODO #X: Implement `POST /api/v1/lessons/check-generate`**
+*   [x] TODO #X: Implement `POST /api/v1/lessons/check-generate`
     *   **Objective:** Check and trigger new lesson generation.
-    *   **Status:** Pending
+    *   **Status:** Completed
 
+
+
+WE BROKE THE GET LESSONS 
 ### V. API Implementation - Learning Progress (for @roo)
 *(Base Path: `/api/v1/progress`)*
 

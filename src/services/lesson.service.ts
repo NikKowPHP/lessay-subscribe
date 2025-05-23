@@ -101,9 +101,9 @@ export default class LessonService {
     ); // Instantiate it here
   }
 
-  async getLessons(): Promise<LessonModel[]> {
+  async getLessons(userId: string): Promise<LessonModel[]> {
     // Simply fetch and return existing lessons. Generation is handled elsewhere.
-    const lessons = await this.lessonRepository.getLessons();
+    const lessons = await this.lessonRepository.getLessons(userId);
     logger.info(`LessonService.getLessons: Found ${lessons?.length ?? 0} lessons.`);
     return lessons || []; // Return empty array if null/undefined
   }
@@ -741,17 +741,21 @@ export default class LessonService {
     return topicMap[purpose.toLowerCase()] || topicMap['general'];
   }
 
-  async checkAndGenerateNewLessons(): Promise<LessonModel[]> {
-    const currentLessons = await this.lessonRepository.getLessons();
+  // TODO: WE BROKE GET LESSONS (ADDED USER ID ) CHECK THE FRONTEND
+  async checkAndGenerateNewLessons(userId: string): Promise<LessonModel[]> {
+    const currentLessons = await this.lessonRepository.getLessons(userId);
     logger.info('currentLessons', { currentLessons });
     // If there are no lessons or not all are complete, just return
-    if (currentLessons.length === 0) throw new Error('No lessons found');
+    if (!currentLessons || currentLessons.length === 0) {
+      logger.info('No lessons found for user, generating initial lessons', { userId });
+      return this.generateInitialLessons();
+    }
     const allComplete = currentLessons.every((lesson) => lesson.completed);
 
     logger.info('GENERATING NEW LESSONS BASED ON PROGRESS if neccessary', allComplete);
     if (!allComplete) return [];
 
-    const newLessons = await this.generateNewLessonsBasedOnProgress();
+    const newLessons = await this.generateNewLessonsBasedOnProgress(userId);
     return newLessons;
   }
 

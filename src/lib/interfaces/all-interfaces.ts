@@ -21,9 +21,9 @@ export  interface IOnboardingRepository {
 }
 
 export interface ILessonRepository {
-  getLessons: () => Promise<LessonModel[]>
+  getLessons: (userId: string) => Promise<LessonModel[]>
   getLessonById: (lessonId: string) => Promise<LessonModel | null>
-  createLesson: (lessonData: { 
+  createLesson: (lessonData: {
     focusArea: string
     targetSkills: string[]
     steps: LessonStep[]

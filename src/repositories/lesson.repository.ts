@@ -41,14 +41,13 @@ export class LessonRepository implements ILessonRepository {
     throw new Error('No auth service available')
   }
 
-  async getLessons(): Promise<LessonModel[]> {
+  async getLessons(userId: string): Promise<LessonModel[]> {
     try {
-      const session = await this.getSession()
       return await prisma.lesson.findMany({
-        where: { userId: session.user.id },
+        where: { userId: userId },
         orderBy: { createdAt: 'desc' },
         include: { steps: true }
-      })
+      });
     } catch (error) {
       logger.error('Error fetching lessons:', error)
       throw error

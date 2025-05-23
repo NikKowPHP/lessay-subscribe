@@ -46,7 +46,10 @@ declare global {
   }
 }
 
-class AIService implements  IUploadableAIService{
+import { AdaptiveLessonGenerationRequest, LessonModel, LessonStep } from '@/models/AppAllModels.model';
+import { ILessonGeneratorService } from './lesson-generator.service';
+
+class AIService implements  IUploadableAIService, ILessonGeneratorService {
   private apiKey: string;
   private proxyAgent: unknown | undefined;
 
@@ -262,6 +265,46 @@ class AIService implements  IUploadableAIService{
         throw new Error(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     });
+  }
+
+  async generateLesson(
+    topic: string,
+    targetLanguage: string,
+    difficultyLevel: string,
+    sourceLanguage: string,
+    adaptiveRequest?: AdaptiveLessonGenerationRequest | undefined
+  ): Promise<Record<string, unknown>> {
+    // TODO: Implement this method
+    throw new Error('Method not implemented.');
+  }
+
+  async generateAudioForSteps(
+    steps: LessonStep[],
+    language: string,
+    sourceLanguage: string
+  ): Promise<LessonStep[]> {
+    // TODO: Implement this method
+    throw new Error('Method not implemented.');
+  }
+
+  async generateLessonCompletionResults(
+    lesson: LessonModel,
+    userResponses: { stepId: string; response: string; }[]
+  ): Promise<{
+    metrics: {
+      accuracy: number;
+      pronunciationScore: number;
+      grammarScore: number;
+      vocabularyScore: number;
+      overallScore: number;
+      strengths: string[];
+      weaknesses: string[];
+    };
+    summary: string;
+    nextLessonSuggestions: string[];
+  }> {
+    // TODO: Implement this method
+    throw new Error('Method not implemented.');
   }
 }
 
