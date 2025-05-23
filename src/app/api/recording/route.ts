@@ -1,6 +1,7 @@
 // 'use server'
 import { NextRequest, NextResponse } from 'next/server';
 import RecordingService from '@/services/recording.service';
+import { verifyJwt } from '@/services/auth.service';
 import logger from '@/utils/logger';
 import { mockDetailedResponse, mockResponse } from '@/models/AiResponse.model';
 import formidable, { IncomingForm, Fields, File } from 'formidable';
@@ -64,6 +65,23 @@ async function parseForm(
 }
 
 export async function POST(req: NextRequest) {
+  const authorization = req.headers.get('authorization');
+  if (!authorization) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authorization.split(' ')[1];
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const payload = await verifyJwt(token);
+  if (!payload || !payload.sub) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const userId = payload.sub;
+
   let formData;
   try {
     // Try to parse the form; if it fails, it's due to invalid form data.
@@ -120,7 +138,8 @@ export async function POST(req: NextRequest) {
         fileUri,  // Now using file URI instead of base64
         Number(recordingTime),
         Number(recordingSize),
-        isDeepAnalysis
+        isDeepAnalysis,
+        userId
       );
     }
     logger.log("AI Response:", aiResponse);

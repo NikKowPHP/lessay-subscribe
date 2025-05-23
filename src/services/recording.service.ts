@@ -33,12 +33,13 @@ class RecordingService {
   }
 
   async submitRecording(
-    userIP: string,
-    fileUri: string, // File URI returned from the upload
-    recordingTime: number,
-    recordingSize: number,
-    isDeepAnalysis: boolean
-  ): Promise<Record<string, unknown>> {
+   userIP: string,
+   fileUri: string, // File URI returned from the upload
+   recordingTime: number,
+   recordingSize: number,
+   isDeepAnalysis: boolean,
+   userId: string
+ ): Promise<Record<string, unknown>> {
     try {
       // Generate content using AI service with retry logic.
       const startTime = Date.now();
@@ -92,7 +93,8 @@ class RecordingService {
           recordingTime,
           responseTime,
           recordingSize,
-          detectedTargetLanguage
+          detectedTargetLanguage,
+          userId
         )
       );
 

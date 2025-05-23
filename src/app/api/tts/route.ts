@@ -1,10 +1,28 @@
 // 'use server'
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/utils/logger';
+import { verifyJwt } from '@/services/auth.service';
 import { TTS } from '@/services/tts.service';
 import { PollyService } from '@/services/polly.service';
 
 export async function POST(req: NextRequest) {
+  const authorization = req.headers.get('authorization');
+  if (!authorization) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authorization.split(' ')[1];
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const payload = await verifyJwt(token);
+  if (!payload || !payload.sub) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const userId = payload.sub;
+
   try {
     const { text, language } = await req.json();
 
@@ -14,9 +32,10 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
+ 
     const ttsService = new TTS(new PollyService());
-    const audioBuffer = await ttsService.generateAudio(text, language);
+    const voice = ttsService.getVoice(language, 'hd');
+    const audioBuffer = await ttsService.synthesizeSpeech(text, language, voice);
     console.log('audioBuffer', audioBuffer.length.toString());
 
     return new NextResponse(audioBuffer, {

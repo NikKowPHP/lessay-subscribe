@@ -5,10 +5,10 @@ import { LanguageDetectionResponse } from "@/models/Language-detection.model";
 class MetricsService {
   constructor() {}
 
-  async collectInteractionData(userIP: string, recording: string, aiResponse: Record<string, unknown>, recordingTime: number, responseTime: number, recordingSize: number, languageDetection: LanguageDetectionResponse): Promise<void> {
-    try {
-      // Collect relevant data
-      const timestamp = new Date();
+  async collectInteractionData(userIP: string, recording: string, aiResponse: Record<string, unknown>, recordingTime: number, responseTime: number, recordingSize: number, languageDetection: LanguageDetectionResponse, userId: string): Promise<void> {
+      try {
+        // Collect relevant data
+        const timestamp = new Date();
       const aiResponseLength = JSON.stringify(aiResponse).length;
 
       // Structure the data
@@ -22,6 +22,7 @@ class MetricsService {
         ai_response: aiResponse,
         recording: recording.length,
         language_detection: languageDetection,
+        user_id: userId,
       };
 
       // Store the data in Supabase
